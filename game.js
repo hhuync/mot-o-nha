@@ -12,6 +12,14 @@ const DAY_START_KEY = "mot-o-nha-day-start-v1";
 // BACKGROUND MUSIC
 // ======================================================
 
+const ingredientSound = new Audio("audio/ingredient.mp3");
+ingredientSound.volume = 0.45;
+
+function playIngredientSound() {
+    ingredientSound.currentTime = 0;
+    ingredientSound.play().catch(() => {});
+}
+
 const MUSIC_VOLUME = 0.2;
 const MUSIC_FADE_TIME = 1200;
 
@@ -2821,6 +2829,9 @@ function toggleBread() {
     game.breadSelected =
         !game.breadSelected;
 
+    if (game.breadSelected) {
+        playIngredientSound();
+}
 
     updateSandwich();
 
@@ -2880,6 +2891,8 @@ function toggleIngredient(name) {
         game.selectedIngredients.push(
             name
         );
+
+        playIngredientSound();
     }
 
 
@@ -4657,6 +4670,26 @@ function openPauseMenu() {
         }
     );
 }
+
+const uiClickSound = new Audio("audio/click.mp3");
+uiClickSound.volume = 0.45;
+
+document.addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+
+    if (!button || button.disabled) return;
+
+    // Khi đang làm bánh, nguyên liệu đã có tiếng riêng.
+    if (
+        game.phase === "making" &&
+        button.classList.contains("station-item")
+    ) {
+        return;
+    }
+
+    uiClickSound.currentTime = 0;
+    uiClickSound.play().catch(() => {});
+});
 
 // ======================================================
 // EVENTS
