@@ -6,6 +6,148 @@
 const SAVE_KEY = "mot-o-nha-save-v3";
 const DAY_START_KEY = "mot-o-nha-day-start-v1";
 
+
+// ======================================================
+// BACKGROUND MUSIC
+// ======================================================
+
+const MUSIC_VOLUME = 0.2;
+const MUSIC_FADE_TIME = 1200;
+
+const musicTracks = {
+    lobby: "audio/lobby.mp3",
+    kitchen1: "audio/kitchen1.mp3",
+    kitchen2: "audio/kitchen2.mp3"
+};
+
+const musicA = new Audio();
+const musicB = new Audio();
+
+musicA.loop = true;
+musicB.loop = true;
+
+musicA.volume = 0;
+musicB.volume = 0;
+
+let activeMusic = musicA;
+let inactiveMusic = musicB;
+
+let currentMusicKey = null;
+let desiredMusicKey = "lobby";
+let musicUnlocked = false;
+
+function getKitchenMusicKey() {
+    return game.day % 2 === 0
+        ? "kitchen2"
+        : "kitchen1";
+}
+
+function fadeAudio(
+    audio,
+    from,
+    to,
+    duration,
+    onComplete = null
+) {
+    const startTime = performance.now();
+
+    audio.volume = from;
+
+    function step(now) {
+        const progress = Math.min(
+            (now - startTime) / duration,
+            1
+        );
+
+        audio.volume =
+            from + (to - from) * progress;
+
+        if (progress < 1) {
+            requestAnimationFrame(step);
+        } else {
+            audio.volume = to;
+
+            if (onComplete) {
+                onComplete();
+            }
+        }
+    }
+
+    requestAnimationFrame(step);
+}
+
+function switchMusic(key) {
+    desiredMusicKey = key;
+
+    if (!musicUnlocked) {
+        return;
+    }
+
+    if (currentMusicKey === key) {
+        return;
+    }
+
+    const newSource = musicTracks[key];
+
+    if (!newSource) {
+        return;
+    }
+
+    inactiveMusic.pause();
+    inactiveMusic.src = newSource;
+    inactiveMusic.currentTime = 0;
+    inactiveMusic.volume = 0;
+
+    inactiveMusic.play().catch((error) => {
+        console.warn(
+            "Không phát được nhạc:",
+            error
+        );
+    });
+
+    fadeAudio(
+        activeMusic,
+        activeMusic.volume,
+        0,
+        MUSIC_FADE_TIME,
+        () => {
+            activeMusic.pause();
+            activeMusic.currentTime = 0;
+        }
+    );
+
+    fadeAudio(
+        inactiveMusic,
+        0,
+        MUSIC_VOLUME,
+        MUSIC_FADE_TIME
+    );
+
+    const oldActive = activeMusic;
+
+    activeMusic = inactiveMusic;
+    inactiveMusic = oldActive;
+
+    currentMusicKey = key;
+}
+
+function unlockMusic() {
+    if (musicUnlocked) {
+        return;
+    }
+
+    musicUnlocked = true;
+
+    switchMusic(desiredMusicKey);
+}
+
+document.addEventListener(
+    "click",
+    unlockMusic,
+    { once: true }
+);
+
+
 // ======================================================
 // INGREDIENTS
 // tableImage = hình trên bàn nguyên liệu
@@ -942,6 +1084,8 @@ function recipeBookButton() {
 
 function showHome() {
 
+    switchMusic("lobby");
+
     if (game.phase !== "home") {
         game.pausedPhase = game.phase;
     }
@@ -1098,7 +1242,6 @@ function resumeGame() {
 
         game.hasStarted = true;
         game.shopOpen = false;
-
         showPrep();
 
         return;
@@ -1151,6 +1294,8 @@ function resumeGame() {
 // ======================================================
 
 function showPrep() {
+
+    switchMusic(getKitchenMusicKey());
 
     game.phase = "prep";
     game.pausedPhase = "prep";
@@ -1251,6 +1396,8 @@ function showPrep() {
 // ======================================================
 
 function openShop() {
+
+    switchMusic(getKitchenMusicKey());
 
     if (
         ingredients["Bánh mì"].stock <= 0
