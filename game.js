@@ -93,40 +93,49 @@ function switchMusic(key) {
         return;
     }
 
-    inactiveMusic.pause();
-    inactiveMusic.src = newSource;
-    inactiveMusic.currentTime = 0;
-    inactiveMusic.volume = 0;
+    // Giữ reference cố định cho bài cũ và bài mới
+    const oldMusic = activeMusic;
+    const newMusic = inactiveMusic;
 
-    inactiveMusic.play().catch((error) => {
+    // Chuẩn bị bài mới
+    newMusic.pause();
+    newMusic.src = newSource;
+    newMusic.currentTime = 0;
+    newMusic.volume = 0;
+    newMusic.loop = true;
+
+    newMusic.play().catch((error) => {
         console.warn(
             "Không phát được nhạc:",
             error
         );
     });
 
-    fadeAudio(
-        activeMusic,
-        activeMusic.volume,
-        0,
-        MUSIC_FADE_TIME,
-        () => {
-            activeMusic.pause();
-            activeMusic.currentTime = 0;
-        }
-    );
+    // Fade bài cũ xuống
+    if (!oldMusic.paused) {
+        fadeAudio(
+            oldMusic,
+            oldMusic.volume,
+            0,
+            MUSIC_FADE_TIME,
+            () => {
+                oldMusic.pause();
+                oldMusic.currentTime = 0;
+            }
+        );
+    }
 
+    // Fade bài mới lên
     fadeAudio(
-        inactiveMusic,
+        newMusic,
         0,
         MUSIC_VOLUME,
         MUSIC_FADE_TIME
     );
 
-    const oldActive = activeMusic;
-
-    activeMusic = inactiveMusic;
-    inactiveMusic = oldActive;
+    // Đổi vai trò 2 audio player
+    activeMusic = newMusic;
+    inactiveMusic = oldMusic;
 
     currentMusicKey = key;
 }
@@ -141,11 +150,6 @@ function unlockMusic() {
     switchMusic(desiredMusicKey);
 }
 
-document.addEventListener(
-    "click",
-    unlockMusic,
-    { once: true }
-);
 
 
 // ======================================================
@@ -4091,5 +4095,28 @@ if (
 if (!loadDayStartCheckpoint()) {
     saveDayStartCheckpoint();
 }
+
+const startScreen =
+    document.getElementById("start-screen");
+
+startScreen.addEventListener(
+    "click",
+    () => {
+        // Đây là tương tác thật của người dùng,
+        // browser sẽ cho phép audio chạy.
+        musicUnlocked = true;
+
+        switchMusic("lobby");
+
+        // Fade màn hình mở đầu ra.
+        startScreen.classList.add("hide");
+
+        // Xóa hẳn khỏi DOM sau khi fade xong.
+        setTimeout(() => {
+            startScreen.remove();
+        }, 800);
+    },
+    { once: true }
+);
 
 showHome();

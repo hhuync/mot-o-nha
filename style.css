@@ -1904,3 +1904,83 @@ button {
         padding: 17px 17px 12px;
     }
 }
+
+/* ======================================================
+   START SCREEN
+====================================================== */
+
+#start-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: #f8edda;
+
+    cursor: pointer;
+
+    opacity: 1;
+    visibility: visible;
+
+    transition:
+        opacity 0.8s ease,
+        visibility 0.8s ease;
+}
+
+#start-screen.hide {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.start-content {
+    text-align: center;
+
+    animation: startFloat 2s ease-in-out infinite;
+}
+
+.start-content h1 {
+    margin: 0;
+
+    font-family: "Rush Hour", "Freude", sans-serif;
+    font-size: clamp(52px, 8vw, 110px);
+    font-weight: normal;
+
+    color: #8b4f32;
+}
+
+.start-content p {
+    margin-top: 18px;
+
+    font-family: "Freude", sans-serif;
+    font-size: 24px;
+
+    color: #6d4a37;
+
+    animation: startPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes startFloat {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-8px);
+    }
+}
+
+@keyframes startPulse {
+    0%,
+    100% {
+        opacity: 0.55;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
