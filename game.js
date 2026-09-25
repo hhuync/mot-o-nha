@@ -20,6 +20,24 @@ function playIngredientSound() {
     ingredientSound.play().catch(() => {});
 }
 
+const correctSound = new Audio("audio/correct.mp3");
+const wrongSound = new Audio("audio/wrong.mp3");
+
+correctSound.volume = 0.6;
+wrongSound.volume = 0.20;
+
+function playOrderResultSound(correct) {
+    const sound = correct ? correctSound : wrongSound;
+    const otherSound = correct ? wrongSound : correctSound;
+
+    otherSound.pause();
+    otherSound.currentTime = 0;
+
+    sound.pause();
+    sound.currentTime = 0;
+    sound.play().catch(() => {});
+}
+
 const MUSIC_VOLUME = 0.2;
 const MUSIC_FADE_TIME = 1200;
 
@@ -130,138 +148,132 @@ function getKitchenMusicKey() {
         : "kitchen1";
 }
 
-function fadeAudio(
-    audio,
-    from,
-    to,
-    duration,
-    onComplete = null
-) {
-    const startTime = performance.now();
+let musicFadeFrame = null;
+let musicSwitchToken = 0;
+let musicStarting = false;
 
-    audio.volume = from;
+function stopMusicFade() {
+    musicSwitchToken++;
 
-    function step(now) {
-        const progress = Math.min(
-            (now - startTime) / duration,
-            1
-        );
-
-        audio.volume =
-            from + (to - from) * progress;
-
-        if (progress < 1) {
-            requestAnimationFrame(step);
-        } else {
-            audio.volume = to;
-
-            if (onComplete) {
-                onComplete();
-            }
-        }
+    if (musicFadeFrame !== null) {
+        cancelAnimationFrame(musicFadeFrame);
+        musicFadeFrame = null;
     }
 
-    requestAnimationFrame(step);
+    musicStarting = false;
 }
 
 function switchMusic(key) {
     desiredMusicKey = key;
 
-    if (!musicUnlocked || !musicEnabled) {
-    return;
-    
+    if (!musicUnlocked || !musicEnabled || !musicTracks[key]) {
+        return;
     }
 
+    // Đúng bài rồi nhưng lần phát trước bị lỗi: thử phát lại.
     if (currentMusicKey === key) {
+        if (activeMusic.paused && !musicStarting) {
+            activeMusic.volume = MUSIC_VOLUME;
+
+            activeMusic.play().catch((error) => {
+                console.warn("Không phát được nhạc:", error);
+                currentMusicKey = null;
+            });
+        }
+
         return;
     }
 
-    const newSource = musicTracks[key];
+    stopMusicFade();
+    const token = musicSwitchToken;
 
-    if (!newSource) {
-        return;
-    }
-
-    // Giữ reference cố định cho bài cũ và bài mới
     const oldMusic = activeMusic;
     const newMusic = inactiveMusic;
+    const oldKey = currentMusicKey;
 
-    // Chuẩn bị bài mới
     newMusic.pause();
-    newMusic.src = newSource;
+    newMusic.src = musicTracks[key];
     newMusic.currentTime = 0;
     newMusic.volume = 0;
     newMusic.loop = true;
 
-    newMusic.play().catch((error) => {
-        console.warn(
-            "Không phát được nhạc:",
-            error
-        );
-    });
+    activeMusic = newMusic;
+    inactiveMusic = oldMusic;
+    currentMusicKey = key;
+    musicStarting = true;
 
-    // Fade bài cũ xuống
-    if (!oldMusic.paused) {
-        fadeAudio(
-            oldMusic,
-            oldMusic.volume,
-            0,
-            MUSIC_FADE_TIME,
-            () => {
+    // Gọi play() ngay, không đợi animation chuyển màn hình.
+    newMusic.play().then(() => {
+        if (token !== musicSwitchToken) return;
+
+        musicStarting = false;
+
+        const startTime = performance.now();
+        const oldVolume = oldMusic.paused ? 0 : oldMusic.volume;
+
+        function step(now) {
+            if (token !== musicSwitchToken) return;
+
+            const progress = Math.min(
+                (now - startTime) / MUSIC_FADE_TIME,
+                1
+            );
+
+            newMusic.volume = MUSIC_VOLUME * progress;
+
+            if (!oldMusic.paused) {
+                oldMusic.volume = oldVolume * (1 - progress);
+            }
+
+            if (progress < 1) {
+                musicFadeFrame = requestAnimationFrame(step);
+            } else {
+                musicFadeFrame = null;
+                newMusic.volume = MUSIC_VOLUME;
                 oldMusic.pause();
                 oldMusic.currentTime = 0;
             }
-        );
-    }
+        }
 
-    // Fade bài mới lên
-    fadeAudio(
-        newMusic,
-        0,
-        MUSIC_VOLUME,
-        MUSIC_FADE_TIME
-    );
+        musicFadeFrame = requestAnimationFrame(step);
+    }).catch((error) => {
+        if (token !== musicSwitchToken) return;
 
-    // Đổi vai trò 2 audio player
-    activeMusic = newMusic;
-    inactiveMusic = oldMusic;
+        console.warn("Không phát được nhạc:", error);
+        musicStarting = false;
 
-    currentMusicKey = key;
+        newMusic.pause();
+        activeMusic = oldMusic;
+        inactiveMusic = newMusic;
+        currentMusicKey = oldMusic.paused ? null : oldKey;
+
+        if (!oldMusic.paused) {
+            oldMusic.volume = MUSIC_VOLUME;
+        }
+    });
 }
 
 function unlockMusic() {
-    if (musicUnlocked) {
-        return;
-    }
-
     musicUnlocked = true;
-
     switchMusic(desiredMusicKey);
 }
 
 function setMusicEnabled(enabled) {
     musicEnabled = enabled;
 
-    if (!musicEnabled) {
-        [musicA, musicB].forEach(audio => {
-            if (!audio.paused) {
-                fadeAudio(
-                    audio,
-                    audio.volume,
-                    0,
-                    MUSIC_FADE_TIME,
-                    () => {
-                        audio.pause();
-                    }
-                );
-            }
+    if (!enabled) {
+        stopMusicFade();
+
+        [musicA, musicB].forEach((audio) => {
+            audio.pause();
+            audio.volume = 0;
         });
 
         currentMusicKey = null;
         return;
     }
 
-    switchMusic(desiredMusicKey);
+    unlockMusic();
 }
 
 // ======================================================
@@ -727,6 +739,30 @@ function slugify(text) {
         .replace(/\s+/g, "-");
 }
 
+const UI_ICONS = {
+    settings: `
+        <svg class="ui-icon" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true">
+            <path d="M10 2h4l.6 2.2 1.7.7 2-.9 2.8 2.8-.9 2 .7 1.7L23 11v2l-2.1.5-.7 1.7.9 2-2.8 2.8-2-.9-1.7.7L14 22h-4l-.6-2.2-1.7-.7-2 .9-2.8-2.8.9-2-.7-1.7L1 13v-2l2.1-.5.7-1.7-.9-2L5.7 4l2 .9 1.7-.7L10 2Z"/>
+            <circle cx="12" cy="12" r="3.2"/>
+        </svg>`,
+
+    pause: `
+        <svg class="ui-icon" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor"
+             stroke-width="2.5" stroke-linecap="round"
+             aria-hidden="true">
+            <path d="M8 5v14M16 5v14"/>
+        </svg>`,
+
+    play: `
+        <svg class="ui-icon" viewBox="0 0 24 24"
+             fill="currentColor" aria-hidden="true">
+            <path d="M7 4.5a1 1 0 0 1 1.5-.86l12 7.5a1 1 0 0 1 0 1.72l-12 7.5A1 1 0 0 1 7 19.5Z"/>
+        </svg>`
+};
 
 function updateHeader(title, status) {
     dayDisplay.textContent = title;
@@ -734,14 +770,14 @@ function updateHeader(title, status) {
     moneyDisplay.textContent = formatMoney(game.money);
 
     if (game.phase === "home") {
-        settingsButton.textContent = "⚙️";
+        settingsButton.innerHTML = UI_ICONS.settings;
         settingsButton.title = "Cài đặt";
         settingsButton.setAttribute(
             "aria-label",
             "Cài đặt"
         );
     } else {
-        settingsButton.textContent = "⏸";
+        settingsButton.innerHTML = UI_ICONS.pause;
         settingsButton.title = "Tạm dừng";
         settingsButton.setAttribute(
             "aria-label",
@@ -1382,9 +1418,9 @@ function showHome() {
     `;
 
 
-    mainButton.textContent =
+    mainButton.innerHTML =
         game.hasStarted
-            ? "▶️ Tiếp tục"
+            ? `${UI_ICONS.play}<span>Tiếp tục</span>`
             : "Bắt đầu chơi →";
 
 
@@ -1472,28 +1508,26 @@ function showPrep() {
 
     screen.innerHTML = `
         <div class="making-screen prep-shopping-screen">
+<section class="customer-panel prep-grab-panel">
+    <div class="customer-portrait">
+        <img src="images/grab.png"
+             alt="Anh Grab"
+             draggable="false"
+             onerror="this.style.display='none'; this.nextElementSibling.hidden=false;">
+        <span class="customer-fallback" hidden>🛵</span>
+    </div>
 
-            <div class="order-strip prep-order-strip">
-
-                <div class="order-strip-top">
-
-                    <div>
-                        <strong>
-                            🛒 Chuẩn bị nguyên liệu
-                        </strong>
-
-                        <div class="prep-help">
-                            Nhấn vào nguyên liệu để nhập hàng hoặc mở khóa.
-                        </div>
-                    </div>
-
-
-                    ${recipeBookButton()}
-
-                </div>
-
-            </div>
-
+    <div class="customer-bubble">
+        <div class="customer-bubble-top">
+            <span>Chuẩn bị nguyên liệu</span>
+            ${recipeBookButton()}
+        </div>
+        <strong>Anh Grab</strong>
+        <p id="prep-grab-message" role="status">
+            Nhấn vào nguyên liệu để nhập hàng hoặc mở khóa, anh sẽ giao đến cho.
+        </p>
+    </div>
+</section>
 
             <div class="banhmi-workspace">
 
@@ -1527,13 +1561,6 @@ function showPrep() {
                 </div>
 
 
-                <div
-                    id="ingredient-feedback"
-                    class="ingredient-feedback"
-                >
-                    🛒 Nhấn nguyên liệu để nhập hàng
-                </div>
-
             </div>
 
         </div>
@@ -1548,6 +1575,11 @@ function showPrep() {
 
 
     saveGame();
+}
+
+function showPrepDeliveryMessage(message) {
+    const bubble = document.getElementById("prep-grab-message");
+    if (bubble) bubble.textContent = message;
 }
 
 
@@ -1609,9 +1641,113 @@ function openShop() {
 
     saveGame();
 
-    nextCustomer();
+    playOpenShopTransition();
 }
 
+function playOpenShopTransition() {
+    if (document.getElementById("shop-opening-overlay")) return;
+
+    mainButton.disabled = true;
+
+    const overlay = document.createElement("div");
+    overlay.id = "shop-opening-overlay";
+    Object.assign(overlay.style, {
+        position: "fixed",
+        inset: "0",
+        zIndex: "999999",
+        display: "flex",
+        overflow: "hidden",
+        pointerEvents: "auto"
+    });
+
+    function makeDoor() {
+        const door = document.createElement("div");
+        Object.assign(door.style, {
+            width: "50%",
+            height: "100%",
+            flex: "0 0 50%",
+            background:
+                "linear-gradient(#ed7390 0 15%, #fff5e7 15% 22%, #c28c60 22% 100%)",
+            boxShadow: "inset 0 0 30px #69402966"
+        });
+        return door;
+    }
+
+    const left = makeDoor();
+    const right = makeDoor();
+    const sign = document.createElement("div");
+
+    sign.textContent = "Tiệm mở cửa! 🥖";
+    Object.assign(sign.style, {
+        position: "absolute",
+        left: "50%",
+        top: "50%",
+        transform: "translate(-50%, -50%)",
+        opacity: "0",
+        padding: "16px 22px",
+        border: "3px solid #a66c47",
+        borderRadius: "18px",
+        background: "#fff9ed",
+        color: "#65402c",
+        fontSize: "22px",
+        fontWeight: "bold",
+        whiteSpace: "nowrap",
+        boxShadow: "0 7px 0 #83543c"
+    });
+
+    overlay.append(left, right, sign);
+    document.body.appendChild(overlay);
+
+    const sound = new Audio("audio/openstore.mp3");
+    sound.volume = 0.65;
+    sound.play().catch(() => {});
+
+    requestAnimationFrame(() => {
+        left.animate(
+            [
+                { transform: "translateX(0)" },
+                { transform: "translateX(-101%)" }
+            ],
+            {
+                duration: 900,
+                delay: 1100,
+                easing: "ease-in-out",
+                fill: "forwards"
+            }
+        );
+
+        right.animate(
+            [
+                { transform: "translateX(0)" },
+                { transform: "translateX(101%)" }
+            ],
+            {
+                duration: 900,
+                delay: 1100,
+                easing: "ease-in-out",
+                fill: "forwards"
+            }
+        );
+
+        sign.animate(
+            [
+                { opacity: 0 },
+                { opacity: 1, offset: 0.2 },
+                { opacity: 1, offset: 0.6 },
+                { opacity: 0 }
+            ],
+            { duration: 2000, fill: "forwards" }
+        );
+    });
+
+    // Đổi sang màn khách khi cửa vẫn đang che.
+    setTimeout(() => nextCustomer(), 500);
+
+    setTimeout(() => {
+        overlay.remove();
+        mainButton.disabled = game.phase === "waiting";
+    }, 2600);
+}
 
 // ======================================================
 // CREATE ORDER
@@ -1954,8 +2090,29 @@ function nextCustomer() {
     game.customerNumber++;
 
 
-    game.currentCustomer =
-        randomItem(customers);
+const queueKey = `mot-o-nha-customer-queue-${game.day}`;
+
+if (game.customerNumber === 1) {
+    localStorage.removeItem(queueKey);
+}
+
+let queue = JSON.parse(localStorage.getItem(queueKey) || "[]");
+
+if (!Array.isArray(queue) || queue.length === 0) {
+    queue = [...customers];
+
+    for (let i = queue.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [queue[i], queue[j]] = [queue[j], queue[i]];
+    }
+
+    if (queue[0] === game.currentCustomer) {
+        [queue[0], queue[1]] = [queue[1], queue[0]];
+    }
+}
+
+game.currentCustomer = queue.shift();
+localStorage.setItem(queueKey, JSON.stringify(queue));
 
 
     game.selectedIngredients = [];
@@ -2707,9 +2864,9 @@ function buyIngredient(name) {
             );
 
 
-            showIngredientFeedback(
-                `🎉 Đã mở khóa ${name}! +${data.restock} phần`
-            );
+            showPrepDeliveryMessage(
+    `Anh đã mở khóa ${name} và giao ${data.restock} phần rồi!`
+);
         }
     });
 }
@@ -2801,9 +2958,9 @@ function buyStock(name) {
             );
 
 
-            showIngredientFeedback(
-                `📦 ${name}: ${data.stock}`
-            );
+            showPrepDeliveryMessage(
+    `Anh đã giao thêm ${data.restock} ${name}. Trong kho giờ có ${data.stock}!`
+);
         }
     });
 }
@@ -4269,7 +4426,7 @@ function openSettings() {
     overlay.innerHTML = `
         <div class="settings-panel">
 
-            <div class="settings-icon">⚙️</div>
+            <div class="settings-icon">${UI_ICONS.settings}</div>
 
             <h2>${t("settings")}</h2>
 
@@ -4301,7 +4458,7 @@ function openSettings() {
                 >
                     <span>🎁 ${t("version")}</span>
                     <span class="settings-value">
-                        v0.1.0
+                        v0.1.1 ›
                     </span>
                 </button>
 
@@ -4490,59 +4647,46 @@ function openUpdateHistory() {
 
             <div class="update-history-list">
 
-                <div class="update-entry">
-                    <div class="update-entry-header">
-                        <strong>Phiên bản 0.1.0</strong>
+    <div class="update-entry">
+        <div class="update-entry-header">
+            <strong>Phiên bản 0.1.1</strong>
 
-                        <div class="update-entry-meta">
-                            <span class="current-version-badge">
-                                Hiện tại
-                            </span>
-
-                            <span class="update-date">
-                                24/09/2026
-                            </span>
-                        </div>
-                    </div>
-
-                    <ul>
-                        <li>
-                            Ra mắt phiên bản đầu tiên của
-                            Một Ổ Nha!
-                        </li>
-
-                        <li>
-                            Thêm hệ thống khách hàng và
-                            làm bánh theo yêu cầu.
-                        </li>
-
-                        <li>
-                            Thêm nhập hàng, kho nguyên liệu
-                            và mở khóa nguyên liệu mới.
-                        </li>
-
-                        <li>
-                            Thêm sổ công thức.
-                        </li>
-
-                        <li>
-                            Thêm hệ thống ngày, doanh thu,
-                            chi phí và tiền thuê mặt bằng.
-                        </li>
-
-                        <li>
-                            Thêm lưu tiến trình và
-                            chơi lại ngày hiện tại.
-                        </li>
-
-                        <li>
-                            Thêm nhạc nền cho tiệm và
-                            khu vực bếp.
-                        </li>
-                    </ul>
-                </div>
-
+            <div class="update-entry-meta">
+                <span class="current-version-badge">Hiện tại</span>
+                <span class="update-date">25/09/2026</span>
             </div>
+        </div>
+
+        <ul>
+            <li>Khách hàng xuất hiện trực tiếp tại quầy, với biểu cảm thay đổi theo món được phục vụ.</li>
+            <li>Thêm khách hàng mới cùng hiệu ứng khi khách đến và rời tiệm.</li>
+            <li>Anh giao hàng xuất hiện khi chuẩn bị nguyên liệu và thông báo sau khi giao hàng.</li>
+            <li>Thêm hiệu ứng mở cửa tiệm, điều chỉnh thời gian chờ giữa các khách.</li>
+            <li>Thêm âm thanh tương tác và cải thiện nhạc nền, giao diện trên điện thoại.</li>
+        </ul>
+    </div>
+
+    <div class="update-entry">
+        <div class="update-entry-header">
+            <strong>Phiên bản 0.1.0</strong>
+
+            <div class="update-entry-meta">
+                <span class="update-date">24/09/2026</span>
+            </div>
+        </div>
+
+        <ul>
+            <li>Ra mắt phiên bản đầu tiên của Một Ổ Nha!</li>
+            <li>Thêm hệ thống khách hàng và làm bánh theo yêu cầu.</li>
+            <li>Thêm nhập hàng, kho nguyên liệu và mở khóa nguyên liệu mới.</li>
+            <li>Thêm sổ công thức.</li>
+            <li>Thêm hệ thống ngày, doanh thu, chi phí và tiền thuê mặt bằng.</li>
+            <li>Thêm lưu tiến trình và chơi lại ngày hiện tại.</li>
+            <li>Thêm nhạc nền cho tiệm và khu vực bếp.</li>
+        </ul>
+    </div>
+
+</div>
 
             <button
                 class="update-history-close"
@@ -4585,7 +4729,7 @@ function openPauseMenu() {
     overlay.innerHTML = `
         <div class="pause-panel">
 
-            <div class="pause-icon">⏸</div>
+            <div class="pause-icon">${UI_ICONS.pause}</div>
 
             <h2>Tạm dừng</h2>
 
@@ -4681,7 +4825,7 @@ document.addEventListener("click", (event) => {
 
     // Khi đang làm bánh, nguyên liệu đã có tiếng riêng.
     if (
-        game.phase === "making" &&
+        (game.phase === "making" || game.phase === "waiting") &&
         button.classList.contains("station-item")
     ) {
         return;
@@ -4814,9 +4958,7 @@ startScreen.addEventListener(
     () => {
         // Đây là tương tác thật của người dùng,
         // browser sẽ cho phép audio chạy.
-        musicUnlocked = true;
-
-        switchMusic("lobby");
+        unlockMusic();
 
         // Fade màn hình mở đầu ra.
         startScreen.classList.add("hide");
@@ -4830,3 +4972,305 @@ startScreen.addEventListener(
 );
 
 showHome();
+
+// Dán cuối game.js, ngay sau showHome();
+customers.splice(0, customers.length, "A", "B", "C", "D", "E", "F");
+
+function customerImage(id, mood = 1) {
+    const safeId = customers.includes(id) ? id : "A";
+    return `images/customer/${safeId}/${safeId}${mood}.png`;
+}
+
+const oldRenderMakingScreen = renderMakingScreen;
+renderMakingScreen = function () {
+    oldRenderMakingScreen();
+
+    const strip = document.querySelector(".making-screen .order-strip");
+    if (!strip) return;
+
+    strip.outerHTML = `
+        <section id="customer-panel" class="customer-panel">
+            <div class="customer-portrait">
+                <img id="customer-sprite"
+                     src="${customerImage(game.currentCustomer, 1)}"
+                     alt="Khách hàng"
+                     draggable="false"
+                     onerror="this.style.display='none'; this.nextElementSibling.hidden=false;">
+                <span hidden class="customer-fallback">🙂</span>
+            </div>
+            <div class="customer-bubble">
+                <div class="customer-bubble-top">
+                    <span>Khách ${game.customerNumber}/${game.customersToday}</span>
+                    ${recipeBookButton()}
+                </div>
+                <strong>${game.currentRecipe.name}</strong>
+                <p id="customer-order-note">“${game.orderNote}”</p>
+                <p id="customer-reaction" role="status"></p>
+            </div>
+        </section>`;
+};
+
+// Khách mới đi thẳng vào màn làm bánh.
+renderCurrentOrder = function () {
+    renderMakingScreen();
+};
+
+// Dán tiếp ngay sau Block 1 trong game.js
+let customerReactionTimer = null;
+let customerReactionFadeTimer = null;
+
+function clearCustomerReactionTimers() {
+    clearTimeout(customerReactionTimer);
+    clearTimeout(customerReactionFadeTimer);
+}
+
+function showCustomerReaction(correct) {
+    clearCustomerReactionTimers();
+    game.phase = "result";
+    game.pausedPhase = "result";
+    game.lastOrderCorrect = correct;
+    localStorage.setItem(
+        "mot-o-nha-last-reaction",
+        correct ? "happy" : "annoyed"
+    );
+
+    const panel = document.getElementById("customer-panel");
+    const sprite = document.getElementById("customer-sprite");
+    const reaction = document.getElementById("customer-reaction");
+    if (!panel || !sprite || !reaction) return;
+
+    document.querySelector(".making-screen").classList.add("customer-reacting");
+    mainButton.disabled = true;
+    sprite.src = customerImage(game.currentCustomer, correct ? 2 : 3);
+    panel.classList.add(correct ? "is-happy" : "is-annoyed");
+    reaction.textContent = correct
+        ? `Cảm ơn nha! +${formatMoney(game.currentRecipe.price)} ✨`
+        : "Ơ, không đúng món mình gọi rồi...";
+    saveGame();
+
+    customerReactionTimer = setTimeout(() => {
+        if (game.phase !== "result") return;
+        panel.classList.add("leaving");
+
+        customerReactionFadeTimer = setTimeout(() => {
+            if (game.phase === "result") {
+                mainButton.disabled = false;
+                nextCustomer();
+            }
+        }, 450);
+    }, 1250);
+}
+
+function completeCustomerOrder(correct) {
+    playOrderResultSound(correct);
+    ingredients["Bánh mì"].stock = Math.max(
+        0,
+        ingredients["Bánh mì"].stock - 1
+    );
+
+    game.selectedIngredients.forEach(name => {
+        ingredients[name].stock = Math.max(
+            0,
+            ingredients[name].stock - 1
+        );
+    });
+
+    if (correct) {
+        game.money += game.currentRecipe.price;
+        game.dailyRevenue += game.currentRecipe.price;
+        game.completedOrders++;
+    }
+
+    // Đơn sai vẫn dùng mất bánh và nguyên liệu, nhưng không thu tiền.
+    showCustomerReaction(correct);
+}
+
+const oldServeBread = serveBread;
+serveBread = function () {
+    if (!game.breadSelected) return oldServeBread();
+    completeCustomerOrder(orderIsCorrect());
+};
+
+// Khi tải lại trang giữa lúc khách đang phản ứng.
+renderResultScreen = function () {
+    renderMakingScreen();
+    const wasHappy =
+        localStorage.getItem("mot-o-nha-last-reaction") !== "annoyed";
+    showCustomerReaction(wasHappy);
+};
+
+const oldOpenPauseMenu = openPauseMenu;
+openPauseMenu = function () {
+    if (game.phase === "result") clearCustomerReactionTimers();
+    oldOpenPauseMenu();
+};
+
+const oldShowHome = showHome;
+showHome = function () {
+    clearCustomerReactionTimers();
+    mainButton.disabled = false;
+    oldShowHome();
+};
+
+const oldShowPrep = showPrep;
+showPrep = function () {
+    clearCustomerReactionTimers();
+    mainButton.disabled = false;
+    oldShowPrep();
+};
+
+document.addEventListener("click", event => {
+    if (game.phase !== "result") return;
+
+    if (
+        event.target.closest(".pause-close") ||
+        event.target.id === "pause-overlay"
+    ) {
+        setTimeout(() => {
+            if (game.phase === "result") {
+                showCustomerReaction(game.lastOrderCorrect);
+            }
+        }, 0);
+    }
+});
+
+const arriveCustomerNow = nextCustomer;
+const resumeBeforeWaiting = resumeGame;
+const CUSTOMER_WAIT_KEY = "mot-o-nha-wait-until";
+let customerWaitTimer;
+
+function renderWaitingScreen() {
+    clearTimeout(customerWaitTimer);
+
+    const resumingWait = game.pausedPhase === "waiting" &&
+        (game.phase === "home" || game.phase === "waiting");
+
+    game.phase = "waiting";
+    game.pausedPhase = "waiting";
+    game.currentCustomer = null;
+    game.currentRecipe = null;
+    game.currentOrder = [];
+
+    // Về sảnh rồi quay lại thì giữ chiếc bánh đang làm.
+    if (!resumingWait) {
+        game.selectedIngredients = [];
+        game.breadSelected = false;
+    }
+
+    updateHeader(`Ngày ${game.day}`, "Đang chờ khách...");
+
+    screen.innerHTML = `
+        <div class="making-screen waiting-screen">
+            <section class="customer-panel waiting-panel">
+                <div class="customer-portrait">☕</div>
+                <div class="customer-bubble">
+                    <div class="customer-bubble-top">
+                        <span>Quầy bánh mì</span>
+                        ${recipeBookButton()}
+                    </div>
+                    <strong>Đang chờ khách...</strong>
+                    <p>Khách sẽ tới sau một lát. Có thể chuẩn bị bánh trước nhé!</p>
+                </div>
+            </section>
+
+            <div class="banhmi-workspace">
+                <div class="board-stage">
+                    <img class="cutting-board"
+                         src="images/board.png"
+                         draggable="false"
+                         alt="Thớt">
+
+                    <div class="sandwich-stage">
+                        <div id="sandwich-bread-bottom"></div>
+                        <div id="sandwich-fillings"></div>
+                        <div id="sandwich-bread-top"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ingredient-station">
+                <div class="ingredient-table-wrap">
+                    <img class="ingredient-table-image"
+                         src="images/ingredient-table.png"
+                         draggable="false"
+                         alt="Bàn nguyên liệu">
+                    <div id="station-items"></div>
+                </div>
+
+                <div id="ingredient-feedback" class="ingredient-feedback">
+                    Có thể chuẩn bị bánh trong lúc chờ ☕
+                </div>
+            </div>
+        </div>`;
+
+    renderStationItems("making");
+    updateSandwich();
+
+    mainButton.textContent = "Đang chờ khách...";
+    mainButton.disabled = true;
+    saveGame();
+
+    const deadline = Number(localStorage.getItem(CUSTOMER_WAIT_KEY));
+    const remaining = Number.isFinite(deadline) && deadline > 0
+        ? Math.max(0, deadline - Date.now())
+        : 0;
+
+    function admitCustomer() {
+        if (game.phase !== "waiting") return;
+
+        if (document.getElementById("pause-overlay")) {
+            customerWaitTimer = setTimeout(admitCustomer, 250);
+            return;
+        }
+
+        localStorage.removeItem(CUSTOMER_WAIT_KEY);
+        mainButton.disabled = false;
+
+        // Giữ phần bánh đã chuẩn bị trước khi hàm cũ tạo đơn mới.
+        const preparedBread = game.breadSelected;
+        const preparedIngredients = [...game.selectedIngredients];
+
+        arriveCustomerNow();
+
+        if (game.phase === "making") {
+            game.breadSelected = preparedBread;
+            game.selectedIngredients = preparedIngredients;
+            updateSandwich();
+            renderStationItems("making");
+            saveGame();
+        }
+    }
+
+    customerWaitTimer = setTimeout(admitCustomer, remaining);
+}
+
+nextCustomer = function () {
+    // Đủ khách hoặc hết hàng thì xử lý ngay, không bắt đợi.
+    if (
+        game.customerNumber >= game.customersToday ||
+        ingredients["Bánh mì"].stock <= 0 ||
+        availableRecipes().length === 0
+    ) {
+        return arriveCustomerNow();
+    }
+
+    const delay = game.customerNumber === 0
+        ? 8000
+        : 4000 + Math.floor(Math.random() * 3500);
+
+    localStorage.setItem(
+        CUSTOMER_WAIT_KEY,
+        String(Date.now() + delay)
+    );
+
+    renderWaitingScreen();
+};
+
+resumeGame = function () {
+    if (game.pausedPhase === "waiting" && game.shopOpen) {
+        renderWaitingScreen();
+        return;
+    }
+
+    resumeBeforeWaiting();
+};
