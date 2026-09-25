@@ -4,6 +4,7 @@
 // ======================================================
 
 const SAVE_KEY = "mot-o-nha-save-v3";
+const DAILY_RENT = 15000;
 const DAY_START_KEY = "mot-o-nha-day-start-v1";
 
 
@@ -35,6 +36,85 @@ let inactiveMusic = musicB;
 let currentMusicKey = null;
 let desiredMusicKey = "lobby";
 let musicUnlocked = false;
+let musicEnabled = true;
+
+/* =========================
+   LANGUAGE
+========================= */
+
+const translations = {
+    vi: {
+        languageName: "Tiếng Việt",
+
+        settings: "Cài đặt",
+        about: "Giới thiệu",
+        howToPlay: "Hướng dẫn chơi",
+        comingSoon: "Sắp có",
+        version: "Phiên bản",
+        credits: "Credit",
+        music: "Nhạc nền",
+        musicOn: "Bật",
+        musicOff: "Tắt",
+        language: "Ngôn ngữ",
+        close: "Đóng",
+
+        aboutTitle: "Giới thiệu",
+        aboutMessage:
+        "Một Ổ Nha! là game quản lý một tiệm bánh mì nhỏ, nơi bạn chuẩn bị nguyên liệu, làm bánh theo yêu cầu của khách và phát triển tiệm qua từng ngày.",
+        creditTitle: "Credit",
+        creditMessage:
+    "Thiết kế & phát triển game: Johnny Nguyen<br><br>🎵 Âm nhạc: Andrii Hroza - andriih trên Pixabay"
+    },
+
+    en: {
+        languageName: "English",
+
+        settings: "Settings",
+        about: "About",
+        howToPlay: "How to Play",
+        comingSoon: "Coming soon",
+        version: "Version",
+        credits: "Credits",
+        music: "Music",
+        musicOn: "On",
+        musicOff: "Off",
+        language: "Language",
+        close: "Close",
+
+        aboutTitle: "About",
+        aboutMessage:
+    "Một Ổ Nha! is a cozy bánh mì shop management game where you prepare ingredients, make sandwiches to each customer's order, and grow your shop day by day.",
+        creditTitle: "Credits",
+creditMessage:
+    "Game design & development: Johnny Nguyen<br><br>🎵 Music: Andrii Hroza - andriih on Pixabay"
+}
+};
+
+let currentLanguage =
+    localStorage.getItem("mot-o-nha-language") || "vi";
+
+
+function t(key) {
+    return (
+        translations[currentLanguage]?.[key] ??
+        translations.vi[key] ??
+        key
+    );
+}
+
+
+function setLanguage(language) {
+    if (!translations[language]) {
+        return;
+    }
+
+    currentLanguage = language;
+
+    localStorage.setItem(
+        "mot-o-nha-language",
+        language
+    );
+}
 
 function getKitchenMusicKey() {
     return game.day % 2 === 0
@@ -79,8 +159,9 @@ function fadeAudio(
 function switchMusic(key) {
     desiredMusicKey = key;
 
-    if (!musicUnlocked) {
-        return;
+    if (!musicUnlocked || !musicEnabled) {
+    return;
+    
     }
 
     if (currentMusicKey === key) {
@@ -150,7 +231,30 @@ function unlockMusic() {
     switchMusic(desiredMusicKey);
 }
 
+function setMusicEnabled(enabled) {
+    musicEnabled = enabled;
 
+    if (!musicEnabled) {
+        [musicA, musicB].forEach(audio => {
+            if (!audio.paused) {
+                fadeAudio(
+                    audio,
+                    audio.volume,
+                    0,
+                    MUSIC_FADE_TIME,
+                    () => {
+                        audio.pause();
+                    }
+                );
+            }
+        });
+
+        currentMusicKey = null;
+        return;
+    }
+
+    switchMusic(desiredMusicKey);
+}
 
 // ======================================================
 // INGREDIENTS
@@ -556,6 +660,9 @@ const game = {
     completedOrders: 0,
     dailyRevenue: 0,
 
+    dailyIngredientSpend: 0,
+    dailyRentPaid: 0,
+
     currentRecipe: null,
     currentCustomer: null,
 
@@ -577,7 +684,7 @@ const game = {
 
 const screen = document.getElementById("screen");
 const mainButton = document.getElementById("main-button");
-const homeButton = document.getElementById("home-button");
+const settingsButton = document.getElementById("settings-button");
 
 const dayDisplay = document.getElementById("day-display");
 const statusDisplay = document.getElementById("status-display");
@@ -617,6 +724,22 @@ function updateHeader(title, status) {
     dayDisplay.textContent = title;
     statusDisplay.textContent = status;
     moneyDisplay.textContent = formatMoney(game.money);
+
+    if (game.phase === "home") {
+        settingsButton.textContent = "⚙️";
+        settingsButton.title = "Cài đặt";
+        settingsButton.setAttribute(
+            "aria-label",
+            "Cài đặt"
+        );
+    } else {
+        settingsButton.textContent = "⏸";
+        settingsButton.title = "Tạm dừng";
+        settingsButton.setAttribute(
+            "aria-label",
+            "Tạm dừng"
+        );
+    }
 }
 
 
@@ -677,6 +800,12 @@ function saveGame() {
             customerNumber: game.customerNumber,
             completedOrders: game.completedOrders,
             dailyRevenue: game.dailyRevenue,
+
+            dailyIngredientSpend:
+                game.dailyIngredientSpend,
+
+            dailyRentPaid:
+                game.dailyRentPaid,
 
             currentRecipeName:
                 game.currentRecipe
@@ -765,6 +894,12 @@ function loadGame() {
 
     game.dailyRevenue =
         saved.dailyRevenue ?? 0;
+
+    game.dailyIngredientSpend =
+        saved.dailyIngredientSpend ?? 0;
+
+    game.dailyRentPaid =
+        saved.dailyRentPaid ?? 0;
 
     game.currentCustomer =
         saved.currentCustomer ?? null;
@@ -857,6 +992,13 @@ function saveDayStartCheckpoint() {
         day: game.day,
         money: game.money,
         customersToday: game.customersToday,
+
+        dailyIngredientSpend:
+            game.dailyIngredientSpend,
+
+        dailyRentPaid:
+            game.dailyRentPaid,
+
         ingredients: ingredientSnapshot
     };
 
@@ -949,6 +1091,12 @@ function restartCurrentDay() {
             game.customerNumber = 0;
             game.completedOrders = 0;
             game.dailyRevenue = 0;
+
+            game.dailyIngredientSpend =
+                snapshot.dailyIngredientSpend ?? 0;
+
+            game.dailyRentPaid =
+                snapshot.dailyRentPaid ?? 0;
 
             game.currentRecipe = null;
             game.currentCustomer = null;
@@ -2528,6 +2676,9 @@ function buyIngredient(name) {
             game.money -=
                 data.unlockPrice;
 
+            game.dailyIngredientSpend +=
+                data.unlockPrice;
+
 
             data.unlocked = true;
 
@@ -2618,6 +2769,9 @@ function buyStock(name) {
         onConfirm: () => {
 
             game.money -=
+                data.restockPrice;
+
+            game.dailyIngredientSpend +=
                 data.restockPrice;
 
 
@@ -3126,6 +3280,23 @@ function renderDayEnd() {
     game.shopOpen = false;
 
 
+    // Rent chỉ trừ đúng 1 lần mỗi ngày.
+    if (game.dailyRentPaid === 0) {
+
+        game.dailyRentPaid =
+            DAILY_RENT;
+
+        game.money -=
+            DAILY_RENT;
+    }
+
+
+    const netProfit =
+        game.dailyRevenue -
+        game.dailyIngredientSpend -
+        game.dailyRentPaid;
+
+
     updateHeader(
         `Ngày ${game.day}`,
         "Đã đóng cửa"
@@ -3133,54 +3304,145 @@ function renderDayEnd() {
 
 
     screen.innerHTML = `
-        <div class="result-screen">
+        <div class="result-screen day-end-screen">
 
             <div class="result-emoji">
-                🌙
+                🧾
             </div>
 
 
             <h1>
-                Hết ngày ${game.day}!
+                Tổng kết ngày ${game.day}
             </h1>
 
 
-            <div class="summary-card">
+            <p class="day-end-subtitle">
+                Chốt sổ trước khi nghỉ nha!
+            </p>
 
-                <p>
-                    🥖 Đơn hoàn thành:
+
+            <div class="summary-card day-receipt">
+
+                <div class="receipt-row">
+
+                    <span>
+                        🥖 Đơn đã bán
+                    </span>
+
                     <strong>
                         ${game.completedOrders}
                     </strong>
-                </p>
+
+                </div>
 
 
-                <p>
-                    💰 Doanh thu:
+                <div class="receipt-row positive">
+
+                    <span>
+                        💰 Tiền bán bánh
+                    </span>
+
                     <strong>
-                        ${formatMoney(
+                        +${formatMoney(
                             game.dailyRevenue
                         )}
                     </strong>
-                </p>
+
+                </div>
 
 
-                <p>
-                    💵 Tổng tiền:
+                <div class="receipt-row negative">
+
+                    <span>
+                        📦 Tiền nhập nguyên liệu
+                    </span>
+
+                    <strong>
+                        -${formatMoney(
+                            game.dailyIngredientSpend
+                        )}
+                    </strong>
+
+                </div>
+
+
+                <div class="receipt-row negative">
+
+                    <span>
+                        🏠 Tiền thuê mặt bằng
+                    </span>
+
+                    <strong>
+                        -${formatMoney(
+                            game.dailyRentPaid
+                        )}
+                    </strong>
+
+                </div>
+
+
+                <div class="receipt-divider"></div>
+
+
+                <div
+                    class="
+                        receipt-row
+                        receipt-total
+                        ${
+                            netProfit >= 0
+                                ? "positive"
+                                : "negative"
+                        }
+                    "
+                >
+
+                    <span>
+                        ✨ Lãi ròng hôm nay
+                    </span>
+
+                    <strong>
+
+                        ${
+                            netProfit >= 0
+                                ? "+"
+                                : "-"
+                        }
+
+                        ${formatMoney(
+                            Math.abs(netProfit)
+                        )}
+
+                    </strong>
+
+                </div>
+
+
+                <div class="receipt-row receipt-cash">
+
+                    <span>
+                        💵 Tiền đang có
+                    </span>
+
                     <strong>
                         ${formatMoney(
                             game.money
                         )}
                     </strong>
-                </p>
+
+                </div>
 
 
-                <p>
-                    🥖 Bánh mì còn:
+                <div class="receipt-row receipt-stock">
+
+                    <span>
+                        🥖 Bánh mì còn lại
+                    </span>
+
                     <strong>
                         ${ingredients["Bánh mì"].stock}
                     </strong>
-                </p>
+
+                </div>
 
             </div>
 
@@ -3194,7 +3456,6 @@ function renderDayEnd() {
 
     saveGame();
 }
-
 
 // ======================================================
 // NEW DAY
@@ -3214,6 +3475,9 @@ function newDay() {
     game.completedOrders = 0;
 
     game.dailyRevenue = 0;
+
+    game.dailyIngredientSpend = 0;
+    game.dailyRentPaid = 0;
 
 
     game.selectedIngredients = [];
@@ -3558,6 +3822,14 @@ function showCutePopup({
                     Arial,
                     sans-serif !important;
             }
+
+            #cute-popup-overlay .cute-popup,
+            #cute-popup-overlay .cute-popup * {
+                font-family:
+                    "Freude",
+                    Arial,
+                    sans-serif !important;
+}
 
 
             #cute-popup-overlay
@@ -3970,29 +4242,434 @@ function showCutePopup({
     );
 }
 
+function openSettings() {
+    const oldSettings =
+        document.getElementById("settings-overlay");
+
+    if (oldSettings) {
+        oldSettings.remove();
+    }
+
+    const overlay = document.createElement("div");
+    overlay.id = "settings-overlay";
+
+    overlay.innerHTML = `
+        <div class="settings-panel">
+
+            <div class="settings-icon">⚙️</div>
+
+            <h2>${t("settings")}</h2>
+
+            <div class="settings-menu">
+
+                <button
+                    id="settings-about"
+                    class="settings-row"
+                    type="button"
+                >
+                    <span>🌷 ${t("about")}</span>
+                    <span class="settings-value">›</span>
+                </button>
+
+                <button
+                    class="settings-row"
+                    type="button"
+                >
+                    <span>📖 ${t("howToPlay")}</span>
+                    <span class="settings-value">
+                        ${t("comingSoon")}
+                    </span>
+                </button>
+
+                <button
+                    id="settings-version"
+                    class="settings-row"
+                    type="button"
+                >
+                    <span>🎁 ${t("version")}</span>
+                    <span class="settings-value">
+                        v0.1.0
+                    </span>
+                </button>
+
+                <button
+                    id="settings-credit"
+                    class="settings-row"
+                    type="button"
+                >
+                    <span>💛 ${t("credits")}</span>
+                    <span class="settings-value">›</span>
+                </button>
+
+                <button
+                    id="settings-music"
+                    class="settings-row"
+                    type="button"
+                >
+                    <span>🎵 ${t("music")}</span>
+
+                    <span
+                        id="settings-music-value"
+                        class="settings-value"
+                    >
+                        ${
+                            musicEnabled
+                                ? t("musicOn")
+                                : t("musicOff")
+                        }
+                    </span>
+                </button>
+
+                <button
+                    id="settings-language"
+                    class="settings-row"
+                    type="button"
+                >
+                    <span>🌐 ${t("language")}</span>
+
+                    <span
+                        id="settings-language-value"
+                        class="settings-value"
+                    >
+                        ${t("languageName")} ›
+                    </span>
+                </button>
+
+            </div>
+
+            <button
+                class="settings-close"
+                type="button"
+            >
+                ${t("close")}
+            </button>
+
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+
+    // =========================
+    // ABOUT
+    // =========================
+
+    const aboutButton =
+    overlay.querySelector("#settings-about");
+
+aboutButton.addEventListener("click", () => {
+    overlay.remove();
+
+    showCutePopup({
+        icon: "🌷",
+        title: t("aboutTitle"),
+        message: t("aboutMessage"),
+        confirmText: t("close")
+    });
+});
+
+
+    // =========================
+    // CREDIT
+    // =========================
+
+    const creditButton =
+    overlay.querySelector("#settings-credit");
+
+creditButton.addEventListener("click", () => {
+    overlay.remove();
+
+    showCutePopup({
+        icon: "💛",
+        title: t("creditTitle"),
+        message: t("creditMessage"),
+        confirmText: t("close")
+    });
+});
+
+
+    // =========================
+    // VERSION
+    // =========================
+
+    const versionButton =
+        overlay.querySelector("#settings-version");
+
+    versionButton.addEventListener("click", () => {
+        overlay.remove();
+        openUpdateHistory();
+    });
+
+
+    // =========================
+    // MUSIC
+    // =========================
+
+    const musicButton =
+        overlay.querySelector("#settings-music");
+
+    const musicValue =
+        overlay.querySelector("#settings-music-value");
+
+    musicButton.addEventListener("click", () => {
+        setMusicEnabled(!musicEnabled);
+
+        musicValue.textContent =
+            musicEnabled
+                ? t("musicOn")
+                : t("musicOff");
+    });
+
+
+    // =========================
+    // LANGUAGE
+    // =========================
+
+    const languageButton =
+        overlay.querySelector("#settings-language");
+
+    languageButton.addEventListener("click", () => {
+        const newLanguage =
+            currentLanguage === "vi"
+                ? "en"
+                : "vi";
+
+        setLanguage(newLanguage);
+
+        overlay.remove();
+        openSettings();
+    });
+
+
+    // =========================
+    // CLOSE
+    // =========================
+
+    overlay
+        .querySelector(".settings-close")
+        .addEventListener("click", () => {
+            overlay.remove();
+        });
+
+
+    overlay.addEventListener("click", event => {
+        if (event.target === overlay) {
+            overlay.remove();
+        }
+    });
+}
+
+function openUpdateHistory() {
+    const oldHistory =
+        document.getElementById("update-history-overlay");
+
+    if (oldHistory) {
+        oldHistory.remove();
+    }
+
+    const overlay = document.createElement("div");
+    overlay.id = "update-history-overlay";
+
+    overlay.innerHTML = `
+        <div class="update-history-panel">
+
+            <h2>📜 Lịch sử cập nhật</h2>
+
+            <div class="update-history-list">
+
+                <div class="update-entry">
+                    <div class="update-entry-header">
+                        <strong>Phiên bản 0.1.0</strong>
+
+                        <div class="update-entry-meta">
+                            <span class="current-version-badge">
+                                Hiện tại
+                            </span>
+
+                            <span class="update-date">
+                                24/09/2026
+                            </span>
+                        </div>
+                    </div>
+
+                    <ul>
+                        <li>
+                            Ra mắt phiên bản đầu tiên của
+                            Một Ổ Nha!
+                        </li>
+
+                        <li>
+                            Thêm hệ thống khách hàng và
+                            làm bánh theo yêu cầu.
+                        </li>
+
+                        <li>
+                            Thêm nhập hàng, kho nguyên liệu
+                            và mở khóa nguyên liệu mới.
+                        </li>
+
+                        <li>
+                            Thêm sổ công thức.
+                        </li>
+
+                        <li>
+                            Thêm hệ thống ngày, doanh thu,
+                            chi phí và tiền thuê mặt bằng.
+                        </li>
+
+                        <li>
+                            Thêm lưu tiến trình và
+                            chơi lại ngày hiện tại.
+                        </li>
+
+                        <li>
+                            Thêm nhạc nền cho tiệm và
+                            khu vực bếp.
+                        </li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <button
+                class="update-history-close"
+                type="button"
+            >
+                Đã hiểu
+            </button>
+
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    overlay
+        .querySelector(".update-history-close")
+        .addEventListener("click", () => {
+            overlay.remove();
+        });
+
+    overlay.addEventListener("click", event => {
+        if (event.target === overlay) {
+            overlay.remove();
+        }
+    });
+}
+
+function openPauseMenu() {
+    const oldPause =
+        document.getElementById("pause-overlay");
+
+    if (oldPause) {
+        oldPause.remove();
+    }
+
+    const overlay =
+        document.createElement("div");
+
+    overlay.id = "pause-overlay";
+
+    overlay.innerHTML = `
+        <div class="pause-panel">
+
+            <div class="pause-icon">⏸</div>
+
+            <h2>Tạm dừng</h2>
+
+            <div class="pause-menu">
+
+                <button
+                    id="pause-restart-day"
+                    class="pause-row"
+                    type="button"
+                >
+                    <span>↻ Chơi lại ngày này</span>
+                </button>
+
+                <button
+                    id="pause-home"
+                    class="pause-row"
+                    type="button"
+                >
+                    <span>🏠 Về sảnh</span>
+                </button>
+
+                <button
+                    id="pause-reset"
+                    class="pause-row pause-danger"
+                    type="button"
+                >
+                    <span>🗑 Chơi lại từ đầu</span>
+                </button>
+
+            </div>
+
+            <button
+                class="pause-close"
+                type="button"
+            >
+                Tiếp tục chơi
+            </button>
+
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+
+    overlay
+        .querySelector("#pause-restart-day")
+        .addEventListener("click", () => {
+            overlay.remove();
+            restartCurrentDay();
+        });
+
+
+    overlay
+        .querySelector("#pause-home")
+        .addEventListener("click", () => {
+            overlay.remove();
+            showHome();
+        });
+
+
+    overlay
+        .querySelector("#pause-reset")
+        .addEventListener("click", () => {
+            overlay.remove();
+            resetGameSave();
+        });
+
+
+    overlay
+        .querySelector(".pause-close")
+        .addEventListener("click", () => {
+            overlay.remove();
+        });
+
+
+    overlay.addEventListener(
+        "click",
+        event => {
+            if (event.target === overlay) {
+                overlay.remove();
+            }
+        }
+    );
+}
 
 // ======================================================
 // EVENTS
 // ======================================================
 
-homeButton.addEventListener(
+settingsButton.addEventListener(
     "click",
     () => {
-
-        if (
-            game.phase === "home"
-        ) {
-            return;
+        if (game.phase === "home") {
+            openSettings();
+        } else {
+            openPauseMenu();
         }
-
-
-        game.pausedPhase =
-            game.phase;
-
-
-        saveGame();
-
-        showHome();
     }
 );
 
