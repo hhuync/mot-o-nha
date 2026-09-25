@@ -89,7 +89,7 @@ const translations = {
         "Một Ổ Nha! là game quản lý một tiệm bánh mì nhỏ, nơi bạn chuẩn bị nguyên liệu, làm bánh theo yêu cầu của khách và phát triển tiệm qua từng ngày.",
         creditTitle: "Credit",
         creditMessage:
-    "Thiết kế & phát triển game: Johnny Nguyen<br><br>🎵 Âm nhạc: Andrii Hroza - andriih trên Pixabay"
+    "Thiết kế & phát triển game: Huy Nguyen<br><br>🎵 Âm nhạc: Andrii Hroza - andriih trên Pixabay<br><br>Một số hình ảnh và asset trong game được tạo với sự hỗ trợ của AI, sau đó được lựa chọn và chỉnh sửa để phù hợp với trò chơi."
     },
 
     en: {
@@ -112,7 +112,7 @@ const translations = {
     "Một Ổ Nha! is a cozy bánh mì shop management game where you prepare ingredients, make sandwiches to each customer's order, and grow your shop day by day.",
         creditTitle: "Credits",
 creditMessage:
-    "Game design & development: Johnny Nguyen<br><br>🎵 Music: Andrii Hroza - andriih on Pixabay"
+    "Game design & development: Huy Nguyen<br><br>🎵 Music: Andrii Hroza - andriih on Pixabay<br><br>Some visual assets in the game were created with the assistance of AI, then selected and edited to fit the game."
 }
 };
 
@@ -564,6 +564,17 @@ const recipes = [
             "Dưa leo",
             "Rau",
             "Ketchup"
+        ]
+    },
+
+    {
+        name: "Bánh mì pâté",
+        emoji: "🥖",
+        price: 11000,
+        weight: 16,
+        ingredients: [
+            "Pâté",
+            "Rau"
         ]
     },
 
@@ -1881,6 +1892,14 @@ function createOrder() {
         modifiers.push("extra-chili");
     }
 
+    if (
+        ingredients["Ketchup"].unlocked &&
+        ingredients["Ketchup"].stock > 0 &&
+        !game.currentOrder.includes("Ketchup")
+    ) {
+        modifiers.push("extra-ketchup");
+    }
+
 
     // Mayo extra.
 
@@ -2007,7 +2026,14 @@ function createOrder() {
                 ]);
         }
 
+        else if (modifier === "extra-ketchup") {
+    game.currentOrder.push("Ketchup");
 
+    game.orderNote = randomItem([
+        "Cho mình thêm ketchup nha!",
+        "Ổ này thêm chút sốt cà chua giúp mình nhé!"
+    ]);
+}
         // -------------------------------
         // THÊM MAYO
         // -------------------------------
