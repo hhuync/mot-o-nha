@@ -39,7 +39,6 @@ function playOrderResultSound(correct) {
 }
 
 const MUSIC_VOLUME = 0.2;
-const MUSIC_FADE_TIME = 1200;
 
 const musicTracks = {
     lobby: "audio/lobby.mp3",
@@ -47,17 +46,9 @@ const musicTracks = {
     kitchen2: "audio/kitchen2.mp3"
 };
 
-const musicA = new Audio();
-const musicB = new Audio();
-
-musicA.loop = true;
-musicB.loop = true;
-
-musicA.volume = 0;
-musicB.volume = 0;
-
-let activeMusic = musicA;
-let inactiveMusic = musicB;
+const backgroundMusic = new Audio();
+backgroundMusic.loop = true;
+backgroundMusic.volume = MUSIC_VOLUME;
 
 let currentMusicKey = null;
 let desiredMusicKey = "lobby";
@@ -148,116 +139,46 @@ function getKitchenMusicKey() {
         : "kitchen1";
 }
 
-let musicFadeFrame = null;
-let musicSwitchToken = 0;
-let musicStarting = false;
 let musicBackgroundPaused = false;
 let resumeMusicOnReturn = false;
-
-function stopMusicFade() {
-    musicSwitchToken++;
-
-    if (musicFadeFrame !== null) {
-        cancelAnimationFrame(musicFadeFrame);
-        musicFadeFrame = null;
-    }
-
-    musicStarting = false;
-}
+let musicRequestId = 0;
+let musicStarting = false;
 
 function switchMusic(key) {
     desiredMusicKey = key;
 
     if (
-    !musicUnlocked ||
-    !musicEnabled ||
-    !musicTracks[key] ||
-    document.hidden ||
-    musicBackgroundPaused
-) {
-    return;
-}
-
-    // Đúng bài rồi nhưng lần phát trước bị lỗi: thử phát lại.
-    if (currentMusicKey === key) {
-        if (activeMusic.paused && !musicStarting) {
-            activeMusic.volume = MUSIC_VOLUME;
-
-            activeMusic.play().catch((error) => {
-                console.warn("Không phát được nhạc:", error);
-                currentMusicKey = null;
-            });
-        }
-
+        !musicTracks[key] ||
+        !musicUnlocked ||
+        !musicEnabled ||
+        document.hidden ||
+        musicBackgroundPaused
+    ) {
         return;
     }
 
-    stopMusicFade();
-    const token = musicSwitchToken;
+    if (currentMusicKey !== key) {
+        musicRequestId++;
+        musicStarting = false;
+        backgroundMusic.pause();
+        backgroundMusic.src = musicTracks[key];
+        backgroundMusic.currentTime = 0;
+        currentMusicKey = key;
+    }
 
-    const oldMusic = activeMusic;
-    const newMusic = inactiveMusic;
-    const oldKey = currentMusicKey;
+    backgroundMusic.volume = MUSIC_VOLUME;
+    if (!backgroundMusic.paused || musicStarting) return;
 
-    newMusic.pause();
-    newMusic.src = musicTracks[key];
-    newMusic.currentTime = 0;
-    newMusic.volume = 0;
-    newMusic.loop = true;
-
-    activeMusic = newMusic;
-    inactiveMusic = oldMusic;
-    currentMusicKey = key;
+    const requestId = ++musicRequestId;
     musicStarting = true;
-
-    // Gọi play() ngay, không đợi animation chuyển màn hình.
-    newMusic.play().then(() => {
-        if (token !== musicSwitchToken) return;
-
-        musicStarting = false;
-
-        const startTime = performance.now();
-        const oldVolume = oldMusic.paused ? 0 : oldMusic.volume;
-
-        function step(now) {
-            if (token !== musicSwitchToken) return;
-
-            const progress = Math.min(
-                (now - startTime) / MUSIC_FADE_TIME,
-                1
-            );
-
-            newMusic.volume = MUSIC_VOLUME * progress;
-
-            if (!oldMusic.paused) {
-                oldMusic.volume = oldVolume * (1 - progress);
-            }
-
-            if (progress < 1) {
-                musicFadeFrame = requestAnimationFrame(step);
-            } else {
-                musicFadeFrame = null;
-                newMusic.volume = MUSIC_VOLUME;
-                oldMusic.pause();
-                oldMusic.currentTime = 0;
-            }
-        }
-
-        musicFadeFrame = requestAnimationFrame(step);
+    backgroundMusic.play().then(() => {
+        if (requestId === musicRequestId) musicStarting = false;
     }).catch((error) => {
-        if (token !== musicSwitchToken) return;
-
-        console.warn("Không phát được nhạc:", error);
-        musicStarting = false;
-
-        newMusic.pause();
-        activeMusic = oldMusic;
-        inactiveMusic = newMusic;
-        currentMusicKey = oldMusic.paused ? null : oldKey;
-
-        if (!oldMusic.paused) {
-            oldMusic.volume = MUSIC_VOLUME;
+        if (requestId === musicRequestId) {
+            musicStarting = false;
+            console.warn("Không phát được nhạc:", error);
         }
+        // Giữ src và key để tương tác tiếp theo có thể thử lại.
     });
 }
 
@@ -270,14 +191,9 @@ function setMusicEnabled(enabled) {
     musicEnabled = enabled;
 
     if (!enabled) {
-        stopMusicFade();
-
-        [musicA, musicB].forEach((audio) => {
-            audio.pause();
-            audio.volume = 0;
-        });
-
-        currentMusicKey = null;
+        musicRequestId++;
+        musicStarting = false;
+        backgroundMusic.pause();
         return;
     }
 
@@ -289,30 +205,25 @@ function pauseMusicInBackground() {
         resumeMusicOnReturn =
             musicEnabled &&
             musicUnlocked &&
-            (musicStarting || !musicA.paused || !musicB.paused);
+            (musicStarting || !backgroundMusic.paused);
     }
 
     musicBackgroundPaused = true;
-    stopMusicFade();
-
-    [musicA, musicB].forEach((audio) => {
-        audio.pause();
-        audio.volume = 0;
-    });
-
-    currentMusicKey = null;
+    musicRequestId++;
+    musicStarting = false;
+    backgroundMusic.pause();
 }
 
 function resumeMusicFromBackground() {
     if (document.hidden || !musicBackgroundPaused) return;
 
     musicBackgroundPaused = false;
+    const shouldResume = resumeMusicOnReturn;
+    resumeMusicOnReturn = false;
 
-    if (resumeMusicOnReturn && musicEnabled) {
+    if (shouldResume && musicEnabled) {
         switchMusic(desiredMusicKey);
     }
-
-    resumeMusicOnReturn = false;
 }
 
 document.addEventListener("visibilitychange", () => {
@@ -325,6 +236,19 @@ document.addEventListener("visibilitychange", () => {
 
 window.addEventListener("pagehide", pauseMusicInBackground);
 window.addEventListener("pageshow", resumeMusicFromBackground);
+
+// Nếu trình duyệt chặn play() khi quay lại, cú chạm tiếp theo sẽ thử lại.
+document.addEventListener("pointerdown", () => {
+    if (
+        musicEnabled &&
+        musicUnlocked &&
+        !document.hidden &&
+        !musicBackgroundPaused &&
+        backgroundMusic.paused
+    ) {
+        switchMusic(desiredMusicKey);
+    }
+}, { capture: true });
 
 // ======================================================
 // INGREDIENTS
@@ -812,10 +736,9 @@ const UI_ICONS = {
 
     pause: `
         <svg class="ui-icon" viewBox="0 0 24 24"
-             fill="none" stroke="currentColor"
-             stroke-width="2.5" stroke-linecap="round"
-             aria-hidden="true">
-            <path d="M8 5v14M16 5v14"/>
+            fill="currentColor" aria-hidden="true">
+            <rect x="4" y="3" width="6" height="18" rx="1.5"/>
+            <rect x="14" y="3" width="6" height="18" rx="1.5"/>
         </svg>`,
 
     play: `
@@ -1845,237 +1768,131 @@ function createOrder() {
 
     const modifiers = [];
 
-
-    // Chỉ cho yêu cầu "không rau"
-    // nếu recipe GỐC thực sự có rau.
-
-    if (
-        game.currentOrder.includes("Rau")
-    ) {
-        modifiers.push("no-herbs");
-    }
-
-
-    // Chỉ cho yêu cầu không ớt
-    // nếu recipe GỐC có ớt.
-
-    if (
-        game.currentOrder.includes("Ớt")
-    ) {
-        modifiers.push("no-chili");
-    }
-
-
-    // Nếu recipe có bất kỳ loại sauce nào,
-    // khách có thể yêu cầu không sốt.
-
-    const saucesInOrder =
-        game.currentOrder.filter(
-            name =>
-                sauceSlots.includes(name)
-        );
-
-
-    if (saucesInOrder.length) {
-        modifiers.push("no-sauce");
-    }
-
-
-    // Nếu đã unlock ớt thì khách có thể
-    // yêu cầu thêm ớt.
-
-    if (
-        ingredients["Ớt"].unlocked &&
-        ingredients["Ớt"].stock > 0 &&
-        !game.currentOrder.includes("Ớt")
-    ) {
-        modifiers.push("extra-chili");
-    }
-
-    if (
-        ingredients["Ketchup"].unlocked &&
-        ingredients["Ketchup"].stock > 0 &&
-        !game.currentOrder.includes("Ketchup")
-    ) {
-        modifiers.push("extra-ketchup");
-    }
-
-
-    // Mayo extra.
-
-    if (
-        ingredients["Mayonnaise"].unlocked &&
-        ingredients["Mayonnaise"].stock > 0 &&
-        !game.currentOrder.includes("Mayonnaise")
-    ) {
-        modifiers.push("extra-mayo");
-    }
-
-
-    // Sriracha extra.
-
-    if (
-        ingredients["Sriracha"].unlocked &&
-        ingredients["Sriracha"].stock > 0 &&
-        !game.currentOrder.includes("Sriracha")
-    ) {
-        modifiers.push("extra-sriracha");
-    }
-
-
-    // Bánh mì không thì đừng làm khách
-    // tự nhiên đòi topping nữa =)))
-
-    if (
-        game.currentRecipe.name !== "Bánh mì không" &&
-        modifiers.length &&
-        Math.random() < 0.58
-    ) {
-
-        const modifier =
-            randomItem(modifiers);
-
-
-        // -------------------------------
-        // KHÔNG RAU
-        // -------------------------------
-
-        if (
-            modifier === "no-herbs"
-        ) {
-
-            game.currentOrder =
-                game.currentOrder.filter(
-                    item =>
-                        item !== "Rau"
-                );
-
-
-            game.orderNote =
-                randomItem([
-                    "À, mình không ăn rau nha!",
-                    "Cho mình bỏ rau nhé!",
-                    "Một ổ nhưng đừng cho rau nha!"
-                ]);
-        }
-
-
-        // -------------------------------
-        // KHÔNG SỐT
-        // -------------------------------
-
-        else if (
-            modifier === "no-sauce"
-        ) {
-
-            game.currentOrder =
-                game.currentOrder.filter(
-                    item =>
-                        !sauceSlots.includes(item)
-                );
-
-
-            game.orderNote =
-                randomItem([
-                    "Ôi, mình không ăn sốt nha!",
-                    "Cho mình không sốt nhé!",
-                    "Một ổ nhưng bỏ hết sốt giúp mình nha!"
-                ]);
-        }
-
-
-        // -------------------------------
-        // KHÔNG ỚT
-        // -------------------------------
-
-        else if (
-            modifier === "no-chili"
-        ) {
-
-            game.currentOrder =
-                game.currentOrder.filter(
-                    item =>
-                        item !== "Ớt"
-                );
-
-
-            game.orderNote =
-                randomItem([
-                    "Mình không ăn được ớt nha!",
-                    "Đừng cho ớt giúp mình nhé!"
-                ]);
-        }
-
-
-        // -------------------------------
-        // THÊM ỚT
-        // -------------------------------
-
-        else if (
-            modifier === "extra-chili"
-        ) {
-
-            game.currentOrder.push("Ớt");
-
-
-            game.orderNote =
-                randomItem([
-                    "Cho mình thêm ớt nha! 🌶️",
-                    "Mình ăn cay, thêm ớt giúp mình nhé!",
-                    "Ổ này cho mình có ớt nha!"
-                ]);
-        }
-
-        else if (modifier === "extra-ketchup") {
-    game.currentOrder.push("Ketchup");
-
-    game.orderNote = randomItem([
-        "Cho mình thêm ketchup nha!",
-        "Ổ này thêm chút sốt cà chua giúp mình nhé!"
-    ]);
+function addModifier(id, text, apply) {
+    modifiers.push({ id, text, apply });
 }
-        // -------------------------------
-        // THÊM MAYO
-        // -------------------------------
 
-        else if (
-            modifier === "extra-mayo"
-        ) {
+if (game.currentOrder.includes("Rau")) {
+    addModifier("no-herbs", "bỏ rau", () => {
+        game.currentOrder = game.currentOrder.filter(
+            item => item !== "Rau"
+        );
+    });
+}
 
-            game.currentOrder.push(
-                "Mayonnaise"
+if (game.currentOrder.includes("Ớt")) {
+    addModifier("no-chili", "bỏ ớt", () => {
+        game.currentOrder = game.currentOrder.filter(
+            item => item !== "Ớt"
+        );
+    });
+}
+
+if (game.currentOrder.some(item => sauceSlots.includes(item))) {
+    addModifier("no-sauce", "không cho sốt", () => {
+        game.currentOrder = game.currentOrder.filter(
+            item => !sauceSlots.includes(item)
+        );
+    });
+}
+
+if (
+    ingredients["Ớt"].unlocked &&
+    ingredients["Ớt"].stock > 0 &&
+    !game.currentOrder.includes("Ớt")
+) {
+    addModifier("extra-chili", "thêm ớt", () => {
+        game.currentOrder.push("Ớt");
+    });
+}
+
+[
+    ["Ketchup", "extra-ketchup", "thêm ketchup"],
+    ["Mayonnaise", "extra-mayo", "thêm mayonnaise"],
+    ["Sriracha", "extra-sriracha", "thêm Sriracha"]
+].forEach(([name, id, text]) => {
+    if (
+        ingredients[name].unlocked &&
+        ingredients[name].stock > 0 &&
+        !game.currentOrder.includes(name)
+    ) {
+        addModifier(id, text, () => {
+            game.currentOrder.push(name);
+        });
+    }
+});
+
+if (
+    game.currentRecipe.name !== "Bánh mì không" &&
+    modifiers.length &&
+    Math.random() < 0.58
+) {
+    const first = randomItem(modifiers);
+    const chosen = [first];
+
+    // Khoảng 30% đơn có yêu cầu riêng sẽ có thêm yêu cầu thứ hai.
+    if (Math.random() < 0.30) {
+        const compatible = modifiers.filter(modifier => {
+            if (modifier.id === first.id) return false;
+
+            const addingSauce = id => id.startsWith("extra-") &&
+                ["extra-ketchup", "extra-mayo", "extra-sriracha"].includes(id);
+
+            return !(
+                (first.id === "no-sauce" && addingSauce(modifier.id)) ||
+                (modifier.id === "no-sauce" && addingSauce(first.id)) ||
+                (first.id === "no-chili" &&
+    ["extra-chili", "extra-sriracha"].includes(modifier.id)) ||
+(modifier.id === "no-chili" &&
+    ["extra-chili", "extra-sriracha"].includes(first.id))
             );
+        });
 
-
-            game.orderNote =
-                randomItem([
-                    "Cho mình thêm mayonnaise nha!",
-                    "Thêm chút mayonnaise giúp mình nhé!"
-                ]);
-        }
-
-
-        // -------------------------------
-        // THÊM SRIRACHA
-        // -------------------------------
-
-        else if (
-            modifier === "extra-sriracha"
-        ) {
-
-            game.currentOrder.push(
-                "Sriracha"
-            );
-
-
-            game.orderNote =
-                randomItem([
-                    "Cho mình thêm Sriracha nha! 🌶️",
-                    "Cho mình cay hơn một chút, thêm Sriracha nhé!"
-                ]);
+        if (compatible.length) {
+            chosen.push(randomItem(compatible));
         }
     }
 
+    chosen.forEach(modifier => modifier.apply());
+
+    const singleRequestLines = {
+    "no-herbs": [
+        "À, mình không ăn rau nha!",
+        "Cho mình bỏ rau nhé!",
+        "Một ổ nhưng đừng cho rau nha!"
+    ],
+    "no-sauce": [
+        "Ôi, mình không ăn sốt nha!",
+        "Cho mình không sốt nhé!",
+        "Một ổ nhưng bỏ hết sốt giúp mình nha!"
+    ],
+    "no-chili": [
+        "Mình không ăn được ớt nha!",
+        "Đừng cho ớt giúp mình nhé!"
+    ],
+    "extra-chili": [
+        "Cho mình thêm ớt nha! 🌶️",
+        "Mình ăn cay, thêm ớt giúp mình nhé!",
+        "Ổ này cho mình có ớt nha!"
+    ],
+    "extra-ketchup": [
+        "Cho mình thêm ketchup nha!",
+        "Thêm chút sốt cà chua giúp mình nhé!"
+    ],
+    "extra-mayo": [
+        "Cho mình thêm mayonnaise nha!",
+        "Thêm chút mayonnaise giúp mình nhé!"
+    ],
+    "extra-sriracha": [
+        "Cho mình thêm Sriracha nha! 🌶️",
+        "Cho mình cay hơn một chút, thêm Sriracha nhé!"
+    ]
+};
+
+game.orderNote = chosen.length === 1
+    ? randomItem(singleRequestLines[chosen[0].id])
+    : `Cho mình món này, ${chosen.map(modifier => modifier.text).join(" và ")} nha!`;
+}
 
     // BÁNH MÌ KHÔNG
     // Không có topping.
