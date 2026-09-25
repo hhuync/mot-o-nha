@@ -151,6 +151,8 @@ function getKitchenMusicKey() {
 let musicFadeFrame = null;
 let musicSwitchToken = 0;
 let musicStarting = false;
+let musicBackgroundPaused = false;
+let resumeMusicOnReturn = false;
 
 function stopMusicFade() {
     musicSwitchToken++;
@@ -166,9 +168,15 @@ function stopMusicFade() {
 function switchMusic(key) {
     desiredMusicKey = key;
 
-    if (!musicUnlocked || !musicEnabled || !musicTracks[key]) {
-        return;
-    }
+    if (
+    !musicUnlocked ||
+    !musicEnabled ||
+    !musicTracks[key] ||
+    document.hidden ||
+    musicBackgroundPaused
+) {
+    return;
+}
 
     // Đúng bài rồi nhưng lần phát trước bị lỗi: thử phát lại.
     if (currentMusicKey === key) {
@@ -275,6 +283,48 @@ function setMusicEnabled(enabled) {
 
     unlockMusic();
 }
+
+function pauseMusicInBackground() {
+    if (!musicBackgroundPaused) {
+        resumeMusicOnReturn =
+            musicEnabled &&
+            musicUnlocked &&
+            (musicStarting || !musicA.paused || !musicB.paused);
+    }
+
+    musicBackgroundPaused = true;
+    stopMusicFade();
+
+    [musicA, musicB].forEach((audio) => {
+        audio.pause();
+        audio.volume = 0;
+    });
+
+    currentMusicKey = null;
+}
+
+function resumeMusicFromBackground() {
+    if (document.hidden || !musicBackgroundPaused) return;
+
+    musicBackgroundPaused = false;
+
+    if (resumeMusicOnReturn && musicEnabled) {
+        switchMusic(desiredMusicKey);
+    }
+
+    resumeMusicOnReturn = false;
+}
+
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+        pauseMusicInBackground();
+    } else {
+        resumeMusicFromBackground();
+    }
+});
+
+window.addEventListener("pagehide", pauseMusicInBackground);
+window.addEventListener("pageshow", resumeMusicFromBackground);
 
 // ======================================================
 // INGREDIENTS
