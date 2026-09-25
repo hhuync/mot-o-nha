@@ -4458,7 +4458,7 @@ function openSettings() {
                 >
                     <span>🎁 ${t("version")}</span>
                     <span class="settings-value">
-                        v0.1.1 ›
+                        v0.2.0 ›
                     </span>
                 </button>
 
@@ -4649,7 +4649,7 @@ function openUpdateHistory() {
 
     <div class="update-entry">
         <div class="update-entry-header">
-            <strong>Phiên bản 0.1.1</strong>
+            <strong>Phiên bản 0.2.0</strong>
 
             <div class="update-entry-meta">
                 <span class="current-version-badge">Hiện tại</span>
@@ -5274,3 +5274,42 @@ resumeGame = function () {
 
     resumeBeforeWaiting();
 };
+
+// Thu toàn bộ thớt và các lớp bánh theo cùng một tỉ lệ.
+function fitBoardToWorkspace() {
+    document.querySelectorAll(".banhmi-workspace").forEach((workspace) => {
+        const board = workspace.querySelector(".board-stage");
+        if (!board) return;
+
+        const scale = Math.min(
+            1,
+            (workspace.clientWidth - 12) / 520,
+            (workspace.clientHeight - 12) / 280
+        );
+
+        board.style.transform = `scale(${Math.max(0, scale)})`;
+    });
+}
+
+let boardFitQueued = false;
+
+function queueBoardFit() {
+    if (boardFitQueued) return;
+    boardFitQueued = true;
+
+    requestAnimationFrame(() => {
+        boardFitQueued = false;
+        fitBoardToWorkspace();
+    });
+}
+
+// Game thay HTML của #screen khi chuyển màn, nên tính lại sau mỗi lần thay.
+new MutationObserver(queueBoardFit).observe(screen, {
+    childList: true,
+    subtree: true
+});
+
+new ResizeObserver(queueBoardFit).observe(screen);
+window.addEventListener("resize", queueBoardFit);
+
+queueBoardFit();

@@ -514,14 +514,17 @@ button {
 
 .board-stage {
     position: relative;
-
     width: 520px;
-    max-width: 98%;
+    min-width: 520px;
+    max-width: none;
     height: 280px;
+    flex: 0 0 520px;
 
     display: flex;
     justify-content: center;
     align-items: center;
+
+    transform-origin: center center;
 }
 
 .cutting-board {
@@ -552,7 +555,7 @@ button {
     position: relative;
 
     width: 410px;
-    max-width: 84%;
+    max-width: none;
     height: 220px;
 
     z-index: 1;
@@ -1894,13 +1897,6 @@ button {
         height: 270px;
     }
 
-    .board-stage {
-        height: 245px;
-    }
-
-    .sandwich-stage {
-        transform: scale(0.92);
-    }
 
     .lock-overlay {
         font-size: 17px;
@@ -2653,13 +2649,6 @@ button {
     height: 225px;
 }
 
-.making-screen:not(.prep-shopping-screen) .board-stage {
-    height: 205px;
-}
-
-.making-screen:not(.prep-shopping-screen) .sandwich-stage {
-    transform: scale(0.84);
-}
 
 .making-screen.customer-reacting .station-item {
     pointer-events: none;
@@ -2696,14 +2685,6 @@ button {
     .making-screen:not(.prep-shopping-screen) .banhmi-workspace {
         height: 190px;
     }
-
-    .making-screen:not(.prep-shopping-screen) .board-stage {
-        height: 175px;
-    }
-
-    .making-screen:not(.prep-shopping-screen) .sandwich-stage {
-        transform: scale(0.72);
-    }
 }
 
 @media (max-height: 740px) and (max-width: 560px) {
@@ -2718,13 +2699,6 @@ button {
         height: 150px;
     }
 
-    .making-screen:not(.prep-shopping-screen) .board-stage {
-        height: 140px;
-    }
-
-    .making-screen:not(.prep-shopping-screen) .sandwich-stage {
-        transform: scale(0.59);
-    }
 
     #game:has(.customer-panel) .bottom-area {
         padding: 7px 14px 12px;
@@ -2736,18 +2710,12 @@ button {
     height: 225px;
 }
 
-.prep-shopping-screen .board-stage {
-    height: 205px;
-}
 
 @media (max-width: 560px) {
     .prep-shopping-screen .banhmi-workspace {
         height: 190px;
     }
 
-    .prep-shopping-screen .board-stage {
-        height: 175px;
-    }
 }
 
 @media (max-height: 740px) and (max-width: 560px) {
@@ -2755,9 +2723,6 @@ button {
         height: 150px;
     }
 
-    .prep-shopping-screen .board-stage {
-        height: 140px;
-    }
 }
 
 .waiting-screen .customer-portrait {
