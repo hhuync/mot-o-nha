@@ -1,4 +1,4 @@
-const CACHE_NAME = "mot-o-nha-v2";
+const CACHE_NAME = "mot-o-nha-v3";
 const ROOT = self.registration.scope;
 
 const url = (path) => new URL(path, ROOT).href;
@@ -71,7 +71,7 @@ self.addEventListener("install", (event) => {
         // Thiếu file cốt lõi thì không cài bản offline bị hỏng.
         await cache.addAll(coreFiles.map(url));
 
-        // Một sprite chưa có sẽ không làm hỏng toàn bộ quá trình cài.
+        // Một file phụ bị thiếu sẽ không làm hỏng toàn bộ quá trình cài.
         await Promise.allSettled(
             extraFiles.map((path) => cache.add(url(path)))
         );
@@ -118,12 +118,14 @@ self.addEventListener("fetch", (event) => {
         const cache = await caches.open(CACHE_NAME);
 
         if (isGameCode) {
-            // Có mạng: lấy phiên bản mới nhất. Mất mạng: dùng bản đã lưu.
+            // Có mạng: lấy phiên bản mới nhất.
+            // Mất mạng: dùng bản đã lưu.
             try {
                 const response = await fetch(request);
 
                 if (response.ok) {
-                    await cache.put(request, response.clone()).catch(() => {});
+                    await cache.put(request, response.clone())
+                        .catch(() => {});
                 }
 
                 return response;
@@ -138,20 +140,24 @@ self.addEventListener("fetch", (event) => {
             }
         }
 
-        // Ảnh, font, âm thanh: ưu tiên bản đã lưu.
-        const saved = await cache.match(request);
-        if (saved) return saved;
-
+        // Ảnh, font và âm thanh: có mạng thì lấy bản mới.
+        // Mất mạng mới dùng bản đã lưu.
         try {
-            const response = await fetch(request);
+            const response = await fetch(request, {
+                cache: "no-store"
+            });
 
             if (response.ok) {
-                await cache.put(request, response.clone()).catch(() => {});
+                await cache.put(request, response.clone())
+                    .catch(() => {});
             }
 
             return response;
         } catch {
-            return Response.error();
+            return (
+                await cache.match(request) ||
+                Response.error()
+            );
         }
     })());
 });
