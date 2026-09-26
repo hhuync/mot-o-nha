@@ -667,6 +667,13 @@ const game = {
 
     dailyIngredientSpend: 0,
     dailyRentPaid: 0,
+    waitingCustomers: [],
+    activeTicketId: null,
+    nextTicketId: 1,
+    dailyStarTotal: 0,
+    dailyReviewCount: 0,
+    reviewStarsTotal: 0,
+    reviewCount: 0,
 
     currentRecipe: null,
     currentCustomer: null,
@@ -834,6 +841,13 @@ function saveGame() {
 
             dailyRentPaid:
                 game.dailyRentPaid,
+            waitingCustomers: game.waitingCustomers,
+            activeTicketId: game.activeTicketId,
+            nextTicketId: game.nextTicketId,
+            dailyStarTotal: game.dailyStarTotal,
+            dailyReviewCount: game.dailyReviewCount,
+            reviewStarsTotal: game.reviewStarsTotal,
+            reviewCount: game.reviewCount,
 
             currentRecipeName:
                 game.currentRecipe
@@ -928,6 +942,18 @@ function loadGame() {
 
     game.dailyRentPaid =
         saved.dailyRentPaid ?? 0;
+    game.waitingCustomers = Array.isArray(saved.waitingCustomers)
+        ? saved.waitingCustomers.filter(ticket =>
+            ticket && /^[A-F]$/.test(ticket.customer) &&
+            recipes.some(recipe => recipe.name === ticket.recipeName) &&
+            Array.isArray(ticket.order) && Number.isFinite(ticket.remainingMs))
+        : [];
+    game.activeTicketId = saved.activeTicketId ?? null;
+    game.nextTicketId = saved.nextTicketId ?? 1;
+    game.dailyStarTotal = saved.dailyStarTotal ?? 0;
+    game.dailyReviewCount = saved.dailyReviewCount ?? 0;
+    game.reviewStarsTotal = saved.reviewStarsTotal ?? 0;
+    game.reviewCount = saved.reviewCount ?? 0;
 
     game.currentCustomer =
         saved.currentCustomer ?? null;
@@ -1125,6 +1151,13 @@ function restartCurrentDay() {
 
             game.dailyRentPaid =
                 snapshot.dailyRentPaid ?? 0;
+            game.reviewStarsTotal = Math.max(0, game.reviewStarsTotal - game.dailyStarTotal);
+            game.reviewCount = Math.max(0, game.reviewCount - game.dailyReviewCount);
+            game.dailyStarTotal = 0;
+            game.dailyReviewCount = 0;
+            game.waitingCustomers = [];
+            game.activeTicketId = null;
+            game.nextTicketId = 1;
 
             game.currentRecipe = null;
             game.currentCustomer = null;
@@ -1618,6 +1651,10 @@ function openShop() {
     game.customerNumber = 0;
     game.completedOrders = 0;
     game.dailyRevenue = 0;
+    game.waitingCustomers = [];
+    game.activeTicketId = null;
+    game.dailyStarTotal = 0;
+    game.dailyReviewCount = 0;
 
     game.selectedIngredients = [];
     game.breadSelected = false;
@@ -3541,6 +3578,11 @@ function newDay() {
 
     game.dailyIngredientSpend = 0;
     game.dailyRentPaid = 0;
+    game.waitingCustomers = [];
+    game.activeTicketId = null;
+    game.nextTicketId = 1;
+    game.dailyStarTotal = 0;
+    game.dailyReviewCount = 0;
 
 
     game.selectedIngredients = [];
@@ -4351,7 +4393,7 @@ function openSettings() {
                 >
                     <span>🎁 ${t("version")}</span>
                     <span class="settings-value">
-                        v0.2.0 ›
+                        v0.2.1 ›
                     </span>
                 </button>
 
@@ -4523,71 +4565,80 @@ creditButton.addEventListener("click", () => {
 }
 
 function openUpdateHistory() {
-    const oldHistory =
-        document.getElementById("update-history-overlay");
-
-    if (oldHistory) {
-        oldHistory.remove();
-    }
+    document.getElementById("update-history-overlay")?.remove();
 
     const overlay = document.createElement("div");
     overlay.id = "update-history-overlay";
 
     overlay.innerHTML = `
         <div class="update-history-panel">
-
             <h2>📜 Lịch sử cập nhật</h2>
 
             <div class="update-history-list">
+                <div class="update-entry">
+                    <div class="update-entry-header">
+                        <strong>Phiên bản 0.2.1</strong>
 
-    <div class="update-entry">
-        <div class="update-entry-header">
-            <strong>Phiên bản 0.2.0</strong>
+                        <div class="update-entry-meta">
+                            <span class="current-version-badge">Hiện tại</span>
+                            <span class="update-date">25/09/2026</span>
+                        </div>
+                    </div>
 
-            <div class="update-entry-meta">
-                <span class="current-version-badge">Hiện tại</span>
-                <span class="update-date">25/09/2026</span>
+                    <ul>
+                        <li>Thêm hàng chờ 2–3 khách cùng lúc; có thể chọn khách để xem và làm đơn.</li>
+                        <li>Thêm thanh kiên nhẫn trong lời thoại và hàng chờ. Khách đổi sang biểu cảm khó chịu khi sắp hết kiên nhẫn và có thể rời tiệm nếu đợi quá lâu.</li>
+                        <li>Thêm đánh giá sao sau mỗi đơn, điểm đánh giá của tiệm trên thanh trạng thái và thống kê đánh giá cuối ngày.</li>
+                        <li>Thêm bánh mì pâté cùng nhiều biến thể theo yêu cầu của khách: thêm sốt, bỏ rau hoặc kết hợp nhiều yêu cầu trong một đơn, tùy nguyên liệu đã mở khóa và còn trong kho.</li>
+                        <li>Cải thiện chuyển cảnh từ hóa đơn cuối ngày qua đóng cửa tiệm đến chuẩn bị nguyên liệu ngày tiếp theo.</li>
+                        <li>Sửa lỗi nhạc nền bị mất sau khi rời ứng dụng rồi quay lại hoặc khi chơi lại ngày; cải thiện chuyển nhạc giữa các màn và âm thanh khi chọn nguyên liệu.</li>
+                        <li>Làm mới giao diện sổ công thức, hàng chờ và thanh trạng thái; tăng kích thước và căn giữa số tiền.</li>
+                        <li>Điều chỉnh kích thước nút điều khiển và độ trong suốt của các loại sốt.</li>
+                    </ul>
+                </div>
+
+                <div class="update-entry">
+                    <div class="update-entry-header">
+                        <strong>Phiên bản 0.2.0</strong>
+
+                        <div class="update-entry-meta">
+                            <span class="update-date">25/09/2026</span>
+                        </div>
+                    </div>
+
+                    <ul>
+                        <li>Khách hàng xuất hiện trực tiếp tại quầy, với biểu cảm thay đổi theo món được phục vụ.</li>
+                        <li>Thêm khách hàng mới cùng hiệu ứng khi khách đến và rời tiệm.</li>
+                        <li>Anh giao hàng xuất hiện khi chuẩn bị nguyên liệu và thông báo sau khi giao hàng.</li>
+                        <li>Thêm hiệu ứng mở cửa tiệm, điều chỉnh thời gian chờ giữa các khách.</li>
+                        <li>Thêm âm thanh tương tác và cải thiện nhạc nền, giao diện trên điện thoại.</li>
+                    </ul>
+                </div>
+
+                <div class="update-entry">
+                    <div class="update-entry-header">
+                        <strong>Phiên bản 0.1.0</strong>
+
+                        <div class="update-entry-meta">
+                            <span class="update-date">24/09/2026</span>
+                        </div>
+                    </div>
+
+                    <ul>
+                        <li>Ra mắt phiên bản đầu tiên của Một Ổ Nha!</li>
+                        <li>Thêm hệ thống khách hàng và làm bánh theo yêu cầu.</li>
+                        <li>Thêm nhập hàng, kho nguyên liệu và mở khóa nguyên liệu mới.</li>
+                        <li>Thêm sổ công thức.</li>
+                        <li>Thêm hệ thống ngày, doanh thu, chi phí và tiền thuê mặt bằng.</li>
+                        <li>Thêm lưu tiến trình và chơi lại ngày hiện tại.</li>
+                        <li>Thêm nhạc nền cho tiệm và khu vực bếp.</li>
+                    </ul>
+                </div>
             </div>
-        </div>
 
-        <ul>
-            <li>Khách hàng xuất hiện trực tiếp tại quầy, với biểu cảm thay đổi theo món được phục vụ.</li>
-            <li>Thêm khách hàng mới cùng hiệu ứng khi khách đến và rời tiệm.</li>
-            <li>Anh giao hàng xuất hiện khi chuẩn bị nguyên liệu và thông báo sau khi giao hàng.</li>
-            <li>Thêm hiệu ứng mở cửa tiệm, điều chỉnh thời gian chờ giữa các khách.</li>
-            <li>Thêm âm thanh tương tác và cải thiện nhạc nền, giao diện trên điện thoại.</li>
-        </ul>
-    </div>
-
-    <div class="update-entry">
-        <div class="update-entry-header">
-            <strong>Phiên bản 0.1.0</strong>
-
-            <div class="update-entry-meta">
-                <span class="update-date">24/09/2026</span>
-            </div>
-        </div>
-
-        <ul>
-            <li>Ra mắt phiên bản đầu tiên của Một Ổ Nha!</li>
-            <li>Thêm hệ thống khách hàng và làm bánh theo yêu cầu.</li>
-            <li>Thêm nhập hàng, kho nguyên liệu và mở khóa nguyên liệu mới.</li>
-            <li>Thêm sổ công thức.</li>
-            <li>Thêm hệ thống ngày, doanh thu, chi phí và tiền thuê mặt bằng.</li>
-            <li>Thêm lưu tiến trình và chơi lại ngày hiện tại.</li>
-            <li>Thêm nhạc nền cho tiệm và khu vực bếp.</li>
-        </ul>
-    </div>
-
-</div>
-
-            <button
-                class="update-history-close"
-                type="button"
-            >
+            <button class="update-history-close" type="button">
                 Đã hiểu
             </button>
-
         </div>
     `;
 
@@ -4595,14 +4646,10 @@ function openUpdateHistory() {
 
     overlay
         .querySelector(".update-history-close")
-        .addEventListener("click", () => {
-            overlay.remove();
-        });
+        .addEventListener("click", () => overlay.remove());
 
     overlay.addEventListener("click", event => {
-        if (event.target === overlay) {
-            overlay.remove();
-        }
+        if (event.target === overlay) overlay.remove();
     });
 }
 
@@ -5206,3 +5253,500 @@ new ResizeObserver(queueBoardFit).observe(screen);
 window.addEventListener("resize", queueBoardFit);
 
 queueBoardFit();
+
+// ======================================================
+// HÀNG CHỜ KHÁCH, KIÊN NHẪN VÀ ĐÁNH GIÁ
+// ======================================================
+
+const CUSTOMER_PATIENCE_MS = 60000;
+const CUSTOMER_ANNOYED_FRACTION = 0.40;
+let patienceClock = Date.now();
+let patienceInterval = null;
+let nextArrivalTimer = null;
+
+function activeTicket() {
+    return game.waitingCustomers.find(ticket => ticket.id === game.activeTicketId);
+}
+
+function setActiveTicket(ticket) {
+    game.activeTicketId = ticket.id;
+    game.currentCustomer = ticket.customer;
+    game.currentRecipe = recipes.find(recipe => recipe.name === ticket.recipeName);
+    game.currentOrder = [...ticket.order];
+    game.orderNote = ticket.note;
+}
+
+function recordCustomerRating(stars) {
+    game.dailyStarTotal += stars;
+    game.dailyReviewCount++;
+    game.reviewStarsTotal += stars;
+    game.reviewCount++;
+    refreshShopRating();
+}
+
+function refreshShopRating() {
+    const label = document.getElementById("shop-rating-score");
+    if (label) label.textContent = game.reviewCount
+        ? `${(game.reviewStarsTotal / game.reviewCount).toFixed(1)} · ${game.reviewCount} lượt`
+        : "Chưa đánh giá";
+}
+
+function syncShopRating() {
+    const header = document.querySelector(".top-bar");
+    const center = header?.querySelector(".top-center");
+    if (!header || !center) return;
+    const atCounter = Boolean(screen.querySelector(".making-screen:not(.waiting-screen)"));
+    let rating = document.getElementById("shop-rating");
+    if (atCounter) {
+        header.classList.add("has-shop-rating");
+        if (moneyDisplay.parentElement !== center) center.appendChild(moneyDisplay);
+        if (!rating) {
+            rating = document.createElement("button");
+            rating.id = "shop-rating";
+            rating.type = "button";
+            rating.setAttribute("aria-label", "Xem đánh giá tiệm");
+            rating.innerHTML = '<span aria-hidden="true">★★★★★</span><small id="shop-rating-score"></small>';
+            rating.addEventListener("click", () => {
+                showCutePopup({
+                    icon: "⭐", title: "Đánh giá tiệm",
+                    message: game.reviewCount
+                        ? `Trung bình ${(game.reviewStarsTotal / game.reviewCount).toFixed(1)}/5 từ ${game.reviewCount} lượt. Hôm nay: ${game.dailyReviewCount} lượt đánh giá.`
+                        : "Chưa có đánh giá nào. Phục vụ khách để nhận sao nhé!",
+                    confirmText: "Đóng"
+                });
+            });
+            header.appendChild(rating);
+        }
+        refreshShopRating();
+    } else {
+        header.classList.remove("has-shop-rating");
+        rating?.remove();
+        if (moneyDisplay.parentElement !== header) header.appendChild(moneyDisplay);
+    }
+}
+
+new MutationObserver(syncShopRating).observe(screen, { childList: true, subtree: true });
+
+function customerStars(ticket, correct) {
+    if (!correct) return 1;
+    const fraction = ticket.remainingMs / CUSTOMER_PATIENCE_MS;
+    return fraction > 0.60 ? 5 : fraction > 0.35 ? 4 : fraction > 0.15 ? 3 : 2;
+}
+
+function createWaitingTicket() {
+    if (game.customerNumber >= game.customersToday ||
+        ingredients["Bánh mì"].stock <= 0 || !availableRecipes().length) return null;
+    if (game.waitingCustomers.length >= ingredients["Bánh mì"].stock) return null;
+
+    const previous = {
+        customer: game.currentCustomer, recipe: game.currentRecipe,
+        order: game.currentOrder, note: game.orderNote
+    };
+    const atCounter = game.waitingCustomers.map(ticket => ticket.customer);
+    const choices = customers.filter(id => !atCounter.includes(id));
+    game.currentCustomer = randomItem(choices.length ? choices : customers);
+    let feasible = false;
+    for (let attempt = 0; attempt < 12; attempt++) {
+        if (!createOrder()) break;
+        const reserved = {};
+        for (const ticket of game.waitingCustomers) {
+            for (const name of ticket.order) reserved[name] = (reserved[name] || 0) + 1;
+        }
+        for (const name of game.currentOrder) reserved[name] = (reserved[name] || 0) + 1;
+        feasible = Object.entries(reserved).every(([name, amount]) =>
+            ingredients[name] && ingredients[name].stock >= amount);
+        if (feasible) break;
+    }
+    if (!feasible) {
+        game.currentCustomer = previous.customer;
+        game.currentRecipe = previous.recipe;
+        game.currentOrder = previous.order;
+        game.orderNote = previous.note;
+        return null;
+    }
+
+    const ticket = {
+        id: game.nextTicketId++, customer: game.currentCustomer,
+        recipeName: game.currentRecipe.name, order: [...game.currentOrder],
+        note: game.orderNote, remainingMs: CUSTOMER_PATIENCE_MS
+    };
+    game.waitingCustomers.push(ticket);
+    game.customerNumber++;
+
+    if (previous.recipe && game.waitingCustomers.length > 1) {
+        game.currentCustomer = previous.customer;
+        game.currentRecipe = previous.recipe;
+        game.currentOrder = previous.order;
+        game.orderNote = previous.note;
+    } else {
+        setActiveTicket(ticket);
+    }
+    saveGame();
+    return ticket;
+}
+
+function queueMayAdvance() {
+    return game.shopOpen && game.phase === "making" && !document.hidden &&
+        !document.getElementById("pause-overlay") &&
+        !document.getElementById("cute-popup-overlay") &&
+        recipeModal.classList.contains("hidden") &&
+        !document.getElementById("shop-opening-overlay");
+}
+
+function refreshPatienceUI() {
+    if (game.phase !== "making") return;
+
+    for (const ticket of game.waitingCustomers) {
+        // Giới hạn thời gian của khách đã lưu từ bản 90 giây.
+        ticket.remainingMs = Math.min(ticket.remainingMs, CUSTOMER_PATIENCE_MS);
+
+        const percent = Math.max(0, Math.min(100,
+            Math.round(ticket.remainingMs / CUSTOMER_PATIENCE_MS * 100)));
+        const mood = ticket.remainingMs / CUSTOMER_PATIENCE_MS <= CUSTOMER_ANNOYED_FRACTION ? 3 : 1;
+
+        document.querySelectorAll(`[data-patience-id="${ticket.id}"]`).forEach(bar => {
+            bar.style.width = `${percent}%`;
+            bar.parentElement.classList.toggle("is-urgent", mood === 3);
+        });
+
+        const portraits = [
+            ...document.querySelectorAll(`.queue-customer[data-ticket-id="${ticket.id}"] img`)
+        ];
+
+        if (ticket.id === game.activeTicketId) {
+            const portrait = document.getElementById("customer-sprite");
+            if (portrait) portraits.push(portrait);
+
+            const label = document.getElementById("customer-patience-label");
+            if (label) label.textContent = `Kiên nhẫn ${Math.ceil(ticket.remainingMs / 1000)}s`;
+        }
+
+        for (const portrait of portraits) {
+            if (portrait.dataset.mood === String(mood)) continue;
+            portrait.dataset.mood = String(mood);
+            portrait.style.display = "";
+            portrait.src = customerImage(ticket.customer, mood);
+        }
+    }
+}
+
+function renderCustomerQueue() {
+    const screenEl = document.querySelector(".making-screen");
+    const panel = document.getElementById("customer-panel");
+    if (!screenEl || !panel) return;
+    screenEl.querySelector(".patience-queue")?.remove();
+    panel.querySelector(".active-patience")?.remove();
+
+    const queue = document.createElement("div");
+    queue.className = "patience-queue";
+    queue.setAttribute("aria-label", "Khách đang chờ");
+    const queueLabel = document.createElement("span");
+    queueLabel.className = "queue-label";
+    queueLabel.textContent = "Hàng chờ";
+    queue.appendChild(queueLabel);
+    for (const ticket of game.waitingCustomers) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "queue-customer" +
+            (ticket.id === game.activeTicketId ? " is-active" : "");
+        button.dataset.ticketId = ticket.id;
+        button.setAttribute("aria-label", `Chọn khách ${ticket.customer}, còn ${Math.ceil(ticket.remainingMs / 1000)} giây`);
+        button.innerHTML = `
+            <img src="${customerImage(ticket.customer, 1)}" alt=""
+                 onerror="this.style.display='none'">
+            <span class="queue-patience"><span data-patience-id="${ticket.id}"></span></span>`;
+        button.addEventListener("click", () => {
+            if (game.phase !== "making" || ticket.id === game.activeTicketId) return;
+            setActiveTicket(ticket);
+            renderMakingScreen();
+        });
+        queue.appendChild(button);
+    }
+    screenEl.insertBefore(queue, panel);
+    syncShopRating();
+
+    const bubble = panel.querySelector(".customer-bubble");
+    if (bubble && activeTicket()) {
+        const heading = bubble.querySelector(".customer-bubble-top span");
+        if (heading && game.reviewCount) {
+            heading.textContent += ` · ⭐ ${(game.reviewStarsTotal / game.reviewCount).toFixed(1)}`;
+        }
+        const info = document.createElement("div");
+        info.className = "active-patience";
+        info.innerHTML = `<span id="customer-patience-label"></span>
+            <span class="active-patience-track"><span data-patience-id="${game.activeTicketId}"></span></span>`;
+        bubble.appendChild(info);
+    }
+    refreshPatienceUI();
+}
+
+function scheduleAnotherCustomer() {
+    if (nextArrivalTimer || game.customerNumber >= game.customersToday ||
+        game.waitingCustomers.length >= 3 || !game.shopOpen) return;
+    nextArrivalTimer = setTimeout(() => {
+        nextArrivalTimer = null;
+        if (!queueMayAdvance()) return;
+        if (createWaitingTicket()) renderCustomerQueue();
+        scheduleAnotherCustomer();
+    }, 4000 + Math.floor(Math.random() * 3000));
+}
+
+function runPatienceClock() {
+    if (patienceInterval) return;
+    patienceClock = Date.now();
+    let saveTicks = 0;
+    patienceInterval = setInterval(() => {
+        const now = Date.now();
+        const elapsed = Math.min(1250, Math.max(0, now - patienceClock));
+        patienceClock = now;
+        if (!queueMayAdvance()) return;
+
+        for (const ticket of [...game.waitingCustomers]) {
+            ticket.remainingMs = Math.max(0, ticket.remainingMs - elapsed);
+            if (ticket.remainingMs > 0) continue;
+            game.waitingCustomers = game.waitingCustomers.filter(other => other !== ticket);
+            recordCustomerRating(1);
+            if (ticket.id === game.activeTicketId) {
+                showCustomerReaction(false);
+                const reaction = document.getElementById("customer-reaction");
+                if (reaction) reaction.textContent = "Khách đợi lâu quá nên đã rời đi. ★☆☆☆☆";
+            } else {
+                renderCustomerQueue();
+            }
+            saveGame();
+        }
+        refreshPatienceUI();
+        if (++saveTicks % 5 === 0) saveGame();
+    }, 1000);
+}
+
+const renderMakingWithQueue = renderMakingScreen;
+renderMakingScreen = function () {
+    renderMakingWithQueue();
+    if (game.waitingCustomers.length) renderCustomerQueue();
+    runPatienceClock();
+};
+
+nextCustomer = function () {
+    clearTimeout(customerWaitTimer);
+    localStorage.removeItem(CUSTOMER_WAIT_KEY);
+    if (!game.shopOpen) return;
+    if (ingredients["Bánh mì"].stock <= 0 || !availableRecipes().length) {
+        for (const ticket of game.waitingCustomers) recordCustomerRating(1);
+        game.waitingCustomers = [];
+        game.activeTicketId = null;
+        endDay();
+        return;
+    }
+    if (!game.waitingCustomers.length) {
+        if (game.customerNumber >= game.customersToday ||
+            ingredients["Bánh mì"].stock <= 0 || !availableRecipes().length) {
+            endDay();
+            return;
+        }
+        const arrivingTogether = game.customerNumber === 0
+            ? 2 + (Math.random() < 0.5 ? 1 : 0)
+            : 1;
+        for (let i = 0; i < arrivingTogether; i++) {
+            if (!createWaitingTicket()) break;
+        }
+    }
+    const ticket = game.waitingCustomers[0];
+    if (!ticket) { endDay(); return; }
+    setActiveTicket(ticket);
+    game.selectedIngredients = [];
+    game.breadSelected = false;
+    renderMakingScreen();
+    scheduleAnotherCustomer();
+};
+
+completeCustomerOrder = function (correct) {
+    const ticket = activeTicket();
+    if (!ticket) return;
+    const stars = customerStars(ticket, correct);
+    game.waitingCustomers = game.waitingCustomers.filter(other => other !== ticket);
+    recordCustomerRating(stars);
+    game.lastOrderStars = stars;
+
+    playOrderResultSound(correct);
+    ingredients["Bánh mì"].stock = Math.max(0, ingredients["Bánh mì"].stock - 1);
+    game.selectedIngredients.forEach(name => {
+        ingredients[name].stock = Math.max(0, ingredients[name].stock - 1);
+    });
+    if (correct) {
+        game.money += game.currentRecipe.price;
+        game.dailyRevenue += game.currentRecipe.price;
+        game.completedOrders++;
+    }
+    showCustomerReaction(correct);
+    const reaction = document.getElementById("customer-reaction");
+    if (reaction) reaction.textContent += ` ${"★".repeat(stars)}${"☆".repeat(5 - stars)}`;
+    saveGame();
+};
+
+const receiptWithRatings = renderDayEnd;
+renderDayEnd = function () {
+    receiptWithRatings();
+    const divider = document.querySelector(".day-receipt .receipt-divider");
+    if (!divider) return;
+    const row = document.createElement("div");
+    row.className = "receipt-row";
+    row.innerHTML = `<span>⭐ Đánh giá hôm nay</span><strong>${
+        game.dailyReviewCount
+            ? (game.dailyStarTotal / game.dailyReviewCount).toFixed(1) + "/5 · " + game.dailyReviewCount + " khách"
+            : "Chưa có đánh giá"
+    }</strong>`;
+    divider.before(row);
+    const overall = document.createElement("div");
+    overall.className = "receipt-row";
+    overall.innerHTML = `<span>⭐ Đánh giá tiệm</span><strong>${
+        game.reviewCount
+            ? (game.reviewStarsTotal / game.reviewCount).toFixed(1) + "/5 · " + game.reviewCount + " lượt"
+            : "Chưa có đánh giá"
+    }</strong>`;
+    divider.before(overall);
+};
+
+const previousResumeWithQueue = resumeGame;
+resumeGame = function () {
+    // Save từ phiên bản một khách: giữ nguyên chiếc bánh đang làm.
+    if (game.shopOpen && game.pausedPhase === "making" &&
+        !game.waitingCustomers.length && game.currentRecipe) {
+        const ticket = {
+            id: game.nextTicketId++,
+            customer: game.currentCustomer,
+            recipeName: game.currentRecipe.name,
+            order: [...game.currentOrder],
+            note: game.orderNote,
+            remainingMs: CUSTOMER_PATIENCE_MS
+        };
+        game.waitingCustomers.push(ticket);
+        game.activeTicketId = ticket.id;
+    }
+    if (game.shopOpen && game.pausedPhase === "waiting") {
+        nextCustomer();
+    } else {
+        previousResumeWithQueue();
+        if (game.shopOpen && game.phase === "making" && game.waitingCustomers.length) {
+            if (!activeTicket()) setActiveTicket(game.waitingCustomers[0]);
+            renderMakingScreen();
+            scheduleAnotherCustomer();
+        }
+    }
+    patienceClock = Date.now();
+};
+
+document.addEventListener("visibilitychange", () => {
+    patienceClock = Date.now();
+    if (document.hidden) saveGame();
+});
+
+// Style riêng cho hàng chờ; không ghi đè file style.css của người chơi.
+(() => {
+    const style = document.createElement("style");
+    style.textContent = `
+/* Hàng chờ nằm ngay dưới thanh trạng thái; kiên nhẫn nằm trong lời thoại. */
+.patience-queue {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 49px;
+    padding: 4px 9px;
+    background: #fff0d5;
+    border-bottom: 1px solid #ddb888;
+    flex: 0 0 auto;
+}
+.queue-label { font-size: 10px; font-weight: bold; color: #78543c; margin-right: 3px; }
+.queue-customer {
+    width: 44px;
+    height: 42px;
+    border: 2px solid #c89469;
+    border-radius: 14px;
+    background: #fff9ed;
+    overflow: hidden;
+    padding: 0;
+    cursor: pointer;
+    box-shadow: 0 2px 0 #b77e55;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.queue-customer.is-active { border-color: #e95c78; background: #ffe9ee; }
+.queue-customer img { width: 36px; height: 33px; object-fit: contain; object-position: bottom; }
+.queue-patience, .active-patience-track {
+    display: block;
+    overflow: hidden;
+    background: #e9d7c8;
+    border-radius: 999px;
+}
+.queue-patience { width: 35px; height: 5px; }
+.queue-patience > span, .active-patience-track > span {
+    display: block;
+    height: 100%;
+    width: 100%;
+    background: #67b46f;
+    transition: width 0.35s linear;
+}
+.queue-patience.is-urgent > span,
+.active-patience-track.is-urgent > span { background: #e4535f; }
+.active-patience {
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 10px;
+    font-weight: bold;
+    color: #76533d;
+}
+.active-patience-track { flex: 1; height: 6px; }
+.top-bar.has-shop-rating {
+    position: relative;
+    grid-template-columns: 44px minmax(0, 1fr) 92px;
+    gap: 3px;
+}
+
+.top-bar.has-shop-rating .top-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(160px, calc(100% - 220px));
+    flex-direction: column;
+    gap: 1px;
+    line-height: 1.1;
+}
+
+.top-bar.has-shop-rating .top-center strong { font-size: 13px; }
+.top-bar.has-shop-rating #status-display { display: none; }
+
+.top-bar.has-shop-rating #money-display {
+    width: 100%;
+    font-size: 20px;
+    line-height: 1.15;
+    text-align: center;
+}
+
+#shop-rating {
+    grid-column: 3;
+    justify-self: end;
+    width: 92px;
+    padding: 1px 0;
+    border: 0;
+    background: transparent;
+    color: #f2ac27;
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 1.1;
+    cursor: pointer;
+}
+#shop-rating small { display: block; color: #855f48; font-size: 10px; }
+.making-screen:has(.patience-queue) .banhmi-workspace { height: 178px; }
+@media (max-width: 560px) {
+    .patience-queue { height: 45px; }
+    .queue-customer { width: 40px; height: 38px; }
+    .queue-customer img { width: 33px; height: 29px; }
+    .making-screen:has(.patience-queue) .banhmi-workspace { height: 164px; }
+}
+
+`;
+    document.head.appendChild(style);
+})();
