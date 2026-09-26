@@ -1034,9 +1034,17 @@ function loadGame() {
     }
 
 
-    // Hai nguyên liệu này luôn được mở từ đầu.
-    ingredients["Ketchup"].unlocked = true;
-    ingredients["Bánh mì"].unlocked = true;
+    // Các nguyên liệu mặc định luôn được mở từ đầu
+[
+    "Pâté",
+    "Trứng",
+    "Dưa leo",
+    "Rau",
+    "Ketchup",
+    "Bánh mì"
+].forEach(name => {
+    ingredients[name].unlocked = true;
+});
 
 
     return true;
@@ -1147,8 +1155,16 @@ function restartCurrentDay() {
                 );
             }
 
-            ingredients["Ketchup"].unlocked = true;
-            ingredients["Bánh mì"].unlocked = true;
+            [
+    "Pâté",
+    "Trứng",
+    "Dưa leo",
+    "Rau",
+    "Ketchup",
+    "Bánh mì"
+].forEach(name => {
+    ingredients[name].unlocked = true;
+});
 
             game.phase = "prep";
             game.pausedPhase = "prep";
@@ -1195,26 +1211,131 @@ function restartCurrentDay() {
 function resetGameSave() {
     showCutePopup({
         icon: "🗑️",
-
         title: "Chơi lại từ đầu?",
-
         message:
             "Toàn bộ tiền, ngày chơi, kho hàng và nguyên liệu đã mở sẽ bị xóa. Game sẽ quay lại từ ngày 1.",
-
         cancelText: "Không",
-
         confirmText: "Chơi lại",
 
         onConfirm: () => {
-            window.removeEventListener(
-                "beforeunload",
-                saveGame
-            );
+
+            // =========================
+            // DỪNG TIMER CỦA RUN CŨ
+            // =========================
+
+            clearTimeout(customerWaitTimer);
+            clearTimeout(nextArrivalTimer);
+            clearInterval(patienceInterval);
+
+            customerWaitTimer = null;
+            nextArrivalTimer = null;
+            patienceInterval = null;
+
+            clearCustomerReactionTimers();
+
+
+            // =========================
+            // XÓA SAVE + STATE PHỤ
+            // =========================
 
             localStorage.removeItem(SAVE_KEY);
             localStorage.removeItem(DAY_START_KEY);
 
-            location.reload();
+            localStorage.removeItem("mot-o-nha-last-reaction");
+            localStorage.removeItem("mot-o-nha-wait-until");
+
+            // Xóa queue khách của tất cả ngày
+            Object.keys(localStorage).forEach(key => {
+                if (
+                    key.startsWith(
+                        "mot-o-nha-customer-queue-"
+                    )
+                ) {
+                    localStorage.removeItem(key);
+                }
+            });
+
+
+            // =========================
+            // RESET GAME STATE
+            // =========================
+
+            game.day = 1;
+            game.money = 100000;
+
+            game.phase = "home";
+            game.pausedPhase = null;
+
+            game.hasStarted = false;
+            game.shopOpen = false;
+
+            game.customersToday =
+                randomCustomersToday();
+
+            game.customerNumber = 0;
+            game.completedOrders = 0;
+            game.dailyRevenue = 0;
+
+            game.dailyIngredientSpend = 0;
+            game.dailyRentPaid = 0;
+
+            game.waitingCustomers = [];
+            game.activeTicketId = null;
+            game.nextTicketId = 1;
+
+            game.dailyStarTotal = 0;
+            game.dailyReviewCount = 0;
+
+            game.reviewStarsTotal = 0;
+            game.reviewCount = 0;
+
+            game.currentRecipe = null;
+            game.currentCustomer = null;
+            game.currentOrder = [];
+
+            game.selectedIngredients = [];
+            game.breadSelected = false;
+
+            game.orderNote =
+                "Cho mình một ổ như bình thường nha!";
+
+
+            // =========================
+            // RESET INGREDIENTS
+            // =========================
+
+            Object.values(ingredients).forEach(data => {
+                data.unlocked = false;
+                data.stock = 0;
+            });
+
+            ingredients["Pâté"].unlocked = true;
+            ingredients["Pâté"].stock = 10;
+
+            ingredients["Trứng"].unlocked = true;
+            ingredients["Trứng"].stock = 10;
+
+            ingredients["Dưa leo"].unlocked = true;
+            ingredients["Dưa leo"].stock = 12;
+
+            ingredients["Rau"].unlocked = true;
+            ingredients["Rau"].stock = 12;
+
+            ingredients["Ketchup"].unlocked = true;
+            ingredients["Ketchup"].stock = 10;
+
+            ingredients["Bánh mì"].unlocked = true;
+            ingredients["Bánh mì"].stock = 10;
+
+
+            // =========================
+            // TẠO SAVE DAY 1 MỚI
+            // =========================
+
+            saveDayStartCheckpoint();
+            saveGame();
+
+            showHome();
         }
     });
 }
@@ -5630,15 +5751,53 @@ function renderCustomerQueue() {
 }
 
 function scheduleAnotherCustomer() {
-    if (nextArrivalTimer || game.customerNumber >= game.customersToday ||
-        game.waitingCustomers.length >= 3 || !game.shopOpen) return;
+    if (
+        nextArrivalTimer ||
+        game.customerNumber >= game.customersToday ||
+        game.waitingCustomers.length >= 3 ||
+        !game.shopOpen
+    ) return;
+
+    const roll = Math.random();
+
+    // Có lúc khách ập tới, có lúc thong thả, thỉnh thoảng vắng lâu.
+    const delay =
+        roll < 0.25 ? 1000 + Math.floor(Math.random() * 1500) :
+        roll < 0.82 ? 3000 + Math.floor(Math.random() * 2500) :
+                      8000 + Math.floor(Math.random() * 4000);
+
     nextArrivalTimer = setTimeout(() => {
         nextArrivalTimer = null;
-        if (!queueMayAdvance()) return;
-        if (createWaitingTicket()) renderCustomerQueue();
+
+        if (!game.shopOpen ||
+            game.customerNumber >= game.customersToday) return;
+
+        // Đang pause/xem sổ thì hẹn lại, không làm mất lượt khách.
+        if (!queueMayAdvance()) {
+            scheduleAnotherCustomer();
+            return;
+        }
+
+        const arrivingTogether = Math.random() < 0.30 ? 2 : 1;
+        const availableSlots = 3 - game.waitingCustomers.length;
+        const remainingToday = game.customersToday - game.customerNumber;
+        const arrivals = Math.min(
+            arrivingTogether,
+            availableSlots,
+            remainingToday
+        );
+
+        let someoneArrived = false;
+
+        for (let i = 0; i < arrivals; i++) {
+            if (!createWaitingTicket()) break;
+            someoneArrived = true;
+        }
+
+        if (someoneArrived) renderCustomerQueue();
         scheduleAnotherCustomer();
-    }, 4000 + Math.floor(Math.random() * 3000));
-}
+    }, delay);
+} 
 
 function runPatienceClock() {
     if (patienceInterval) return;
