@@ -1,4 +1,4 @@
-const CACHE_NAME = "mot-o-nha-v3";
+const CACHE_NAME = "mot-o-nha-v4";
 const ROOT = self.registration.scope;
 
 const url = (path) => new URL(path, ROOT).href;
@@ -8,7 +8,8 @@ const coreFiles = [
     "./",
     "index.html",
     "style.css",
-    "game.js"
+    "game.js",
+    "manifest.json"
 ];
 
 // Tên nguyên liệu đang dùng trong game.js.
@@ -33,6 +34,8 @@ const ingredients = [
 // Ảnh, font và âm thanh. File nào chưa có sẽ được bỏ qua.
 const extraFiles = [
     "images/icon.png",
+    "images/icon-192.png",
+    "images/icon-512.png",
     "images/recipe.png",
     "images/banh-mi.png",
     "images/board.png",

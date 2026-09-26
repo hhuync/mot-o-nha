@@ -1662,8 +1662,8 @@ function showPrep() {
         <div class="making-screen prep-shopping-screen">
 <section class="customer-panel prep-grab-panel">
     <div class="customer-portrait">
-        <img src="images/grab.png"
-             alt="Anh Grab"
+        <img src="images/grab.png?v=2"
+             alt="Anh giao hàng"
              draggable="false"
              onerror="this.style.display='none'; this.nextElementSibling.hidden=false;">
         <span class="customer-fallback" hidden>🛵</span>
@@ -1674,7 +1674,7 @@ function showPrep() {
             <span>Chuẩn bị nguyên liệu</span>
             ${recipeBookButton()}
         </div>
-        <strong>Anh Grab</strong>
+        <strong>Anh giao hàng</strong>
         <p id="prep-grab-message" role="status">
             Nhấn vào nguyên liệu để nhập hàng hoặc mở khóa, anh sẽ giao đến cho.
         </p>

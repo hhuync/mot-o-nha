@@ -1,0 +1,27 @@
+{
+  "id": "./",
+  "name": "Một Ổ Nha!",
+  "short_name": "Một Ổ Nha!",
+  "description": "Game bán bánh mì Việt Nam.",
+  "lang": "vi",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7b6c2",
+  "theme_color": "#f7b6c2",
+  "icons": [
+  {
+    "src": "images/icon-192.png",
+    "sizes": "192x192",
+    "type": "image/png",
+    "purpose": "any"
+  },
+  {
+    "src": "images/icon-512.png",
+    "sizes": "512x512",
+    "type": "image/png",
+    "purpose": "any"
+  }
+]
+}
