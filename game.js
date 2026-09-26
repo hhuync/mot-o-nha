@@ -265,7 +265,7 @@ const ingredients = {
         unlockPrice: 0,
         stock: 10,
         restock: 5,
-        restockPrice: 8000
+        restockPrice: 12000
     },
 
     "Thịt nướng": {
@@ -287,7 +287,7 @@ const ingredients = {
         unlockPrice: 0,
         stock: 10,
         restock: 5,
-        restockPrice: 6000
+        restockPrice: 9000
     },
 
     "Chả": {
@@ -432,7 +432,7 @@ const ingredients = {
         unlockPrice: 0,
         stock: 10,
         restock: 5,
-        restockPrice: 4000,
+        restockPrice: 7000,
         special: "bread"
     }
 };
@@ -650,6 +650,20 @@ const customers = [
 // GAME STATE
 // ======================================================
 
+function randomCustomersToday() {
+    const roll = Math.random();
+
+    if (roll < 0.60) {
+        return 5 + Math.floor(Math.random() * 4); // 5–8
+    }
+
+    if (roll < 0.90) {
+        return 9 + Math.floor(Math.random() * 4); // 9–12
+    }
+
+    return 13 + Math.floor(Math.random() * 4);    // 13–16
+}
+
 const game = {
     day: 1,
     money: 100000,
@@ -660,7 +674,7 @@ const game = {
     hasStarted: false,
     shopOpen: false,
 
-    customersToday: Math.floor(Math.random() * 5) + 4,
+    customersToday: randomCustomersToday(),
     customerNumber: 0,
     completedOrders: 0,
     dailyRevenue: 0,
@@ -3368,7 +3382,123 @@ function renderResultScreen() {
 // ======================================================
 
 function endDay() {
-    renderDayEnd();
+    if (document.getElementById("shop-closing-overlay")) return;
+
+    // Dừng đồng hồ kiên nhẫn trong lúc chuyển cảnh.
+    game.phase = "closing";
+    mainButton.disabled = true;
+
+    const overlay = document.createElement("div");
+    overlay.id = "shop-closing-overlay";
+
+    Object.assign(overlay.style, {
+        position: "fixed",
+        inset: "0",
+        zIndex: "999999",
+        display: "flex",
+        overflow: "hidden",
+        pointerEvents: "auto",
+        opacity: "1"
+    });
+
+    function makeDoor(side) {
+        const door = document.createElement("div");
+
+        Object.assign(door.style, {
+            width: "50%",
+            height: "100%",
+            flex: "0 0 50%",
+            background:
+                "linear-gradient(#ed7390 0 15%, #fff5e7 15% 22%, #c28c60 22% 100%)",
+            boxShadow: "inset 0 0 30px #69402966",
+            transform: side === "left"
+                ? "translateX(-101%)"
+                : "translateX(101%)"
+        });
+
+        return door;
+    }
+
+    const left = makeDoor("left");
+    const right = makeDoor("right");
+    const sign = document.createElement("div");
+
+    sign.textContent = "Tiệm đóng cửa rồi! 🌙";
+
+    Object.assign(sign.style, {
+        position: "absolute",
+        left: "50%",
+        top: "50%",
+        transform: "translate(-50%, -50%)",
+        opacity: "0",
+        padding: "16px 22px",
+        border: "3px solid #a66c47",
+        borderRadius: "18px",
+        background: "#fff9ed",
+        color: "#65402c",
+        fontSize: "22px",
+        fontWeight: "bold",
+        whiteSpace: "nowrap",
+        boxShadow: "0 7px 0 #83543c"
+    });
+
+    overlay.append(left, right, sign);
+    document.body.appendChild(overlay);
+
+    requestAnimationFrame(() => {
+        left.animate(
+            [
+                { transform: "translateX(-101%)" },
+                { transform: "translateX(0)" }
+            ],
+            {
+                duration: 900,
+                easing: "ease-in-out",
+                fill: "forwards"
+            }
+        );
+
+        right.animate(
+            [
+                { transform: "translateX(101%)" },
+                { transform: "translateX(0)" }
+            ],
+            {
+                duration: 900,
+                easing: "ease-in-out",
+                fill: "forwards"
+            }
+        );
+
+        sign.animate(
+            [
+                { opacity: 0, offset: 0 },
+                { opacity: 1, offset: 0.35 },
+                { opacity: 1, offset: 0.8 },
+                { opacity: 0, offset: 1 }
+            ],
+            {
+                duration: 1800,
+                fill: "forwards"
+            }
+        );
+    });
+
+    // Chuyển sang hóa đơn khi hai cánh cửa đã che kín màn hình.
+    setTimeout(() => {
+        renderDayEnd();
+    }, 1100);
+
+    // Cho cửa mờ dần để lộ màn tổng kết.
+    setTimeout(() => {
+        overlay.style.transition = "opacity 450ms ease";
+        overlay.style.opacity = "0";
+    }, 1900);
+
+    setTimeout(() => {
+        overlay.remove();
+        mainButton.disabled = false;
+    }, 2400);
 }
 
 
@@ -3566,8 +3696,7 @@ function newDay() {
     game.day++;
 
 
-    game.customersToday =
-        Math.floor(Math.random() * 5) + 4;
+    game.customersToday = randomCustomersToday();
 
 
     game.customerNumber = 0;
@@ -4393,7 +4522,7 @@ function openSettings() {
                 >
                     <span>🎁 ${t("version")}</span>
                     <span class="settings-value">
-                        v0.2.1 ›
+                        v0.2.2 ›
                     </span>
                 </button>
 
@@ -4577,10 +4706,27 @@ function openUpdateHistory() {
             <div class="update-history-list">
                 <div class="update-entry">
                     <div class="update-entry-header">
-                        <strong>Phiên bản 0.2.1</strong>
+                        <strong>Phiên bản 0.2.2</strong>
 
                         <div class="update-entry-meta">
                             <span class="current-version-badge">Hiện tại</span>
+                            <span class="update-date">26/09/2026</span>
+                        </div>
+                    </div>
+
+                    <ul>
+                        <li>Thêm hiệu ứng đóng cửa tiệm trước khi hiện tổng kết cuối ngày.</li>
+                        <li>Tiệm có khoảng thời gian vắng khách sau khi mở cửa và sau khi phục vụ hết hàng chờ.</li>
+                        <li>Điều chỉnh số khách mỗi ngày: có ngày vắng, ngày vừa và thỉnh thoảng có ngày rất đông.</li>
+                        <li>Điều chỉnh giá nhập một số nguyên liệu để cân bằng tốc độ kiếm tiền khi lượng khách tăng.</li>
+                    </ul>
+                </div>
+
+                <div class="update-entry">
+                    <div class="update-entry-header">
+                        <strong>Phiên bản 0.2.1</strong>
+
+                        <div class="update-entry-meta">
                             <span class="update-date">25/09/2026</span>
                         </div>
                     </div>
@@ -4590,7 +4736,6 @@ function openUpdateHistory() {
                         <li>Thêm thanh kiên nhẫn trong lời thoại và hàng chờ. Khách đổi sang biểu cảm khó chịu khi sắp hết kiên nhẫn và có thể rời tiệm nếu đợi quá lâu.</li>
                         <li>Thêm đánh giá sao sau mỗi đơn, điểm đánh giá của tiệm trên thanh trạng thái và thống kê đánh giá cuối ngày.</li>
                         <li>Thêm bánh mì pâté cùng nhiều biến thể theo yêu cầu của khách: thêm sốt, bỏ rau hoặc kết hợp nhiều yêu cầu trong một đơn, tùy nguyên liệu đã mở khóa và còn trong kho.</li>
-                        <li>Cải thiện chuyển cảnh từ hóa đơn cuối ngày qua đóng cửa tiệm đến chuẩn bị nguyên liệu ngày tiếp theo.</li>
                         <li>Sửa lỗi nhạc nền bị mất sau khi rời ứng dụng rồi quay lại hoặc khi chơi lại ngày; cải thiện chuyển nhạc giữa các màn và âm thanh khi chọn nguyên liệu.</li>
                         <li>Làm mới giao diện sổ công thức, hàng chờ và thanh trạng thái; tăng kích thước và căn giữa số tiền.</li>
                         <li>Điều chỉnh kích thước nút điều khiển và độ trong suốt của các loại sốt.</li>
@@ -5170,7 +5315,7 @@ function renderWaitingScreen() {
         const preparedBread = game.breadSelected;
         const preparedIngredients = [...game.selectedIngredients];
 
-        arriveCustomerNow();
+        nextCustomer();
 
         if (game.phase === "making") {
             game.breadSelected = preparedBread;
@@ -5258,7 +5403,7 @@ queueBoardFit();
 // HÀNG CHỜ KHÁCH, KIÊN NHẪN VÀ ĐÁNH GIÁ
 // ======================================================
 
-const CUSTOMER_PATIENCE_MS = 60000;
+const CUSTOMER_PATIENCE_MS = 70000;
 const CUSTOMER_ANNOYED_FRACTION = 0.40;
 let patienceClock = Date.now();
 let patienceInterval = null;
@@ -5539,18 +5684,39 @@ nextCustomer = function () {
         return;
     }
     if (!game.waitingCustomers.length) {
-        if (game.customerNumber >= game.customersToday ||
-            ingredients["Bánh mì"].stock <= 0 || !availableRecipes().length) {
-            endDay();
-            return;
-        }
-        const arrivingTogether = game.customerNumber === 0
-            ? 2 + (Math.random() < 0.5 ? 1 : 0)
-            : 1;
-        for (let i = 0; i < arrivingTogether; i++) {
-            if (!createWaitingTicket()) break;
-        }
+    if (game.customerNumber >= game.customersToday) {
+        endDay();
+        return;
     }
+
+    // Mở cửa hoặc vừa phục vụ hết hàng chờ: để quầy vắng một lúc.
+    if (game.phase !== "waiting") {
+        clearTimeout(nextArrivalTimer);
+        nextArrivalTimer = null;
+        game.activeTicketId = null;
+
+        const delay = game.customerNumber === 0
+            ? 7000 + Math.floor(Math.random() * 3000)
+            : 4000 + Math.floor(Math.random() * 4000);
+
+        localStorage.setItem(
+            CUSTOMER_WAIT_KEY,
+            String(Date.now() + delay)
+        );
+
+        renderWaitingScreen();
+        return;
+    }
+
+    // Hết thời gian chờ: khách mới bước vào, đôi khi đi cùng nhau.
+    const arrivingTogether = Math.random() < 0.35
+        ? 2 + (Math.random() < 0.5 ? 1 : 0)
+        : 1;
+
+    for (let i = 0; i < arrivingTogether; i++) {
+        if (!createWaitingTicket()) break;
+    }
+}
     const ticket = game.waitingCustomers[0];
     if (!ticket) { endDay(); return; }
     setActiveTicket(ticket);
@@ -5624,7 +5790,7 @@ resumeGame = function () {
         game.activeTicketId = ticket.id;
     }
     if (game.shopOpen && game.pausedPhase === "waiting") {
-        nextCustomer();
+    renderWaitingScreen();
     } else {
         previousResumeWithQueue();
         if (game.shopOpen && game.phase === "making" && game.waitingCustomers.length) {
