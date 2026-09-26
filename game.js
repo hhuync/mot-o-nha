@@ -5246,6 +5246,10 @@ function renderWaitingScreen() {
 
     screen.innerHTML = `
         <div class="making-screen waiting-screen">
+            <div class="patience-queue">
+                <span class="queue-label">Hàng chờ</span>
+                <span class="queue-empty">Đang vắng ☕</span>
+            </div>
             <section class="customer-panel waiting-panel">
                 <div class="customer-portrait">☕</div>
                 <div class="customer-bubble">

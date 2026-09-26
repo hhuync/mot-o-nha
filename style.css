@@ -3503,7 +3503,10 @@ button {
 
     align-items: end;
 
-    min-height: 130px;
+    height: 120px;
+    min-height: 120px;
+    max-height: 120px;
+    overflow: hidden;
 
     padding: 6px 12px 0;
 
@@ -3512,10 +3515,14 @@ button {
     border-bottom: 2px solid #ddad70;
 
 }
-
+.queue-empty {
+    font-size: 10px;
+    font-weight: 700;
+    color: #956e51;
+}
 .customer-portrait {
 
-    height: 124px;
+    height: 114px;
 
     display: flex;
 
@@ -3703,7 +3710,7 @@ button {
 
     .customer-panel {
 
-        min-height: 119px;
+        min-height: 120px;
 
         grid-template-columns: 92px minmax(0, 1fr);
 
@@ -3733,7 +3740,7 @@ button {
 
     .customer-panel {
 
-        min-height: 101px;
+        min-height: 120px;
 
         grid-template-columns: 80px minmax(0, 1fr);
 
