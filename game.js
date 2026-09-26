@@ -133,6 +133,168 @@ function setLanguage(language) {
     );
 }
 
+/* =========================
+   TUTORIAL / GUIDE
+========================= */
+
+const TUTORIAL_SEEN_KEY = "mot-o-nha-tutorial-version";
+const TUTORIAL_VERSION = "0.2.3";
+
+const tutorialSlides = [
+    {
+        image: "images/guide/g1.png",
+        title: "Chào mừng đến với Một Ổ Nha!",
+        caption:
+            "Bạn sẽ điều hành một tiệm bánh mì nhỏ.\nMỗi ngày hãy nhập hàng, phục vụ khách thật chuẩn và kiếm tiền để phát triển tiệm."
+    },
+    {
+        image: "images/guide/g2.png",
+        title: "Chuẩn bị trước khi mở cửa",
+        caption:
+            "Đầu mỗi ngày, hãy nhập thêm hoặc mở khóa nguyên liệu mới.\nĐừng để hết hàng giữa lúc khách đang chờ nha!"
+    },
+    {
+        image: "images/guide/g3.png",
+        title: "Xem sổ công thức",
+        caption:
+            "Nhấn vào quyển sổ để xem công thức gốc của từng món.\nKhách đôi khi sẽ có yêu cầu riêng, nên nhớ đọc kỹ lời thoại."
+    },
+    {
+        image: "images/guide/g4.png",
+        title: "Làm bánh theo yêu cầu",
+        caption:
+            "Lấy một ổ bánh mì trước, sau đó chọn đúng nguyên liệu khách cần.\nChú ý các yêu cầu như không cho rau, không cho sốt hoặc thêm nguyên liệu."
+    },
+    {
+        image: "images/guide/g5.png",
+        title: "Phục vụ thật nhanh!",
+        caption:
+            "Khách càng chờ lâu càng mất kiên nhẫn và đánh giá thấp hơn.\nPhục vụ chính xác, kiếm tiền và phát triển tiệm qua từng ngày!"
+    }
+];
+
+let tutorialIndex = 0;
+
+function getTutorialRefs() {
+    return {
+        modal: document.getElementById("tutorial-modal"),
+        image: document.getElementById("tutorial-image"),
+        title: document.getElementById("tutorial-title"),
+        caption: document.getElementById("tutorial-caption"),
+        step: document.getElementById("tutorial-step"),
+        prev: document.getElementById("tutorial-prev"),
+        next: document.getElementById("tutorial-next"),
+        close: document.getElementById("tutorial-close")
+    };
+}
+
+function renderTutorialSlide() {
+    const refs = getTutorialRefs();
+    if (!refs.modal) return;
+
+    const slide = tutorialSlides[tutorialIndex];
+    if (!slide) return;
+
+    refs.image.src = slide.image;
+    refs.image.alt = slide.title;
+    refs.title.textContent = slide.title;
+    refs.caption.textContent = slide.caption;
+    refs.step.textContent =
+        `${tutorialIndex + 1} / ${tutorialSlides.length}`;
+
+    refs.prev.disabled = tutorialIndex === 0;
+
+    refs.next.textContent =
+        tutorialIndex === tutorialSlides.length - 1
+            ? "Bắt đầu chơi"
+            : "Tiếp →";
+}
+
+function openTutorial(startIndex = 0) {
+    const refs = getTutorialRefs();
+    if (!refs.modal) return;
+
+    tutorialIndex = Math.max(
+        0,
+        Math.min(startIndex, tutorialSlides.length - 1)
+    );
+
+    refs.modal.classList.remove("hidden");
+    document.body.classList.add("tutorial-open");
+
+    renderTutorialSlide();
+}
+
+function closeTutorial(markSeen = true) {
+    const refs = getTutorialRefs();
+    if (!refs.modal) return;
+
+    refs.modal.classList.add("hidden");
+    document.body.classList.remove("tutorial-open");
+
+    if (markSeen) {
+    localStorage.setItem(
+        TUTORIAL_SEEN_KEY,
+        TUTORIAL_VERSION
+    );
+}
+}
+
+function nextTutorialSlide() {
+    if (tutorialIndex < tutorialSlides.length - 1) {
+        tutorialIndex++;
+        renderTutorialSlide();
+        return;
+    }
+
+    closeTutorial(true);
+}
+
+function prevTutorialSlide() {
+    if (tutorialIndex > 0) {
+        tutorialIndex--;
+        renderTutorialSlide();
+    }
+}
+
+function maybeShowTutorialOnFirstTime() {
+    const seenVersion =
+        localStorage.getItem(TUTORIAL_SEEN_KEY);
+
+    if (seenVersion !== TUTORIAL_VERSION) {
+        openTutorial(0);
+    }
+}
+
+function bindTutorialEvents() {
+    const refs = getTutorialRefs();
+    if (!refs.modal) return;
+
+    refs.close.addEventListener("click", () => {
+        closeTutorial(true);
+    });
+
+    refs.next.addEventListener("click", () => {
+        nextTutorialSlide();
+    });
+
+    refs.prev.addEventListener("click", () => {
+        prevTutorialSlide();
+    });
+
+    document.addEventListener("keydown", event => {
+        if (refs.modal.classList.contains("hidden")) return;
+
+        if (event.key === "Escape") {
+            closeTutorial(true);
+        } else if (event.key === "ArrowRight") {
+            nextTutorialSlide();
+        } else if (event.key === "ArrowLeft") {
+            prevTutorialSlide();
+        }
+    });
+}
+
 function getKitchenMusicKey() {
     return game.day % 2 === 0
         ? "kitchen2"
@@ -1945,7 +2107,7 @@ function addModifier(id, text, apply) {
 }
 
 if (game.currentOrder.includes("Rau")) {
-    addModifier("no-herbs", "bỏ rau", () => {
+    addModifier("no-herbs", "không cho rau", () => {
         game.currentOrder = game.currentOrder.filter(
             item => item !== "Rau"
         );
@@ -1953,7 +2115,7 @@ if (game.currentOrder.includes("Rau")) {
 }
 
 if (game.currentOrder.includes("Ớt")) {
-    addModifier("no-chili", "bỏ ớt", () => {
+    addModifier("no-chili", "không cho ớt", () => {
         game.currentOrder = game.currentOrder.filter(
             item => item !== "Ớt"
         );
@@ -2030,13 +2192,13 @@ if (
     const singleRequestLines = {
     "no-herbs": [
         "À, mình không ăn rau nha!",
-        "Cho mình bỏ rau nhé!",
+        "Cho mình không có rau nhé!",
         "Một ổ nhưng đừng cho rau nha!"
     ],
     "no-sauce": [
         "Ôi, mình không ăn sốt nha!",
         "Cho mình không sốt nhé!",
-        "Một ổ nhưng bỏ hết sốt giúp mình nha!"
+        "Một ổ nhưng không thêm sốt giúp mình nha!"
     ],
     "no-chili": [
         "Mình không ăn được ớt nha!",
@@ -3128,7 +3290,7 @@ function toggleIngredient(name) {
     showIngredientFeedback(
         exists
 
-            ? `↩ Đã bỏ ${name}`
+            ? `↩ Đã bỏ lại ${name}`
 
             : `✓ Đã thêm ${name}`
     );
@@ -4627,13 +4789,12 @@ function openSettings() {
                 </button>
 
                 <button
+                    id="settings-guide"
                     class="settings-row"
                     type="button"
                 >
                     <span>📖 ${t("howToPlay")}</span>
-                    <span class="settings-value">
-                        ${t("comingSoon")}
-                    </span>
+                    <span class="settings-value">›</span>
                 </button>
 
                 <button
@@ -4643,7 +4804,7 @@ function openSettings() {
                 >
                     <span>🎁 ${t("version")}</span>
                     <span class="settings-value">
-                        v0.2.2 ›
+                        v0.2.3 ›
                     </span>
                 </button>
 
@@ -4721,6 +4882,18 @@ aboutButton.addEventListener("click", () => {
         message: t("aboutMessage"),
         confirmText: t("close")
     });
+});
+
+// =========================
+// GUIDE
+// =========================
+
+const guideButton =
+    overlay.querySelector("#settings-guide");
+
+guideButton.addEventListener("click", () => {
+    overlay.remove();
+    openTutorial(0);
 });
 
 
@@ -4825,12 +4998,30 @@ function openUpdateHistory() {
             <h2>📜 Lịch sử cập nhật</h2>
 
             <div class="update-history-list">
+
+                <div class="update-entry">
+                    <div class="update-entry-header">
+                        <strong>Phiên bản 0.2.3</strong>
+
+                        <div class="update-entry-meta">
+                            <span class="current-version-badge">Hiện tại</span>
+                            <span class="update-date">27/09/2026</span>
+                        </div>
+                    </div>
+
+                    <ul>
+                        <li>Thêm hướng dẫn chơi gồm 5 trang minh họa cho người chơi mới.</li>
+                        <li>Có thể mở lại hướng dẫn bất cứ lúc nào trong phần Cài đặt.</li>
+                        <li>Phóng to và điều chỉnh vị trí sổ công thức để dễ nhìn và dễ bấm hơn.</li>
+                        <li>Làm rõ một số yêu cầu của khách như “không cho rau”, “không cho ớt” và “không cho sốt” để tránh hiểu nhầm khi làm bánh.</li>
+                    </ul>
+                </div>
+
                 <div class="update-entry">
                     <div class="update-entry-header">
                         <strong>Phiên bản 0.2.2</strong>
 
                         <div class="update-entry-meta">
-                            <span class="current-version-badge">Hiện tại</span>
                             <span class="update-date">26/09/2026</span>
                         </div>
                     </div>
@@ -4856,7 +5047,7 @@ function openUpdateHistory() {
                         <li>Thêm hàng chờ 2–3 khách cùng lúc; có thể chọn khách để xem và làm đơn.</li>
                         <li>Thêm thanh kiên nhẫn trong lời thoại và hàng chờ. Khách đổi sang biểu cảm khó chịu khi sắp hết kiên nhẫn và có thể rời tiệm nếu đợi quá lâu.</li>
                         <li>Thêm đánh giá sao sau mỗi đơn, điểm đánh giá của tiệm trên thanh trạng thái và thống kê đánh giá cuối ngày.</li>
-                        <li>Thêm bánh mì pâté cùng nhiều biến thể theo yêu cầu của khách: thêm sốt, bỏ rau hoặc kết hợp nhiều yêu cầu trong một đơn, tùy nguyên liệu đã mở khóa và còn trong kho.</li>
+                        <li>Thêm bánh mì pâté cùng nhiều biến thể theo yêu cầu của khách: thêm sốt, không cho rau hoặc kết hợp nhiều yêu cầu trong một đơn, tùy nguyên liệu đã mở khóa và còn trong kho.</li>
                         <li>Sửa lỗi nhạc nền bị mất sau khi rời ứng dụng rồi quay lại hoặc khi chơi lại ngày; cải thiện chuyển nhạc giữa các màn và âm thanh khi chọn nguyên liệu.</li>
                         <li>Làm mới giao diện sổ công thức, hàng chờ và thanh trạng thái; tăng kích thước và căn giữa số tiền.</li>
                         <li>Điều chỉnh kích thước nút điều khiển và độ trong suốt của các loại sốt.</li>
@@ -4900,6 +5091,7 @@ function openUpdateHistory() {
                         <li>Thêm nhạc nền cho tiệm và khu vực bếp.</li>
                     </ul>
                 </div>
+
             </div>
 
             <button class="update-history-close" type="button">
@@ -5156,22 +5348,22 @@ if (!loadDayStartCheckpoint()) {
     saveDayStartCheckpoint();
 }
 
+bindTutorialEvents();
+
 const startScreen =
     document.getElementById("start-screen");
 
 startScreen.addEventListener(
     "click",
     () => {
-        // Đây là tương tác thật của người dùng,
-        // browser sẽ cho phép audio chạy.
         unlockMusic();
 
-        // Fade màn hình mở đầu ra.
         startScreen.classList.add("hide");
 
-        // Xóa hẳn khỏi DOM sau khi fade xong.
         setTimeout(() => {
             startScreen.remove();
+
+            maybeShowTutorialOnFirstTime();
         }, 800);
     },
     { once: true }
