@@ -850,7 +850,18 @@ const game = {
     dailyReviewCount: 0,
     reviewStarsTotal: 0,
     reviewCount: 0,
+    upgrades: {
+    advertising: 0,
+    seating: 0,
+    aircon: 0
+},
 
+    skinOwned: {
+    recipe: ["mac-dinh"],
+    background: ["troi-xanh"],
+    board: ["mac-dinh"],
+    counter: ["mac-dinh"]
+},
     currentRecipe: null,
     currentCustomer: null,
 
@@ -932,18 +943,22 @@ const UI_ICONS = {
 };
 
 function updateHeader(title, status) {
+
     dayDisplay.textContent = title;
     statusDisplay.textContent = status;
     moneyDisplay.textContent = formatMoney(game.money);
 
     if (game.phase === "home") {
+
         settingsButton.innerHTML = UI_ICONS.settings;
         settingsButton.title = "Cài đặt";
         settingsButton.setAttribute(
             "aria-label",
             "Cài đặt"
         );
+
     } else {
+
         settingsButton.innerHTML = UI_ICONS.pause;
         settingsButton.title = "Tạm dừng";
         settingsButton.setAttribute(
@@ -951,8 +966,2137 @@ function updateHeader(title, status) {
             "Tạm dừng"
         );
     }
+
+    updateShopMenuVisibility();
 }
 
+// ======================================================
+// SHOP MANAGEMENT MENU
+// ======================================================
+
+const shopMenuBar =
+    document.getElementById("shop-menu-bar");
+
+const shopPanelOverlay =
+    document.getElementById("shop-panel-overlay");
+
+const shopPanelTitle =
+    document.getElementById("shop-panel-title");
+
+const shopPanelEyebrow =
+    document.getElementById("shop-panel-eyebrow");
+
+const shopPanelContent =
+    document.getElementById("shop-panel-content");
+
+const shopPanelClose =
+    document.getElementById("shop-panel-close");
+
+
+function updateShopMenuVisibility() {
+
+    if (!shopMenuBar) return;
+
+    const visiblePhases = [
+        "prep",
+        "waiting",
+        "making",
+        "result"
+    ];
+
+    shopMenuBar.hidden =
+        !game.hasStarted ||
+        !visiblePhases.includes(game.phase);
+}
+
+
+function closeShopPanel() {
+
+    shopPanelOverlay?.classList.add("hidden");
+}
+
+
+function openShopPanel(type) {
+
+    if (
+        !shopPanelOverlay ||
+        !shopPanelContent
+    ) {
+        return;
+    }
+
+    shopPanelOverlay.classList.remove("hidden");
+
+    if (type === "missions") {
+
+        renderDailyMissions();
+
+    } else if (type === "upgrade") {
+
+        renderUpgradePanel();
+
+    } else if (type === "decorate") {
+
+        renderDecorationPanel();
+
+    } else if (type === "revenue") {
+
+        renderRevenuePanel();
+    }
+}
+
+document
+    .querySelectorAll("[data-shop-menu]")
+    .forEach(button => {
+
+        button.addEventListener(
+            "click",
+            () => {
+
+                openShopPanel(
+                    button.dataset.shopMenu
+                );
+
+            }
+        );
+
+    });
+
+
+shopPanelClose?.addEventListener(
+    "click",
+    closeShopPanel
+);
+
+
+shopPanelOverlay?.addEventListener(
+    "click",
+    event => {
+
+        if (
+            event.target ===
+            shopPanelOverlay
+        ) {
+            closeShopPanel();
+        }
+
+    }
+);
+
+// ======================================================
+// REAL DAILY MISSIONS
+// Reset theo NGÀY THẬT, không theo game.day
+// ======================================================
+
+const REAL_DAILY_KEY =
+    "mot-o-nha-real-daily-v1";
+
+
+function getRealDateKey() {
+
+    const now = new Date();
+
+    const year =
+        now.getFullYear();
+
+    const month =
+        String(now.getMonth() + 1)
+            .padStart(2, "0");
+
+    const day =
+        String(now.getDate())
+            .padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
+
+
+function createFreshRealDailyData() {
+
+    return {
+        date: getRealDateKey(),
+
+        stats: {
+            correctOrders: 0,
+            revenue: 0,
+            pateSold: 0
+        },
+
+        claimed: []
+    };
+}
+
+
+function loadRealDailyData() {
+
+    const today =
+        getRealDateKey();
+
+    let data = null;
+
+
+    try {
+
+        const raw =
+            localStorage.getItem(
+                REAL_DAILY_KEY
+            );
+
+        if (raw) {
+            data = JSON.parse(raw);
+        }
+
+    } catch (error) {
+
+        console.warn(
+            "Không đọc được nhiệm vụ ngày:",
+            error
+        );
+    }
+
+
+    // Sang ngày thật mới
+    if (
+        !data ||
+        data.date !== today ||
+        !data.stats ||
+        !Array.isArray(data.claimed)
+    ) {
+
+        data =
+            createFreshRealDailyData();
+
+        saveRealDailyData(data);
+    }
+
+
+    return data;
+}
+
+
+function saveRealDailyData(data) {
+
+    try {
+
+        localStorage.setItem(
+            REAL_DAILY_KEY,
+            JSON.stringify(data)
+        );
+
+    } catch (error) {
+
+        console.warn(
+            "Không lưu được nhiệm vụ ngày:",
+            error
+        );
+    }
+}
+
+
+let realDaily =
+    loadRealDailyData();
+
+const DAILY_MISSION_POOL = [
+
+    {
+        id: "serve-10",
+        name: "Phục vụ đúng 10 khách",
+        type: "orders",
+        target: 10,
+        reward: 20000
+    },
+
+    {
+        id: "serve-14",
+        name: "Phục vụ đúng 14 khách",
+        type: "orders",
+        target: 14,
+        reward: 30000
+    },
+
+    {
+        id: "pate-6",
+        name: "Bán 6 bánh mì có Pâté",
+        type: "pate",
+        target: 6,
+        reward: 18000
+    },
+
+    {
+        id: "pate-10",
+        name: "Bán 10 bánh mì có Pâté",
+        type: "pate",
+        target: 10,
+        reward: 28000
+    },
+
+    {
+        id: "revenue-100k",
+        name: "Kiếm 100k doanh thu",
+        type: "revenue",
+        target: 100000,
+        reward: 20000
+    },
+
+    {
+        id: "revenue-150k",
+        name: "Kiếm 150k doanh thu",
+        type: "revenue",
+        target: 150000,
+        reward: 30000
+    }
+
+];
+
+function dailySeedFromDate() {
+
+    const text =
+        getRealDateKey();
+
+    let hash = 0;
+
+    for (
+        let i = 0;
+        i < text.length;
+        i++
+    ) {
+
+        hash =
+            (
+                hash * 31 +
+                text.charCodeAt(i)
+            ) >>> 0;
+    }
+
+    return hash;
+}
+
+
+function getTodaysMissions() {
+
+    const pool =
+        [...DAILY_MISSION_POOL];
+
+    let seed =
+        dailySeedFromDate();
+
+
+    // Shuffle có thể tái tạo lại
+    for (
+        let i = pool.length - 1;
+        i > 0;
+        i--
+    ) {
+
+        seed =
+            (seed * 9301 + 49297) %
+            233280;
+
+        const random =
+            seed / 233280;
+
+        const j =
+            Math.floor(
+                random * (i + 1)
+            );
+
+        [
+            pool[i],
+            pool[j]
+        ] = [
+            pool[j],
+            pool[i]
+        ];
+    }
+
+
+    return pool.slice(0, 3);
+}
+
+function getDailyMissionProgress(
+    mission
+) {
+
+    realDaily =
+        loadRealDailyData();
+
+
+    if (
+        mission.type === "orders"
+    ) {
+
+        return (
+            realDaily.stats.correctOrders ||
+            0
+        );
+    }
+
+
+    if (
+        mission.type === "revenue"
+    ) {
+
+        return (
+            realDaily.stats.revenue ||
+            0
+        );
+    }
+
+
+    if (
+        mission.type === "pate"
+    ) {
+
+        return (
+            realDaily.stats.pateSold ||
+            0
+        );
+    }
+
+
+    return 0;
+}
+
+
+function dailyMissionComplete(
+    mission
+) {
+
+    return (
+        getDailyMissionProgress(mission)
+        >=
+        mission.target
+    );
+}
+
+function claimDailyMission(
+    missionId
+) {
+
+    realDaily =
+        loadRealDailyData();
+
+
+    const mission =
+        getTodaysMissions()
+            .find(
+                item =>
+                    item.id === missionId
+            );
+
+
+    if (!mission) {
+        return;
+    }
+
+
+    if (
+        realDaily.claimed.includes(
+            mission.id
+        )
+    ) {
+
+        return;
+    }
+
+
+    if (
+        !dailyMissionComplete(
+            mission
+        )
+    ) {
+
+        return;
+    }
+
+
+    // Đánh dấu trước
+    realDaily.claimed.push(
+        mission.id
+    );
+
+
+    // Thưởng tiền
+    game.money +=
+        mission.reward;
+
+
+    saveRealDailyData(
+        realDaily
+    );
+
+    saveGame();
+
+
+    moneyDisplay.textContent =
+        formatMoney(game.money);
+
+
+    renderDailyMissions();
+}
+
+let missionPanelSection =
+    "daily";
+
+
+function renderDailyMissions() {
+
+    syncEventProgress();
+
+
+    shopPanelEyebrow.textContent =
+        "Mục tiêu & sự kiện";
+
+    shopPanelTitle.textContent =
+        "📋 Nhiệm vụ";
+
+
+    shopPanelContent.innerHTML = `
+
+        <div class="mission-tabs">
+
+            <button
+                class="
+                    mission-tab
+                    ${
+                        missionPanelSection === "daily"
+                            ? "active"
+                            : ""
+                    }
+                "
+                type="button"
+                data-mission-tab="daily"
+            >
+                📅 Nhiệm vụ ngày
+            </button>
+
+
+            <button
+                class="
+                    mission-tab
+                    ${
+                        missionPanelSection === "event"
+                            ? "active"
+                            : ""
+                    }
+                "
+                type="button"
+                data-mission-tab="event"
+            >
+                🎉 Nhiệm vụ sự kiện
+            </button>
+
+        </div>
+
+
+        <div id="mission-tab-content"></div>
+
+    `;
+
+
+    shopPanelContent
+        .querySelectorAll(
+            "[data-mission-tab]"
+        )
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    missionPanelSection =
+                        button.dataset.missionTab;
+
+                    renderDailyMissions();
+                }
+            );
+
+        });
+
+
+    if (
+        missionPanelSection ===
+        "event"
+    ) {
+
+        renderEventMissionContent();
+
+    } else {
+
+        renderDailyMissionContent();
+    }
+}
+
+function renderDailyMissionContent() {
+
+    realDaily =
+        loadRealDailyData();
+
+    const missions =
+        getTodaysMissions();
+
+    const container =
+        document.getElementById(
+            "mission-tab-content"
+        );
+
+
+    const cards =
+        missions.map(mission => {
+
+            const rawProgress =
+                getDailyMissionProgress(
+                    mission
+                );
+
+            const progress =
+                Math.min(
+                    rawProgress,
+                    mission.target
+                );
+
+            const complete =
+                rawProgress >=
+                mission.target;
+
+            const claimed =
+                realDaily.claimed.includes(
+                    mission.id
+                );
+
+            const percent =
+                Math.min(
+                    100,
+                    progress /
+                    mission.target *
+                    100
+                );
+
+            const money =
+                mission.type ===
+                "revenue";
+
+
+            return `
+
+                <article
+                    class="
+                        daily-mission-card
+                        ${
+                            complete
+                                ? "is-complete"
+                                : ""
+                        }
+                    "
+                >
+
+                    <div class="
+                        daily-mission-top
+                    ">
+
+                        <span class="
+                            daily-mission-name
+                        ">
+                            ${
+                                claimed
+                                    ? "✅"
+                                    : complete
+                                        ? "🎁"
+                                        : "📌"
+                            }
+
+                            ${mission.name}
+                        </span>
+
+                        <span class="
+                            daily-mission-progress-text
+                        ">
+                            ${
+                                money
+                                    ? formatMoney(progress)
+                                    : progress
+                            }
+                            /
+                            ${
+                                money
+                                    ? formatMoney(
+                                        mission.target
+                                    )
+                                    : mission.target
+                            }
+                        </span>
+
+                    </div>
+
+
+                    <div class="
+                        daily-mission-track
+                    ">
+                        <span
+                            style="
+                                width:${percent}%;
+                            "
+                        ></span>
+                    </div>
+
+
+                    ${
+                        claimed
+
+                            ? `
+                                <div class="
+                                    daily-mission-status
+                                ">
+                                    ✓ Đã nhận thưởng
+                                </div>
+                            `
+
+                            : complete
+
+                                ? `
+                                    <button
+                                        class="
+                                            daily-mission-claim
+                                        "
+                                        data-claim-mission="
+                                            ${mission.id}
+                                        "
+                                        type="button"
+                                    >
+                                        Nhận
+                                        +${formatMoney(
+                                            mission.reward
+                                        )}
+                                    </button>
+                                `
+
+                                : `
+                                    <div class="
+                                        daily-mission-status
+                                    ">
+                                        Thưởng:
+                                        ${formatMoney(
+                                            mission.reward
+                                        )}
+                                    </div>
+                                `
+                    }
+
+                </article>
+
+            `;
+
+        })
+        .join("");
+
+
+    container.innerHTML = `
+
+        <p class="
+            daily-mission-intro
+        ">
+            Làm mới mỗi ngày thật.
+        </p>
+
+        <div class="
+            daily-mission-list
+        ">
+            ${cards}
+        </div>
+
+    `;
+
+
+    container
+        .querySelectorAll(
+            "[data-claim-mission]"
+        )
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    claimDailyMission(
+                        button.dataset
+                            .claimMission
+                            .trim()
+                    );
+
+                }
+            );
+
+        });
+}
+
+function renderEventMissionContent() {
+
+    const container =
+        document.getElementById(
+            "mission-tab-content"
+        );
+
+
+    const progress =
+        Math.min(
+            20,
+            eventProgress
+                .highestDayCompleted
+        );
+
+
+    const completed =
+        progress >= 20;
+
+
+    const percent =
+        progress / 20 * 100;
+
+
+    container.innerHTML = `
+
+        <div class="
+            event-mission-banner
+        ">
+
+            <div class="
+                event-mission-emoji
+            ">
+                🌸
+            </div>
+
+            <div>
+                <strong>
+                    Mùa Hoa Anh Đào
+                </strong>
+
+                <p>
+                    Hoàn thành 20 ngày trong
+                    game để mở quyền mua
+                    bộ trang trí Sakura.
+                </p>
+            </div>
+
+        </div>
+
+
+        <article
+            class="
+                daily-mission-card
+                ${
+                    completed
+                        ? "is-complete"
+                        : ""
+                }
+            "
+        >
+
+            <div class="
+                daily-mission-top
+            ">
+
+                <span class="
+                    daily-mission-name
+                ">
+                    ${
+                        completed
+                            ? "✅"
+                            : "🌸"
+                    }
+
+                    Chơi 20 ngày
+                </span>
+
+                <span class="
+                    daily-mission-progress-text
+                ">
+                    ${progress} / 20
+                </span>
+
+            </div>
+
+
+            <div class="
+                daily-mission-track
+            ">
+                <span
+                    style="
+                        width:${percent}%;
+                    "
+                ></span>
+            </div>
+
+
+            <div class="
+                event-reward-preview
+            ">
+
+                ${
+                    completed
+
+                        ? `
+                            🔓 Đã mở quyền mua
+                            set Sakura trong
+                            Trang trí!
+                        `
+
+                        : `
+                            🔒 Phần thưởng:
+                            mở quyền mua
+                            set Sakura
+                        `
+                }
+
+            </div>
+
+        </article>
+
+    `;
+}
+
+// ======================================================
+// EVENT MISSIONS
+// ======================================================
+
+const EVENT_PROGRESS_KEY =
+    "mot-o-nha-event-progress-v1";
+
+
+function loadEventProgress() {
+
+    try {
+
+        const saved =
+            JSON.parse(
+                localStorage.getItem(
+                    EVENT_PROGRESS_KEY
+                ) || "{}"
+            );
+
+
+        return {
+            highestDayCompleted:
+                Number(
+                    saved.highestDayCompleted
+                ) || 0
+        };
+
+    } catch {
+
+        return {
+            highestDayCompleted: 0
+        };
+    }
+}
+
+
+let eventProgress =
+    loadEventProgress();
+
+
+function saveEventProgress() {
+
+    localStorage.setItem(
+        EVENT_PROGRESS_KEY,
+        JSON.stringify(
+            eventProgress
+        )
+    );
+}
+
+
+function syncEventProgress() {
+
+    const completedByCurrentSave =
+        Math.max(
+            0,
+            game.day - 1
+        );
+
+
+    if (
+        completedByCurrentSave >
+        eventProgress.highestDayCompleted
+    ) {
+
+        eventProgress.highestDayCompleted =
+            completedByCurrentSave;
+
+        saveEventProgress();
+    }
+}
+
+
+function sakuraEventUnlocked() {
+
+    syncEventProgress();
+
+    return (
+        eventProgress.highestDayCompleted
+        >= 20
+    );
+}
+
+// ======================================================
+// DECORATION SKINS
+// ======================================================
+
+const SKIN_SAVE_KEY =
+    "mot-o-nha-skins-v1";
+
+
+const SKIN_CATALOG = {
+
+    recipe: [
+
+        {
+            id: "mac-dinh",
+            name: "Mặc định",
+            image:
+                "images/skins/recipe-skin/mac-dinh.png",
+            price: 0
+        },
+
+        {
+            id: "sakura",
+            name: "Sakura",
+            image:
+                "images/skins/recipe-skin/sakura.png",
+            price: 200000,
+            event: "sakura"
+        },
+
+        {
+            id: "trung-thu",
+            name: "Trung thu",
+            image:
+                "images/skins/recipe-skin/trung-thu.png",
+            event: "trung-thu",
+            unavailable: true
+        }
+
+    ],
+
+
+    background: [
+
+        {
+            id: "troi-xanh",
+            name: "Trời xanh",
+            image:
+                "images/skins/background/troi-xanh.jpg",
+            price: 0
+        },
+
+        {
+            id: "thanh-thi",
+            name: "Thành thị",
+            image:
+                "images/skins/background/thanh-thi.jpg",
+            price: 80000
+        },
+
+        {
+            id: "sakura",
+            name: "Sakura",
+            image:
+                "images/skins/background/sakura.jpg",
+            price: 250000,
+            event: "sakura"
+        },
+
+        {
+            id: "trung-thu",
+            name: "Trung thu",
+            image:
+                "images/skins/background/trung-thu.jpg",
+            event: "trung-thu",
+            unavailable: true
+        }
+
+    ],
+
+
+    board: [
+
+        {
+            id: "mac-dinh",
+            name: "Mặc định",
+            image:
+                "images/skins/board/mac-dinh.png",
+            price: 0
+        },
+
+        {
+            id: "sakura",
+            name: "Sakura",
+            image:
+                "images/skins/board/sakura.png",
+            price: 220000,
+            event: "sakura"
+        },
+
+        {
+            id: "trung-thu",
+            name: "Trung thu",
+            image:
+                "images/skins/board/trung-thu.png",
+            event: "trung-thu",
+            unavailable: true
+        }
+
+    ],
+
+    counter: [
+
+    {
+        id: "mac-dinh",
+        name: "Mặc định",
+        price: 0
+    },
+
+    {
+        id: "sakura",
+        name: "Sakura",
+        price: 120000,
+        event: "sakura"
+    },
+
+    {
+        id: "trung-thu",
+        name: "Trung thu",
+        event: "trung-thu",
+        unavailable: true
+    }
+
+    ]
+};
+
+
+const DEFAULT_SKINS = {
+    recipe: "mac-dinh",
+    background: "troi-xanh",
+    board: "mac-dinh",
+    counter: "mac-dinh"
+};
+
+
+function loadSelectedSkins() {
+
+    try {
+
+        const saved =
+            JSON.parse(
+                localStorage.getItem(
+                    SKIN_SAVE_KEY
+                ) || "{}"
+            );
+
+
+        return {
+            ...DEFAULT_SKINS,
+            ...saved
+        };
+
+    } catch {
+
+        return {
+            ...DEFAULT_SKINS
+        };
+    }
+}
+
+
+let selectedSkins =
+    loadSelectedSkins();
+
+
+function saveSelectedSkins() {
+
+    localStorage.setItem(
+        SKIN_SAVE_KEY,
+        JSON.stringify(
+            selectedSkins
+        )
+    );
+}
+
+
+function skinById(type, id) {
+
+    return (
+        SKIN_CATALOG[type]
+            .find(
+                skin => skin.id === id
+            )
+        ||
+        SKIN_CATALOG[type][0]
+    );
+}
+
+function ownsSkin(
+    type,
+    id
+) {
+
+    return (
+        game.skinOwned?.[type] ||
+        []
+    ).includes(id);
+}
+
+
+function canAccessSkin(
+    skin
+) {
+
+    if (skin.unavailable) {
+        return false;
+    }
+
+
+    if (
+        skin.event === "sakura"
+    ) {
+
+        return sakuraEventUnlocked();
+    }
+
+
+    return true;
+}
+
+
+function buySkin(
+    type,
+    id
+) {
+
+    const skin =
+        skinById(type, id);
+
+    if (!skin) return;
+
+
+    if (
+        skin.unavailable
+    ) {
+
+        showCutePopup({
+            icon: "🔒",
+            title: "Chưa mở",
+            message:
+                "Skin này thuộc một sự kiện sắp tới.",
+            confirmText: "Okii"
+        });
+
+        return;
+    }
+
+
+    if (
+        skin.event === "sakura" &&
+        !sakuraEventUnlocked()
+    ) {
+
+        showCutePopup({
+            icon: "🌸",
+            title: "Skin Sakura",
+            message:
+                "Hoàn thành 20 ngày trong game để mở quyền mua set Sakura.",
+            confirmText: "Okii"
+        });
+
+        return;
+    }
+
+
+    if (
+        ownsSkin(type, id)
+    ) {
+
+        selectedSkins[type] =
+            id;
+
+        saveSelectedSkins();
+
+        applySelectedSkins();
+
+        renderDecorationPanel();
+
+        return;
+    }
+
+
+    if (
+        game.money <
+        skin.price
+    ) {
+
+        showCutePopup({
+            icon: "🥲",
+            title: "Chưa đủ tiền",
+            message:
+                `Skin này có giá ${formatMoney(skin.price)}.`,
+            confirmText: "Okii"
+        });
+
+        return;
+    }
+
+
+    showCutePopup({
+
+        icon: "🎨",
+
+        title:
+            `Mua ${skin.name}?`,
+
+        message:
+            `Giá ${formatMoney(skin.price)}.`,
+
+        cancelText: "Để sau",
+
+        confirmText: "Mua",
+
+        onConfirm: () => {
+
+            game.money -=
+                skin.price;
+
+            if (
+                !game.skinOwned[type]
+                    .includes(id)
+            ) {
+
+                game.skinOwned[type]
+                    .push(id);
+            }
+
+
+            selectedSkins[type] =
+                id;
+
+
+            saveSelectedSkins();
+
+            saveGame();
+
+            moneyDisplay.textContent =
+                formatMoney(game.money);
+
+            applySelectedSkins();
+
+            renderDecorationPanel();
+        }
+
+    });
+}
+
+function sanitizeSelectedSkins() {
+
+    Object.keys(
+        DEFAULT_SKINS
+    ).forEach(type => {
+
+        const selected =
+            selectedSkins[type];
+
+
+        if (
+            !ownsSkin(
+                type,
+                selected
+            )
+        ) {
+
+            selectedSkins[type] =
+                DEFAULT_SKINS[type];
+        }
+
+    });
+
+
+    saveSelectedSkins();
+}
+
+function applySelectedSkins() {
+
+    const board =
+        skinById(
+            "board",
+            selectedSkins.board
+        );
+
+    const background =
+        skinById(
+            "background",
+            selectedSkins.background
+        );
+
+    const recipe =
+        skinById(
+            "recipe",
+            selectedSkins.recipe
+        );
+
+    
+    document
+    .querySelectorAll(
+        ".banhmi-workspace"
+    )
+    .forEach(panel => {
+
+        panel.classList.remove(
+            "counter-mac-dinh",
+            "counter-sakura",
+            "counter-trung-thu"
+        );
+
+        panel.classList.add(
+            `counter-${selectedSkins.counter}`
+        );
+
+    });
+
+    document
+        .querySelectorAll(
+            ".cutting-board"
+        )
+        .forEach(image => {
+
+            image.src =
+                board.image;
+
+        });
+
+
+    document
+        .querySelectorAll(
+            ".customer-panel"
+        )
+        .forEach(panel => {
+
+            panel.style.backgroundImage =
+                `url("${background.image}")`;
+
+            panel.style.backgroundSize =
+                "cover";
+
+            panel.style.backgroundPosition =
+                "center";
+
+            panel.style.backgroundRepeat =
+                "no-repeat";
+
+        });
+
+
+    document
+        .querySelectorAll(
+            ".recipe-book-fab img"
+        )
+        .forEach(image => {
+
+            image.src =
+                recipe.image;
+
+        });
+}
+
+function renderSkinCards(type) {
+
+    return SKIN_CATALOG[type]
+        .map(skin => {
+
+            const selected =
+                selectedSkins[type] ===
+                skin.id;
+
+            const owned =
+                ownsSkin(
+                    type,
+                    skin.id
+                );
+
+            const accessible =
+                canAccessSkin(skin);
+
+
+            let badge = "";
+
+
+            if (selected && owned) {
+
+                badge = `
+                    <span class="
+                        skin-selected-badge
+                    ">
+                        Đang dùng
+                    </span>
+                `;
+
+            } else if (
+                skin.unavailable
+            ) {
+
+                badge = `
+                    <span class="
+                        skin-lock-badge
+                    ">
+                        🔒 Sắp tới
+                    </span>
+                `;
+
+            } else if (
+                !accessible
+            ) {
+
+                badge = `
+                    <span class="
+                        skin-lock-badge
+                    ">
+                        🔒 Sự kiện
+                    </span>
+                `;
+
+            } else if (!owned) {
+
+                badge = `
+                    <span class="
+                        skin-price-badge
+                    ">
+                        ${formatMoney(
+                            skin.price
+                        )}
+                    </span>
+                `;
+            }
+
+
+            return `
+
+                <button
+
+                    class="
+                        skin-card
+                        ${
+                            selected && owned
+                                ? "is-selected"
+                                : ""
+                        }
+
+                        ${
+                            !accessible
+                                ? "is-locked"
+                                : ""
+                        }
+                    "
+
+                    type="button"
+
+                    data-skin-type="${type}"
+
+                    data-skin-id="${skin.id}"
+
+                >
+
+                    ${badge}
+
+
+<span
+    class="
+        skin-preview
+        ${
+            type === "background"
+                ? "background-preview"
+                : ""
+        }
+        ${
+            type === "counter"
+                ? `counter-preview counter-preview-${skin.id}`
+                : ""
+        }
+    "
+>
+
+    ${
+        type === "counter"
+
+            ? `
+                <span
+                    class="counter-preview-board"
+                ></span>
+            `
+
+            : `
+                <img
+                    src="${skin.image}"
+                    alt="${skin.name}"
+                    draggable="false"
+                >
+            `
+    }
+
+
+    ${
+        !accessible
+            ? `
+                <span
+                    class="skin-lock-overlay"
+                >
+                    🔒
+                </span>
+            `
+            : ""
+    }
+
+</span>
+
+
+<strong>
+    ${skin.name}
+</strong>
+
+
+                    ${
+                        accessible &&
+                        !owned
+
+                            ? `
+                                <small
+                                    class="
+                                        skin-buy-text
+                                    "
+                                >
+                                    Mua
+                                    ${formatMoney(
+                                        skin.price
+                                    )}
+                                </small>
+                            `
+
+                            : ""
+                    }
+
+                </button>
+            `;
+
+        })
+        .join("");
+}
+
+function renderDecorationPanel() {
+
+    shopPanelEyebrow.textContent =
+        "Cá nhân hóa tiệm";
+
+    shopPanelTitle.textContent =
+        "🎨 Trang trí";
+
+
+    shopPanelContent.innerHTML = `
+
+        <h3 class="shop-section-title">
+            📖 Sổ công thức
+        </h3>
+
+        <div class="skin-grid">
+            ${renderSkinCards("recipe")}
+        </div>
+
+
+        <h3 class="shop-section-title">
+            🌤️ Khung cảnh
+        </h3>
+
+        <div class="skin-grid">
+            ${renderSkinCards("background")}
+        </div>
+
+
+        <h3 class="shop-section-title">
+            🪵 Thớt
+        </h3>
+
+        <div class="skin-grid">
+            ${renderSkinCards("board")}
+        </div>
+
+        <h3 class="shop-section-title">
+            🪵 Bàn bếp
+        </h3>
+
+        <div class="skin-grid">
+            ${renderSkinCards("counter")}
+        </div>
+
+    `;
+
+
+    shopPanelContent
+        .querySelectorAll(
+            "[data-skin-type]"
+        )
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    const type =
+                        button.dataset.skinType;
+
+                    const id =
+                        button.dataset.skinId;
+
+
+                    buySkin(
+                        type,
+                        id
+                    );
+
+                }
+            );
+
+        });
+}
+
+// ======================================================
+// SHOP UPGRADES
+// ======================================================
+
+const UPGRADE_CONFIG = {
+
+    advertising: {
+        icon: "📣",
+
+        name: "Quảng bá",
+
+        description:
+            "Thu hút thêm khách đến tiệm mỗi ngày.",
+
+        levels: [
+            {
+                name: "Phát tờ rơi",
+                price: 250000,
+                effect: "+8% khách mỗi ngày"
+            },
+            {
+                name: "Quảng cáo truyền hình",
+                price: 650000,
+                effect: "+16% khách mỗi ngày"
+            },
+            {
+                name: "Billboard trung tâm",
+                price: 1400000,
+                effect: "+25% khách mỗi ngày"
+            }
+        ]
+    },
+
+
+    seating: {
+        icon: "🪑",
+
+        name: "Chỗ ngồi",
+
+        description:
+            "Khách thoải mái hơn và chịu chờ lâu hơn.",
+
+        levels: [
+            {
+                name: "Ghế nhựa vỉa hè",
+                price: 180000,
+                effect: "+10% thời gian kiên nhẫn"
+            },
+            {
+                name: "Ghế tựa êm ái",
+                price: 480000,
+                effect: "+20% thời gian kiên nhẫn"
+            },
+            {
+                name: "Sofa phòng chờ",
+                price: 1100000,
+                effect: "+35% thời gian kiên nhẫn"
+            }
+        ]
+    },
+
+
+    aircon: {
+        icon: "🌬️",
+
+        name: "Làm mát",
+
+        description:
+            "Khách bớt khó chịu khi phải chờ lâu.",
+
+        levels: [
+            {
+                name: "Quạt điện",
+                price: 350000,
+                effect: "Rating dễ hơn 5%"
+            },
+            {
+                name: "Máy lạnh treo tường",
+                price: 850000,
+                effect: "Rating dễ hơn 10%"
+            },
+            {
+                name: "Điều hòa cao cấp",
+                price: 1800000,
+                effect: "Rating dễ hơn 15%"
+            }
+        ]
+    }
+
+};
+
+function customersForNewDay() {
+
+    const base =
+        randomCustomersToday();
+
+    const level =
+        getUpgradeLevel(
+            "advertising"
+        );
+
+    const bonusByLevel = [
+        0,
+        0.08,
+        0.16,
+        0.25
+    ];
+
+    const bonus =
+        bonusByLevel[level] || 0;
+
+
+    return Math.max(
+        base,
+        Math.round(
+            base * (1 + bonus)
+        )
+    );
+}
+
+function getUpgradeLevel(id) {
+
+    return Number(
+        game.upgrades?.[id] || 0
+    );
+}
+
+
+function buyUpgrade(id) {
+
+    const config =
+        UPGRADE_CONFIG[id];
+
+    if (!config) return;
+
+
+    const currentLevel =
+        getUpgradeLevel(id);
+
+    if (
+        currentLevel >=
+        config.levels.length
+    ) {
+        return;
+    }
+
+
+    const nextLevel =
+        config.levels[currentLevel];
+
+
+    if (
+        game.money <
+        nextLevel.price
+    ) {
+
+        showCutePopup({
+            icon: "🥲",
+            title: "Chưa đủ tiền",
+            message:
+                `Cần ${formatMoney(nextLevel.price)} để nâng cấp.`,
+            confirmText: "Okii"
+        });
+
+        return;
+    }
+
+
+    showCutePopup({
+
+        icon: config.icon,
+
+        title:
+            `${config.name} Lv.${currentLevel + 1}`,
+
+        message:
+            `${nextLevel.effect}\nGiá: ${formatMoney(nextLevel.price)}`,
+
+        cancelText: "Để sau",
+
+        confirmText: "Nâng cấp",
+
+        onConfirm: () => {
+
+            game.money -=
+                nextLevel.price;
+
+            game.upgrades[id] =
+                currentLevel + 1;
+
+            saveGame();
+
+            moneyDisplay.textContent =
+                formatMoney(game.money);
+
+            renderUpgradePanel();
+        }
+
+    });
+}
+
+function renderUpgradePanel() {
+
+    shopPanelEyebrow.textContent =
+        "Phát triển tiệm";
+
+    shopPanelTitle.textContent =
+        "⬆️ Nâng cấp";
+
+
+    const cards =
+        Object.entries(
+            UPGRADE_CONFIG
+        )
+        .map(([id, config]) => {
+
+            const level =
+                getUpgradeLevel(id);
+
+            const maxLevel =
+                config.levels.length;
+
+            const isMax =
+                level >= maxLevel;
+
+            const next =
+                isMax
+                    ? null
+                    : config.levels[level];
+
+
+            return `
+
+                <article class="upgrade-card">
+
+                    <div class="upgrade-card-icon">
+                        ${config.icon}
+                    </div>
+
+                    <div class="upgrade-card-body">
+
+                        <div class="upgrade-card-title">
+
+                            <strong>
+                                ${config.name}
+                            </strong>
+
+                            <span>
+                                Lv.${level}/${maxLevel}
+                            </span>
+
+                        </div>
+
+                        <p>
+                            ${config.description}
+                        </p>
+
+
+                        ${
+                            level > 0
+                                ? `
+                                    <div class="upgrade-current">
+                                        Hiện tại:
+                                        ${config.levels[level - 1].name}
+                                        ·
+                                        ${config.levels[level - 1].effect}
+                                    </div>
+                                `
+                                : `
+                                    <div class="upgrade-current">
+                                        Chưa nâng cấp
+                                    </div>
+                                `
+                        }
+
+
+                        ${
+                            isMax
+                                ? `
+                                    <div class="upgrade-max">
+                                        ✓ Đã nâng tối đa
+                                    </div>
+                                `
+                                : `
+                                    <button
+                                        class="upgrade-buy-button"
+                                        type="button"
+                                        data-upgrade-id="${id}"
+                                    >
+                                        ${next.name}
+                                        · ${next.effect}
+                                        · ${formatMoney(next.price)}
+                                    </button>
+                                `
+                        }
+
+                    </div>
+
+                </article>
+
+            `;
+
+        })
+        .join("");
+
+
+    shopPanelContent.innerHTML = `
+
+        <p class="upgrade-panel-note">
+            Đầu tư tiền kiếm được để phát triển tiệm.
+            Nâng cấp cao hơn sẽ ngày càng đắt.
+        </p>
+
+        <div class="upgrade-list">
+            ${cards}
+        </div>
+
+    `;
+
+
+    shopPanelContent
+        .querySelectorAll(
+            "[data-upgrade-id]"
+        )
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    buyUpgrade(
+                        button.dataset.upgradeId
+                    );
+
+                }
+            );
+
+        });
+}
+
+function renderRevenuePanel() {
+
+    const expenses =
+        game.dailyIngredientSpend +
+        game.dailyRentPaid;
+
+    const profit =
+        game.dailyRevenue -
+        expenses;
+
+
+    shopPanelEyebrow.textContent =
+        `Ngày ${game.day}`;
+
+    shopPanelTitle.textContent =
+        "📊 Doanh thu";
+
+
+    shopPanelContent.innerHTML = `
+
+        <div class="revenue-summary">
+
+            <div class="revenue-card revenue-positive">
+                <span>Doanh thu</span>
+
+                <strong>
+                    ${formatMoney(
+                        game.dailyRevenue
+                    )}
+                </strong>
+            </div>
+
+
+            <div class="revenue-card">
+                <span>Đơn hoàn thành</span>
+
+                <strong>
+                    ${game.completedOrders}
+                </strong>
+            </div>
+
+
+            <div class="revenue-card revenue-negative">
+                <span>Nhập hàng</span>
+
+                <strong>
+                    -${formatMoney(
+                        game.dailyIngredientSpend
+                    )}
+                </strong>
+            </div>
+
+
+            <div class="revenue-card revenue-negative">
+                <span>Tiền thuê</span>
+
+                <strong>
+                    -${formatMoney(
+                        game.dailyRentPaid
+                    )}
+                </strong>
+            </div>
+
+
+            <div
+                class="
+                    revenue-card
+                    revenue-wide
+                    ${
+                        profit >= 0
+                            ? "revenue-positive"
+                            : "revenue-negative"
+                    }
+                "
+            >
+
+                <span>
+                    Lợi nhuận hiện tại
+                </span>
+
+                <strong>
+                    ${
+                        profit >= 0
+                            ? "+"
+                            : "-"
+                    }${formatMoney(
+                        Math.abs(profit)
+                    )}
+                </strong>
+
+            </div>
+
+        </div>
+    `;
+}
 
 // ======================================================
 // WEIGHTED RANDOM
@@ -1024,6 +3168,25 @@ function saveGame() {
             dailyReviewCount: game.dailyReviewCount,
             reviewStarsTotal: game.reviewStarsTotal,
             reviewCount: game.reviewCount,
+            
+            upgrades: {
+    ...game.upgrades
+},
+
+skinOwned: {
+    recipe: [
+        ...game.skinOwned.recipe
+    ],
+    background: [
+        ...game.skinOwned.background
+    ],
+    board: [
+        ...game.skinOwned.board
+    ],
+    counter: [
+    ...game.skinOwned.counter
+    ]
+},
 
             currentRecipeName:
                 game.currentRecipe
@@ -1130,6 +3293,48 @@ function loadGame() {
     game.dailyReviewCount = saved.dailyReviewCount ?? 0;
     game.reviewStarsTotal = saved.reviewStarsTotal ?? 0;
     game.reviewCount = saved.reviewCount ?? 0;
+    
+    game.upgrades = {
+    advertising:
+        saved.upgrades?.advertising || 0,
+
+    seating:
+        saved.upgrades?.seating || 0,
+
+    aircon:
+        saved.upgrades?.aircon || 0
+};
+
+
+game.skinOwned = {
+
+    recipe:
+        Array.isArray(
+            saved.skinOwned?.recipe
+        )
+            ? saved.skinOwned.recipe
+            : ["mac-dinh"],
+
+    background:
+        Array.isArray(
+            saved.skinOwned?.background
+        )
+            ? saved.skinOwned.background
+            : ["troi-xanh"],
+
+    board:
+        Array.isArray(
+            saved.skinOwned?.board
+        )
+            ? saved.skinOwned.board
+            : ["mac-dinh"],
+    counter:
+        Array.isArray(
+            saved.skinOwned?.counter
+        )
+            ? saved.skinOwned.counter
+            : ["mac-dinh"]
+};
 
     game.currentCustomer =
         saved.currentCustomer ?? null;
@@ -1237,7 +3442,35 @@ function saveDayStartCheckpoint() {
         dailyRentPaid:
             game.dailyRentPaid,
 
-        ingredients: ingredientSnapshot
+        ingredients: ingredientSnapshot,
+        upgrades: {
+    ...game.upgrades
+},
+
+skinOwned: {
+    recipe: [
+        ...game.skinOwned.recipe
+    ],
+    background: [
+        ...game.skinOwned.background
+    ],
+    board: [
+        ...game.skinOwned.board
+    ],
+    counter: [
+    ...game.skinOwned.counter
+    ]
+},
+
+selectedSkins: {
+    ...selectedSkins
+},
+
+realDailySnapshot: JSON.parse(
+    JSON.stringify(
+        loadRealDailyData()
+    )
+),
     };
 
     try {
@@ -1299,6 +3532,63 @@ function restartCurrentDay() {
         onConfirm: () => {
             game.day = snapshot.day;
             game.money = snapshot.money;
+            game.upgrades = {
+    advertising:
+        snapshot.upgrades?.advertising || 0,
+
+    seating:
+        snapshot.upgrades?.seating || 0,
+
+    aircon:
+        snapshot.upgrades?.aircon || 0
+};
+
+
+game.skinOwned = {
+
+    recipe:
+        snapshot.skinOwned?.recipe ||
+        ["mac-dinh"],
+
+    background:
+        snapshot.skinOwned?.background ||
+        ["troi-xanh"],
+
+    board:
+        snapshot.skinOwned?.board ||
+        ["mac-dinh"],
+    counter:
+        snapshot.skinOwned?.counter ||
+        ["mac-dinh"]
+
+};
+
+
+selectedSkins = {
+    ...DEFAULT_SKINS,
+    ...(snapshot.selectedSkins || {})
+};
+
+
+saveSelectedSkins();
+
+if (
+    snapshot.realDailySnapshot &&
+    snapshot.realDailySnapshot.date ===
+        getRealDateKey()
+) {
+
+    realDaily =
+        JSON.parse(
+            JSON.stringify(
+                snapshot.realDailySnapshot
+            )
+        );
+
+    saveRealDailyData(
+        realDaily
+    );
+}
             game.customersToday = snapshot.customersToday;
 
             if (snapshot.ingredients) {
@@ -1451,6 +3741,28 @@ function resetGameSave() {
             game.reviewStarsTotal = 0;
             game.reviewCount = 0;
 
+            game.upgrades = {
+    advertising: 0,
+    seating: 0,
+    aircon: 0
+};
+
+
+game.skinOwned = {
+    recipe: ["mac-dinh"],
+    background: ["troi-xanh"],
+    board: ["mac-dinh"],
+    counter: ["mac-dinh"]
+};
+
+
+selectedSkins = {
+    ...DEFAULT_SKINS
+};
+
+
+saveSelectedSkins();
+
             game.currentRecipe = null;
             game.currentCustomer = null;
             game.currentOrder = [];
@@ -1571,6 +3883,12 @@ function missingUnlocks(recipe) {
 
 function recipeBookButton() {
 
+    const recipeSkin =
+        skinById(
+            "recipe",
+            selectedSkins.recipe
+        );
+
     return `
         <button
             class="recipe-book-fab"
@@ -1579,7 +3897,7 @@ function recipeBookButton() {
             aria-label="Sổ công thức"
         >
             <img
-                src="images/recipe.png"
+                src="${recipeSkin.image}"
                 alt="Sổ công thức"
                 draggable="false"
             >
@@ -2081,6 +4399,15 @@ function createOrder() {
         return false;
     }
 
+    const speech =
+    getCustomerSpeech();
+
+    const self =
+        speech.self;
+
+    const you =
+        speech.you;
+
 
     game.currentRecipe =
         weightedRandomRecipe(
@@ -2093,11 +4420,15 @@ function createOrder() {
 
 
     game.orderNote =
-        randomItem([
-            "Cho mình một ổ như bình thường nha!",
-            "Cho mình món này nha!",
-            "Một ổ như thường giúp mình nhé!"
-        ]);
+    randomItem([
+        `Cho ${self} một ổ như bình thường nha!`,
+
+        `Cho ${self} món này nha!`,
+
+        you
+            ? `Một ổ như thường giúp ${self} nhé ${you}!`
+            : `Một ổ như thường giúp ${self} nhé!`
+    ]);
 
 
     const modifiers = [];
@@ -2190,44 +4521,74 @@ if (
     chosen.forEach(modifier => modifier.apply());
 
     const singleRequestLines = {
+
     "no-herbs": [
-        "À, mình không ăn rau nha!",
-        "Cho mình không có rau nhé!",
-        "Một ổ nhưng đừng cho rau nha!"
+        `À, ${self} không ăn rau nha!`,
+        `Cho ${self} không có rau nhé!`,
+        you
+            ? `Một ổ nhưng đừng cho rau nha ${you}!`
+            : `Một ổ nhưng đừng cho rau nha!`
     ],
+
     "no-sauce": [
-        "Ôi, mình không ăn sốt nha!",
-        "Cho mình không sốt nhé!",
-        "Một ổ nhưng không thêm sốt giúp mình nha!"
+        `Ôi, ${self} không ăn sốt nha!`,
+        `Cho ${self} không sốt nhé!`,
+        you
+            ? `Một ổ nhưng không thêm sốt giúp ${self} nha ${you}!`
+            : `Một ổ nhưng không thêm sốt giúp ${self} nha!`
     ],
+
     "no-chili": [
-        "Mình không ăn được ớt nha!",
-        "Đừng cho ớt giúp mình nhé!"
+        `${self} không ăn được ớt nha!`,
+        you
+            ? `Đừng cho ớt giúp ${self} nhé ${you}!`
+            : `Đừng cho ớt giúp ${self} nhé!`
     ],
+
     "extra-chili": [
-        "Cho mình thêm ớt nha! 🌶️",
-        "Mình ăn cay, thêm ớt giúp mình nhé!",
-        "Ổ này cho mình có ớt nha!"
+        `Cho ${self} thêm ớt nha! 🌶️`,
+        `${self} ăn cay, thêm ớt giúp ${self} nhé!`,
+        `Ổ này cho ${self} có ớt nha!`
     ],
+
     "extra-ketchup": [
-        "Cho mình thêm ketchup nha!",
-        "Thêm chút sốt cà chua giúp mình nhé!"
+        `Cho ${self} thêm ketchup nha!`,
+        you
+            ? `Thêm chút sốt cà chua giúp ${self} nhé ${you}!`
+            : `Thêm chút sốt cà chua giúp ${self} nhé!`
     ],
+
     "extra-mayo": [
-        "Cho mình thêm mayonnaise nha!",
-        "Thêm chút mayonnaise giúp mình nhé!"
+        `Cho ${self} thêm mayonnaise nha!`,
+        you
+            ? `Thêm chút mayonnaise giúp ${self} nhé ${you}!`
+            : `Thêm chút mayonnaise giúp ${self} nhé!`
     ],
+
     "extra-sriracha": [
-        "Cho mình thêm Sriracha nha! 🌶️",
-        "Cho mình cay hơn một chút, thêm Sriracha nhé!"
+        `Cho ${self} thêm Sriracha nha! 🌶️`,
+        `Cho ${self} cay hơn một chút, thêm Sriracha nhé!`
     ]
 };
 
-game.orderNote = chosen.length === 1
-    ? randomItem(singleRequestLines[chosen[0].id])
-    : `Cho mình món này, ${chosen.map(modifier => modifier.text).join(" và ")} nha!`;
-}
+game.orderNote =
+    chosen.length === 1
 
+        ? randomItem(
+            singleRequestLines[
+                chosen[0].id
+            ]
+        )
+
+        : `Cho ${self} món này, ${
+            chosen
+                .map(
+                    modifier =>
+                        modifier.text
+                )
+                .join(" và ")
+        } nha!`;
+    }
     // BÁNH MÌ KHÔNG
     // Không có topping.
 
@@ -2237,11 +4598,17 @@ game.orderNote = chosen.length === 1
     ) {
 
         game.orderNote =
-            randomItem([
-                "Cho mình một ổ bánh mì không thôi nha!",
-                "Mình chỉ lấy bánh mì thôi, không cần nhân nhé.",
-                "Một ổ không thôi nha, cảm ơn!"
-            ]);
+    randomItem([
+
+        `Cho ${self} một ổ bánh mì không thôi nha!`,
+
+        `${self.charAt(0).toUpperCase() + self.slice(1)} chỉ lấy bánh mì thôi, không cần nhân nhé.`,
+
+        you
+            ? `Một ổ không thôi nha ${you}, cảm ơn!`
+            : `Một ổ không thôi nha, cảm ơn!`
+
+    ]);
     }
 
 
@@ -3978,8 +6345,11 @@ function newDay() {
 
     game.day++;
 
+    syncEventProgress();
 
-    game.customersToday = randomCustomersToday();
+
+    game.customersToday =
+    customersForNewDay();
 
 
     game.customerNumber = 0;
@@ -4308,7 +6678,7 @@ function showCutePopup({
             #cute-popup-overlay {
                 position: fixed;
                 inset: 0;
-                z-index: 99999;
+                z-index: 200000;
 
                 display: flex;
                 align-items: center;
@@ -4804,7 +7174,7 @@ function openSettings() {
                 >
                     <span>🎁 ${t("version")}</span>
                     <span class="settings-value">
-                        v0.2.3 ›
+                        v0.3.0 ›
                     </span>
                 </button>
 
@@ -5001,10 +7371,32 @@ function openUpdateHistory() {
 
                 <div class="update-entry">
                     <div class="update-entry-header">
-                        <strong>Phiên bản 0.2.3</strong>
+                        <strong>Phiên bản 0.3.0</strong>
 
                         <div class="update-entry-meta">
                             <span class="current-version-badge">Hiện tại</span>
+                            <span class="update-date">27/09/2026</span>
+                        </div>
+                    </div>
+
+                    <ul>
+                        <li>Thêm hệ thống quản lý tiệm với Nhiệm vụ, Nâng cấp, Trang trí và theo dõi Doanh thu.</li>
+                        <li>Thêm nhiệm vụ ngày với các mục tiêu thay đổi theo ngày thật và phần thưởng tiền khi hoàn thành.</li>
+                        <li>Thêm nhiệm vụ sự kiện Mùa Hoa Anh Đào, hoàn thành 20 ngày để mở quyền mua bộ trang trí Sakura.</li>
+                        <li>Thêm hệ thống nâng cấp tiệm gồm Quảng bá, Chỗ ngồi và Làm mát, giúp tăng lượng khách, thời gian kiên nhẫn và khả năng nhận đánh giá cao.</li>
+                        <li>Thêm hệ thống trang trí với skin cho sổ công thức, khung cảnh, thớt và bàn bếp.</li>
+                        <li>Thêm các bộ trang trí Sakura và Trung Thu, cùng khung cảnh Thành thị mới.</li>
+                        <li>Khách hàng giờ có cách xưng hô riêng phù hợp với từng nhân vật thay vì tất cả đều xưng “mình”.</li>
+                        <li>Cải thiện hệ thống lưu tiến trình để lưu các nâng cấp, skin đã sở hữu và trang trí đang sử dụng.</li>
+                        <li>Cải thiện khả năng cài Một Ổ Nha! lên màn hình chính như một ứng dụng web.</li>
+                    </ul>
+                </div>
+
+                <div class="update-entry">
+                    <div class="update-entry-header">
+                        <strong>Phiên bản 0.2.3</strong>
+
+                        <div class="update-entry-meta">
                             <span class="update-date">27/09/2026</span>
                         </div>
                     </div>
@@ -5107,7 +7499,9 @@ function openUpdateHistory() {
         .addEventListener("click", () => overlay.remove());
 
     overlay.addEventListener("click", event => {
-        if (event.target === overlay) overlay.remove();
+        if (event.target === overlay) {
+            overlay.remove();
+        }
     });
 }
 
@@ -5332,6 +7726,8 @@ window.addEventListener(
 const didLoadSave =
     loadGame();
 
+sanitizeSelectedSkins();
+syncEventProgress();
 
 if (
     didLoadSave &&
@@ -5373,6 +7769,50 @@ showHome();
 
 // Dán cuối game.js, ngay sau showHome();
 customers.splice(0, customers.length, "A", "B", "C", "D", "E", "F");
+
+const CUSTOMER_SPEECH = {
+    A: {
+        self: "chị",
+        you: "em"
+    },
+
+    B: {
+        self: "bác",
+        you: "con"
+    },
+
+    C: {
+        self: "anh",
+        you: "em"
+    },
+
+    D: {
+        self: "bà",
+        you: "con"
+    },
+
+    E: {
+        self: "em",
+        you: ""
+    },
+
+    F: {
+        self: "em",
+        you: ""
+    }
+};
+
+
+function getCustomerSpeech() {
+    return (
+        CUSTOMER_SPEECH[
+            game.currentCustomer
+        ] || {
+            self: "mình",
+            you: ""
+        }
+    );
+}
 
 function customerImage(id, mood = 1) {
     const safeId = customers.includes(id) ? id : "A";
@@ -5441,9 +7881,17 @@ function showCustomerReaction(correct) {
     mainButton.disabled = true;
     sprite.src = customerImage(game.currentCustomer, correct ? 2 : 3);
     panel.classList.add(correct ? "is-happy" : "is-annoyed");
-    reaction.textContent = correct
-        ? `Cảm ơn nha! +${formatMoney(game.currentRecipe.price)} ✨`
-        : "Ơ, không đúng món mình gọi rồi...";
+    const speech =
+    getCustomerSpeech();
+
+reaction.textContent =
+    correct
+
+        ? speech.you
+            ? `Cảm ơn ${speech.you} nha! +${formatMoney(game.currentRecipe.price)} ✨`
+            : `Cảm ơn nha! +${formatMoney(game.currentRecipe.price)} ✨`
+
+        : `Ơ, không đúng món ${speech.self} gọi rồi...`;
     saveGame();
 
     customerReactionTimer = setTimeout(() => {
@@ -5716,11 +8164,77 @@ window.addEventListener("resize", queueBoardFit);
 
 queueBoardFit();
 
+let skinApplyQueued = false;
+
+function queueSkinApply() {
+
+    if (skinApplyQueued) {
+        return;
+    }
+
+    skinApplyQueued = true;
+
+    requestAnimationFrame(() => {
+
+        skinApplyQueued = false;
+
+        applySelectedSkins();
+
+    });
+}
+
+
+new MutationObserver(
+    queueSkinApply
+).observe(
+    screen,
+    {
+        childList: true,
+        subtree: true
+    }
+);
+
+
+queueSkinApply();
+
 // ======================================================
 // HÀNG CHỜ KHÁCH, KIÊN NHẪN VÀ ĐÁNH GIÁ
 // ======================================================
 
 const CUSTOMER_PATIENCE_MS = 70000;
+
+function getCustomerPatienceMs() {
+
+    const level =
+        getUpgradeLevel(
+            "seating"
+        );
+
+    const multiplier = [
+        1,
+        1.10,
+        1.20,
+        1.35
+    ][level] || 1;
+
+
+    return Math.round(
+        CUSTOMER_PATIENCE_MS *
+        multiplier
+    );
+}
+
+
+function getTicketPatienceMs(
+    ticket
+) {
+
+    return (
+        ticket.totalPatienceMs ||
+        getCustomerPatienceMs()
+    );
+}
+
 const CUSTOMER_ANNOYED_FRACTION = 0.40;
 let patienceClock = Date.now();
 let patienceInterval = null;
@@ -5789,10 +8303,63 @@ function syncShopRating() {
 
 new MutationObserver(syncShopRating).observe(screen, { childList: true, subtree: true });
 
-function customerStars(ticket, correct) {
-    if (!correct) return 1;
-    const fraction = ticket.remainingMs / CUSTOMER_PATIENCE_MS;
-    return fraction > 0.60 ? 5 : fraction > 0.35 ? 4 : fraction > 0.15 ? 3 : 2;
+function customerStars(
+    ticket,
+    correct
+) {
+
+    if (!correct) {
+        return 1;
+    }
+
+
+    const totalPatience =
+        getTicketPatienceMs(ticket);
+
+    const fraction =
+        ticket.remainingMs /
+        totalPatience;
+
+
+    const airconLevel =
+        getUpgradeLevel(
+            "aircon"
+        );
+
+
+    const thresholdShift = [
+        0,
+        0.05,
+        0.10,
+        0.15
+    ][airconLevel] || 0;
+
+
+    const fiveStar =
+        0.60 - thresholdShift;
+
+    const fourStar =
+        0.35 - thresholdShift;
+
+    const threeStar =
+        Math.max(
+            0,
+            0.15 - thresholdShift
+        );
+
+
+    return (
+        fraction > fiveStar
+            ? 5
+
+            : fraction > fourStar
+                ? 4
+
+                : fraction > threeStar
+                    ? 3
+
+                    : 2
+    );
 }
 
 function createWaitingTicket() {
@@ -5830,7 +8397,8 @@ function createWaitingTicket() {
     const ticket = {
         id: game.nextTicketId++, customer: game.currentCustomer,
         recipeName: game.currentRecipe.name, order: [...game.currentOrder],
-        note: game.orderNote, remainingMs: CUSTOMER_PATIENCE_MS
+        note: game.orderNote, remainingMs: getCustomerPatienceMs(),
+totalPatienceMs: getCustomerPatienceMs()
     };
     game.waitingCustomers.push(ticket);
     game.customerNumber++;
@@ -5860,12 +8428,41 @@ function refreshPatienceUI() {
 
     for (const ticket of game.waitingCustomers) {
         // Giới hạn thời gian của khách đã lưu từ bản 90 giây.
-        ticket.remainingMs = Math.min(ticket.remainingMs, CUSTOMER_PATIENCE_MS);
+        const totalPatience =
+    getTicketPatienceMs(ticket);
 
-        const percent = Math.max(0, Math.min(100,
-            Math.round(ticket.remainingMs / CUSTOMER_PATIENCE_MS * 100)));
-        const mood = ticket.remainingMs / CUSTOMER_PATIENCE_MS <= CUSTOMER_ANNOYED_FRACTION ? 3 : 1;
+ticket.totalPatienceMs =
+    totalPatience;
 
+ticket.remainingMs =
+    Math.min(
+        ticket.remainingMs,
+        totalPatience
+    );
+
+
+const fraction =
+    ticket.remainingMs /
+    totalPatience;
+
+
+const percent =
+    Math.max(
+        0,
+        Math.min(
+            100,
+            Math.round(
+                fraction * 100
+            )
+        )
+    );
+
+
+const mood =
+    fraction <=
+        CUSTOMER_ANNOYED_FRACTION
+        ? 3
+        : 1;
         document.querySelectorAll(`[data-patience-id="${ticket.id}"]`).forEach(bar => {
             bar.style.width = `${percent}%`;
             bar.parentElement.classList.toggle("is-urgent", mood === 3);
@@ -5970,7 +8567,7 @@ function scheduleAnotherCustomer() {
             return;
         }
 
-        const arrivingTogether = Math.random() < 0.30 ? 2 : 1;
+        const arrivingTogether = 1;
         const availableSlots = 3 - game.waitingCustomers.length;
         const remainingToday = game.customersToday - game.customerNumber;
         const arrivals = Math.min(
@@ -6031,13 +8628,80 @@ nextCustomer = function () {
     clearTimeout(customerWaitTimer);
     localStorage.removeItem(CUSTOMER_WAIT_KEY);
     if (!game.shopOpen) return;
-    if (ingredients["Bánh mì"].stock <= 0 || !availableRecipes().length) {
-        for (const ticket of game.waitingCustomers) recordCustomerRating(1);
-        game.waitingCustomers = [];
-        game.activeTicketId = null;
-        endDay();
-        return;
+    if (
+    ingredients["Bánh mì"].stock <= 0
+) {
+
+    for (
+        const ticket of
+        game.waitingCustomers
+    ) {
+        recordCustomerRating(1);
     }
+
+    game.waitingCustomers = [];
+    game.activeTicketId = null;
+
+
+    showCutePopup({
+
+        icon: "🥖",
+
+        title:
+            "Bán hết sạch rồi! 🎉",
+
+        message:
+            "Hôm nay tiệm đã bán hết bánh mì. Không còn ổ nào để phục vụ khách tiếp theo, nên mình đóng cửa sớm nha!",
+
+        confirmText:
+            "Tổng kết ngày",
+
+        onConfirm: () => {
+            endDay();
+        }
+
+    });
+
+    return;
+}
+
+
+if (
+    !availableRecipes().length
+) {
+
+    for (
+        const ticket of
+        game.waitingCustomers
+    ) {
+        recordCustomerRating(1);
+    }
+
+    game.waitingCustomers = [];
+    game.activeTicketId = null;
+
+
+    showCutePopup({
+
+        icon: "📦",
+
+        title:
+            "Hết nguyên liệu rồi!",
+
+        message:
+            "Không còn đủ nguyên liệu để nhận thêm khách. Mình đóng cửa sớm và tổng kết ngày nha!",
+
+        confirmText:
+            "Tổng kết ngày",
+
+        onConfirm: () => {
+            endDay();
+        }
+
+    });
+
+    return;
+}
     if (!game.waitingCustomers.length) {
     if (game.customerNumber >= game.customersToday) {
         endDay();
@@ -6064,9 +8728,7 @@ nextCustomer = function () {
     }
 
     // Hết thời gian chờ: khách mới bước vào, đôi khi đi cùng nhau.
-    const arrivingTogether = Math.random() < 0.35
-        ? 2 + (Math.random() < 0.5 ? 1 : 0)
-        : 1;
+    const arrivingTogether = 1;
 
     for (let i = 0; i < arrivingTogether; i++) {
         if (!createWaitingTicket()) break;
@@ -6095,10 +8757,44 @@ completeCustomerOrder = function (correct) {
         ingredients[name].stock = Math.max(0, ingredients[name].stock - 1);
     });
     if (correct) {
-        game.money += game.currentRecipe.price;
-        game.dailyRevenue += game.currentRecipe.price;
-        game.completedOrders++;
+
+    game.money +=
+        game.currentRecipe.price;
+
+    game.dailyRevenue +=
+        game.currentRecipe.price;
+
+    game.completedOrders++;
+
+
+    // =========================
+    // REAL DAILY MISSIONS
+    // =========================
+
+    realDaily =
+        loadRealDailyData();
+
+
+    realDaily.stats.correctOrders++;
+
+
+    realDaily.stats.revenue +=
+        game.currentRecipe.price;
+
+
+    if (
+        game.selectedIngredients.includes(
+            "Pâté"
+        )
+    ) {
+        realDaily.stats.pateSold++;
     }
+
+
+    saveRealDailyData(
+        realDaily
+    );
+}
     showCustomerReaction(correct);
     const reaction = document.getElementById("customer-reaction");
     if (reaction) reaction.textContent += ` ${"★".repeat(stars)}${"☆".repeat(5 - stars)}`;
@@ -6139,7 +8835,8 @@ resumeGame = function () {
             recipeName: game.currentRecipe.name,
             order: [...game.currentOrder],
             note: game.orderNote,
-            remainingMs: CUSTOMER_PATIENCE_MS
+            remainingMs: getCustomerPatienceMs(),
+            totalPatienceMs: getCustomerPatienceMs()
         };
         game.waitingCustomers.push(ticket);
         game.activeTicketId = ticket.id;
