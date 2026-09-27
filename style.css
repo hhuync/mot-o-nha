@@ -612,11 +612,11 @@ button {
 
 .layer-ot {
 
-    top: 67px;
+    top: 70px;
 
     z-index: 20;
 
-    transform: translateX(-50%) scale(1.0);
+    transform: translateX(-50%) scale(1.3);
 
 }
 
@@ -6748,5 +6748,49 @@ body.tutorial-open {
     ) .bottom-area {
         margin-top: 0 !important;
     }
+}
+
+/* ======================================================
+   MOBILE / PWA BOTTOM BUTTON POSITION - HOME + PREP
+   Gameplay đã ổn ở V4, giờ áp dụng cùng logic cho:
+   - Sảnh / Home
+   - Màn nhập nguyên liệu / Prep
+   ====================================================== */
+
+@media (max-width: 560px) {
+
+    #game:has(.home-dashboard) #screen,
+    #game:has(.prep-shopping-screen) #screen {
+        flex:
+            0
+            1
+            auto !important;
+
+        min-height: 0 !important;
+    }
+
+    #game:has(.home-dashboard) .home-dashboard {
+        min-height: auto !important;
+    }
+
+    #game:has(.home-dashboard) .bottom-area,
+    #game:has(.prep-shopping-screen) .bottom-area {
+        margin-top: 0 !important;
+        margin-bottom: 14px !important;
+    }
+}
+
+
+/* ======================================================
+   CHILI LAYER TUNING
+   Theo vị trí đã chốt.
+   ====================================================== */
+
+.layer-ot {
+    top: 67px !important;
+    z-index: 20;
+    transform:
+        translateX(-50%)
+        scale(1.0) !important;
 }
 
