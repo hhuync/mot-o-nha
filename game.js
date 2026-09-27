@@ -184,21 +184,6 @@ preloadLowLatencySfx(
 
 // Cú chạm đầu tiên trên iOS/PWA sẽ unlock AudioContext.
 document.addEventListener(
-    "dragstart",
-    event => {
-        if (
-            event.target.closest("#game")
-        ) {
-            event.preventDefault();
-        }
-    },
-    {
-        capture: true
-    }
-);
-
-
-document.addEventListener(
     "pointerdown",
     unlockLowLatencyAudio,
     {
@@ -8251,27 +8236,6 @@ function bindSauceHoldButton(
 
 
     button.addEventListener(
-        "pointermove",
-        event => {
-            if (
-                activeSauceHold &&
-                activeSauceHold.button === button &&
-                (
-                    event.pointerId === undefined ||
-                    event.pointerId ===
-                        activeSauceHold.pointerId
-                )
-            ) {
-                event.preventDefault();
-            }
-        },
-        {
-            passive: false
-        }
-    );
-
-
-    button.addEventListener(
         "pointerup",
         stopHold
     );
@@ -8831,6 +8795,8 @@ function buyIngredient(name) {
             showPrepDeliveryMessage(
     `Anh đã mở khóa ${name} và giao ${data.restock} phần rồi!`
 );
+
+            playOrderResultSound(true);
         }
     });
 }
@@ -8925,6 +8891,8 @@ function buyStock(name) {
             showPrepDeliveryMessage(
     `Anh đã giao thêm ${data.restock} ${name}. Trong kho giờ có ${data.stock}!`
 );
+
+            playOrderResultSound(true);
         }
     });
 }
