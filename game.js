@@ -41,6 +41,158 @@ const DAY_START_KEY = "mot-o-nha-day-start-v1";
 // Dùng một pool nhỏ để lần bấm kế tiếp có audio sẵn sàng phát.
 // ======================================================
 
+// ======================================================
+// WEB AUDIO LOW-LATENCY LAYER
+// HTMLAudioElement trên iOS/PWA vẫn có thể có startup latency.
+// Web Audio phát AudioBuffer trực tiếp nên phản hồi nhanh hơn rõ rệt.
+// ======================================================
+
+const LowLatencyAudioContext =
+    window.AudioContext ||
+    window.webkitAudioContext;
+
+const lowLatencyAudioContext =
+    LowLatencyAudioContext
+        ? new LowLatencyAudioContext()
+        : null;
+
+const lowLatencySfxBuffers =
+    new Map();
+
+
+async function preloadLowLatencySfx(
+    key,
+    src
+) {
+    if (!lowLatencyAudioContext) {
+        return;
+    }
+
+    try {
+        const response =
+            await fetch(
+                src,
+                {
+                    cache: "force-cache"
+                }
+            );
+
+        if (!response.ok) {
+            throw new Error(
+                `HTTP ${response.status}`
+            );
+        }
+
+        const arrayBuffer =
+            await response.arrayBuffer();
+
+        const audioBuffer =
+            await lowLatencyAudioContext
+                .decodeAudioData(
+                    arrayBuffer.slice(0)
+                );
+
+        lowLatencySfxBuffers.set(
+            key,
+            audioBuffer
+        );
+
+    } catch (error) {
+        console.warn(
+            "Không preload được SFX low-latency:",
+            key,
+            error
+        );
+    }
+}
+
+
+function unlockLowLatencyAudio() {
+    if (
+        lowLatencyAudioContext &&
+        lowLatencyAudioContext.state ===
+            "suspended"
+    ) {
+        lowLatencyAudioContext
+            .resume()
+            .catch(() => {});
+    }
+}
+
+
+function playLowLatencySfx(
+    key,
+    volume
+) {
+    if (!lowLatencyAudioContext) {
+        return false;
+    }
+
+    const buffer =
+        lowLatencySfxBuffers.get(key);
+
+    if (!buffer) {
+        return false;
+    }
+
+    unlockLowLatencyAudio();
+
+    try {
+        const source =
+            lowLatencyAudioContext
+                .createBufferSource();
+
+        const gain =
+            lowLatencyAudioContext
+                .createGain();
+
+        source.buffer =
+            buffer;
+
+        gain.gain.value =
+            volume;
+
+        source.connect(gain);
+
+        gain.connect(
+            lowLatencyAudioContext
+                .destination
+        );
+
+        source.start(0);
+
+        return true;
+
+    } catch {
+        return false;
+    }
+}
+
+
+// Decode sẵn ngay khi JS khởi động.
+// AudioContext có thể đang suspended nhưng decode vẫn chuẩn bị buffer được.
+preloadLowLatencySfx(
+    "ui-click",
+    "audio/click.mp3"
+);
+
+preloadLowLatencySfx(
+    "ingredient",
+    "audio/ingredient.mp3"
+);
+
+
+// Cú chạm đầu tiên trên iOS/PWA sẽ unlock AudioContext.
+document.addEventListener(
+    "pointerdown",
+    unlockLowLatencyAudio,
+    {
+        capture: true,
+        passive: true
+    }
+);
+
+
 function createSfxPool(
     src,
     volume,
@@ -80,6 +232,17 @@ let earlyIngredientSound = {
 
 
 function playIngredientSoundNow() {
+    // Ưu tiên Web Audio vì latency thấp hơn trên iOS/PWA.
+    if (
+        playLowLatencySfx(
+            "ingredient",
+            0.45
+        )
+    ) {
+        return;
+    }
+
+    // Fallback cho browser chưa decode buffer xong.
     const sound =
         ingredientSoundPool[
             ingredientSoundCursor %
@@ -11263,6 +11426,17 @@ let uiClickSoundCursor = 0;
 
 
 function playUiClickSound() {
+    // Ưu tiên Web Audio để click phản hồi ngay trên iPhone/PWA.
+    if (
+        playLowLatencySfx(
+            "ui-click",
+            0.45
+        )
+    ) {
+        return;
+    }
+
+    // Fallback HTMLAudio nếu buffer chưa sẵn sàng.
     const sound =
         uiClickSoundPool[
             uiClickSoundCursor %
