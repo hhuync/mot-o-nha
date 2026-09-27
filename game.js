@@ -4,7 +4,30 @@
 // ======================================================
 
 const SAVE_KEY = "mot-o-nha-save-v3";
-const DAILY_RENT = 15000;
+const BASE_DAILY_UTILITIES = 15000;
+
+function getDailyUtilityCost() {
+
+    const seatingLevel =
+        Number(
+            game?.upgrades?.seating
+        ) || 0;
+
+    const airconLevel =
+        Number(
+            game?.upgrades?.aircon
+        ) || 0;
+
+
+    // Base 15k/ngày.
+    // Chỗ ngồi tăng 2k mỗi cấp.
+    // Làm mát tăng 4k mỗi cấp.
+    return (
+        BASE_DAILY_UTILITIES +
+        seatingLevel * 2000 +
+        airconLevel * 4000
+    );
+}
 const DAY_START_KEY = "mot-o-nha-day-start-v1";
 
 
@@ -18,6 +41,24 @@ ingredientSound.volume = 0.45;
 function playIngredientSound() {
     ingredientSound.currentTime = 0;
     ingredientSound.play().catch(() => {});
+}
+
+
+// Âm thanh bóp sốt.
+// Chạy trong suốt lúc người chơi đang nhấn giữ chai sốt.
+const squirtSound = new Audio("audio/squirt.mp3");
+squirtSound.volume = 0.45;
+squirtSound.loop = true;
+
+function startSquirtSound() {
+    squirtSound.pause();
+    squirtSound.currentTime = 0;
+    squirtSound.play().catch(() => {});
+}
+
+function stopSquirtSound() {
+    squirtSound.pause();
+    squirtSound.currentTime = 0;
 }
 
 const correctSound = new Audio("audio/correct.mp3");
@@ -80,7 +121,7 @@ const translations = {
         "Một Ổ Nha! là game quản lý một tiệm bánh mì nhỏ, nơi bạn chuẩn bị nguyên liệu, làm bánh theo yêu cầu của khách và phát triển tiệm qua từng ngày.",
         creditTitle: "Credit",
         creditMessage:
-    "Thiết kế & phát triển game: Huy Nguyen<br><br>🎵 Âm nhạc: Andrii Hroza - andriih trên Pixabay<br><br>Một số hình ảnh và asset trong game được tạo với sự hỗ trợ của AI, sau đó được lựa chọn và chỉnh sửa để phù hợp với trò chơi."
+    "Thiết kế & phát triển game: Huy Nguyen (@hhuync trên Threads và Instagram)<br><br>🎵 Âm nhạc: Andrii Hroza - andriih trên Pixabay<br><br>Một số hình ảnh và asset trong game được tạo với sự hỗ trợ của AI, sau đó được lựa chọn và chỉnh sửa để phù hợp với trò chơi."
     },
 
     en: {
@@ -103,7 +144,7 @@ const translations = {
     "Một Ổ Nha! is a cozy bánh mì shop management game where you prepare ingredients, make sandwiches to each customer's order, and grow your shop day by day.",
         creditTitle: "Credits",
 creditMessage:
-    "Game design & development: Huy Nguyen<br><br>🎵 Music: Andrii Hroza - andriih on Pixabay<br><br>Some visual assets in the game were created with the assistance of AI, then selected and edited to fit the game."
+    "Game design & development: Huy Nguyen (@hhuync trên Threads và Instagram)<br><br>🎵 Music: Andrii Hroza - andriih on Pixabay<br><br>Some visual assets in the game were created with the assistance of AI, then selected and edited to fit the game."
 }
 };
 
@@ -138,7 +179,7 @@ function setLanguage(language) {
 ========================= */
 
 const TUTORIAL_SEEN_KEY = "mot-o-nha-tutorial-version";
-const TUTORIAL_VERSION = "0.2.3";
+const TUTORIAL_VERSION = "0.3.0";
 
 const tutorialSlides = [
     {
@@ -167,6 +208,12 @@ const tutorialSlides = [
     },
     {
         image: "images/guide/g5.png",
+        title: "Giữ để bóp sốt",
+        caption:
+            "Với Ketchup, Sriracha và Mayonnaise, hãy nhấn giữ chai sốt cho đến khi vòng tròn đầy.\nThả tay quá sớm thì sốt sẽ chưa được thêm vào bánh."
+    },
+    {
+        image: "images/guide/g6.png",
         title: "Phục vụ thật nhanh!",
         caption:
             "Khách càng chờ lâu càng mất kiên nhẫn và đánh giá thấp hơn.\nPhục vụ chính xác, kiếm tiền và phát triển tiệm qua từng ngày!"
@@ -629,6 +676,17 @@ const sauceSlots = [
 
 
 // ======================================================
+// SAUCE HOLD INTERACTION
+// Giữ chai sốt đủ 3 giây để bóp sốt.
+// Trong lúc giữ, sprite sốt được reveal từ trái sang phải.
+// ======================================================
+
+const SAUCE_HOLD_MS = 3000;
+
+let activeSauceHold = null;
+
+
+// ======================================================
 // RECIPES
 //
 // ingredients chỉ chứa TOPPING.
@@ -812,18 +870,49 @@ const customers = [
 // GAME STATE
 // ======================================================
 
-function randomCustomersToday() {
-    const roll = Math.random();
+function randomCustomersToday(day = 1) {
 
-    if (roll < 0.60) {
-        return 5 + Math.floor(Math.random() * 4); // 5–8
+    const currentDay =
+        Math.max(
+            1,
+            Number(day) || 1
+        );
+
+    let minCustomers;
+    let maxCustomers;
+
+    if (currentDay <= 5) {
+
+        minCustomers = 7;
+        maxCustomers = 9;
+
+    } else if (currentDay <= 15) {
+
+        minCustomers = 8;
+        maxCustomers = 11;
+
+    } else if (currentDay <= 29) {
+
+        minCustomers = 9;
+        maxCustomers = 13;
+
+    } else {
+
+        minCustomers = 13;
+        maxCustomers = 18;
     }
 
-    if (roll < 0.90) {
-        return 9 + Math.floor(Math.random() * 4); // 9–12
-    }
-
-    return 13 + Math.floor(Math.random() * 4);    // 13–16
+    return (
+        minCustomers +
+        Math.floor(
+            Math.random() *
+            (
+                maxCustomers -
+                minCustomers +
+                1
+            )
+        )
+    );
 }
 
 const game = {
@@ -836,7 +925,7 @@ const game = {
     hasStarted: false,
     shopOpen: false,
 
-    customersToday: randomCustomersToday(),
+    customersToday: randomCustomersToday(1),
     customerNumber: 0,
     completedOrders: 0,
     dailyRevenue: 0,
@@ -850,6 +939,9 @@ const game = {
     dailyReviewCount: 0,
     reviewStarsTotal: 0,
     reviewCount: 0,
+    ratingStreak: 0,
+    ratingHistory: [],
+    shopXp: 0,
     upgrades: {
     advertising: 0,
     seating: 0,
@@ -860,6 +952,7 @@ const game = {
     recipe: ["mac-dinh"],
     background: ["troi-xanh"],
     board: ["mac-dinh"],
+    ingredientTable: ["mac-dinh"],
     counter: ["mac-dinh"]
 },
     currentRecipe: null,
@@ -942,11 +1035,168 @@ const UI_ICONS = {
         </svg>`
 };
 
+const SHOP_OPEN_MINUTES = 7 * 60;
+const SHOP_CLOSE_MINUTES = 18 * 60;
+const EXPECTED_CUSTOMER_SERVICE_MS = 22000;
+
+
+function getHeaderClockText() {
+
+    const totalCustomers =
+        Math.max(
+            1,
+            Number(game.customersToday) || 1
+        );
+
+
+    /*
+        Đồng hồ trong game, KHÔNG dùng giờ trên máy.
+
+        Ngày mở cửa lúc 07:00 và kết thúc lúc 18:00.
+        11 tiếng được chia đều theo số khách của ngày đó.
+
+        Ví dụ 7 khách:
+        mỗi "slot" khách tương đương khoảng 94 phút game.
+
+        Khi đang phục vụ một khách, đồng hồ tiếp tục chạy
+        trong slot đó dựa trên thời gian người chơi đang làm bánh.
+    */
+
+    const completedCustomers =
+        Math.min(
+            totalCustomers,
+            Math.max(
+                0,
+                Number(game.dailyReviewCount) || 0
+            )
+        );
+
+
+    let partialCustomer = 0;
+
+    const ticket =
+        typeof activeTicket === "function"
+            ? activeTicket()
+            : null;
+
+
+    if (
+        ticket &&
+        game.phase === "making"
+    ) {
+
+        const totalPatience =
+            Math.max(
+                1,
+                Number(
+                    ticket.totalPatienceMs
+                ) || EXPECTED_CUSTOMER_SERVICE_MS
+            );
+
+        const elapsed =
+            Math.max(
+                0,
+                totalPatience -
+                Math.max(
+                    0,
+                    Number(ticket.remainingMs) || 0
+                )
+            );
+
+
+        // Dùng ~22 giây như nhịp phục vụ bình thường.
+        // Không cho partial vượt quá 95% slot trước khi khách xong.
+        partialCustomer =
+            Math.min(
+                0.95,
+                elapsed /
+                EXPECTED_CUSTOMER_SERVICE_MS
+            );
+    }
+
+
+    const dayProgress =
+        Math.min(
+            1,
+            (
+                completedCustomers +
+                partialCustomer
+            ) /
+            totalCustomers
+        );
+
+
+    const gameMinutes =
+        Math.round(
+            SHOP_OPEN_MINUTES +
+            (
+                SHOP_CLOSE_MINUTES -
+                SHOP_OPEN_MINUTES
+            ) *
+            dayProgress
+        );
+
+
+    const hour =
+        Math.floor(
+            gameMinutes / 60
+        );
+
+    const minute =
+        gameMinutes % 60;
+
+
+    return (
+        `${String(hour).padStart(2, "0")}:` +
+        `${String(minute).padStart(2, "0")}`
+    );
+}
+
+
+function getRemainingCustomersToday() {
+
+    return Math.max(
+        0,
+        game.customersToday -
+        game.dailyReviewCount
+    );
+}
+
+
+function syncDayHeaderInfo() {
+
+    if (game.phase === "prep") {
+
+        dayDisplay.textContent =
+            `Ngày ${game.day} · 👥 ${game.customersToday} khách hôm nay`;
+
+        return;
+    }
+
+
+    if (
+        game.shopOpen &&
+        [
+            "waiting",
+            "making",
+            "order",
+            "result"
+        ].includes(game.phase)
+    ) {
+
+        dayDisplay.textContent =
+            `Ngày ${game.day} · 🕒 ${getHeaderClockText()} · Còn ${getRemainingCustomersToday()} khách`;
+    }
+}
+
+
 function updateHeader(title, status) {
 
     dayDisplay.textContent = title;
     statusDisplay.textContent = status;
     moneyDisplay.textContent = formatMoney(game.money);
+
+    syncDayHeaderInfo();
 
     if (game.phase === "home") {
 
@@ -970,12 +1220,73 @@ function updateHeader(title, status) {
     updateShopMenuVisibility();
 }
 
+
+// Đồng hồ trên header tự cập nhật khi tiệm đang mở.
+setInterval(
+    () => {
+
+        if (
+            game.shopOpen &&
+            [
+                "waiting",
+                "making",
+                "order",
+                "result"
+            ].includes(game.phase)
+        ) {
+            syncDayHeaderInfo();
+        }
+
+    },
+    1000
+);
+
 // ======================================================
 // SHOP MANAGEMENT MENU
 // ======================================================
 
 const shopMenuBar =
     document.getElementById("shop-menu-bar");
+
+
+const shopLevelBar =
+    document.createElement("button");
+
+shopLevelBar.type = "button";
+shopLevelBar.id = "shop-level-bar";
+shopLevelBar.className = "shop-level-bar";
+shopLevelBar.setAttribute(
+    "aria-label",
+    "Xem thông tin level tiệm"
+);
+
+if (
+    shopMenuBar &&
+    shopMenuBar.parentNode
+) {
+    shopMenuBar.parentNode.insertBefore(
+        shopLevelBar,
+        shopMenuBar
+    );
+}
+
+shopLevelBar.addEventListener(
+    "click",
+    showShopLevelPopup
+);
+
+
+const managementMenuButton =
+    document.querySelector(
+        '[data-shop-menu="revenue"]'
+    );
+
+if (managementMenuButton) {
+    managementMenuButton.innerHTML = `
+        <span class="shop-menu-icon">🗂️</span>
+        <span>Quản lý</span>
+    `;
+}
 
 const shopPanelOverlay =
     document.getElementById("shop-panel-overlay");
@@ -1007,6 +1318,332 @@ function updateShopMenuVisibility() {
     shopMenuBar.hidden =
         !game.hasStarted ||
         !visiblePhases.includes(game.phase);
+
+    shopLevelBar.hidden =
+        shopMenuBar.hidden;
+
+    if (!shopLevelBar.hidden) {
+        refreshShopLevelBar();
+    }
+}
+
+
+
+function getXpNeededForLevel(level) {
+    return 220 + (level - 1) * 85;
+}
+
+
+function getShopLevelProgress() {
+    let level = 1;
+    let xpIntoLevel =
+        Math.max(
+            0,
+            Number(game.shopXp) || 0
+        );
+
+    let needed =
+        getXpNeededForLevel(level);
+
+    while (
+        xpIntoLevel >= needed &&
+        level < 999
+    ) {
+        xpIntoLevel -= needed;
+        level++;
+        needed =
+            getXpNeededForLevel(level);
+    }
+
+    return {
+        level,
+        xpIntoLevel,
+        needed,
+        percent:
+            Math.min(
+                100,
+                xpIntoLevel / needed * 100
+            )
+    };
+}
+
+
+function getShopLevelTitle(level) {
+    if (level >= 120) {
+        return "Huyền thoại bánh mì";
+    }
+
+    if (level >= 80) {
+        return "Điểm hẹn khu phố";
+    }
+
+    if (level >= 50) {
+        return "Tiệm bánh mì nổi tiếng";
+    }
+
+    if (level >= 25) {
+        return "Tiệm quen khu phố";
+    }
+
+    if (level >= 10) {
+        return "Tiệm quen đầu ngõ";
+    }
+
+    return "Quán mới mở";
+}
+
+
+function getNextShopTitleInfo(level) {
+    if (level < 10) {
+        return {
+            title: "Tiệm quen đầu ngõ",
+            level: 10
+        };
+    }
+
+    if (level < 25) {
+        return {
+            title: "Tiệm quen khu phố",
+            level: 25
+        };
+    }
+
+    if (level < 50) {
+        return {
+            title: "Tiệm bánh mì nổi tiếng",
+            level: 50
+        };
+    }
+
+    if (level < 80) {
+        return {
+            title: "Điểm hẹn khu phố",
+            level: 80
+        };
+    }
+
+    if (level < 120) {
+        return {
+            title: "Huyền thoại bánh mì",
+            level: 120
+        };
+    }
+
+    return {
+        title: "Danh hiệu cao nhất",
+        level: null
+    };
+}
+
+
+function refreshShopLevelBar() {
+    if (!shopLevelBar) return;
+
+    const progress =
+        getShopLevelProgress();
+
+    const title =
+        getShopLevelTitle(
+            progress.level
+        );
+
+    shopLevelBar.innerHTML = `
+        <div class="shop-level-topline">
+            <strong>
+                LV. ${progress.level}
+            </strong>
+
+            <span>${title}</span>
+
+            <small>
+                ${progress.xpIntoLevel}
+                /
+                ${progress.needed} EXP
+            </small>
+        </div>
+
+        <div class="shop-level-track">
+            <span
+                style="
+                    width:
+                    ${progress.percent}%;
+                "
+            ></span>
+        </div>
+    `;
+}
+
+
+function addShopXp(amount) {
+    const earned =
+        Math.max(
+            0,
+            Math.round(Number(amount) || 0)
+        );
+
+    if (!earned) return;
+
+    game.shopXp =
+        Math.max(
+            0,
+            Number(game.shopXp) || 0
+        ) + earned;
+
+    refreshShopLevelBar();
+}
+
+
+function showShopLevelPopup() {
+    document
+        .getElementById(
+            "shop-level-overlay"
+        )
+        ?.remove();
+
+    const progress =
+        getShopLevelProgress();
+
+    const title =
+        getShopLevelTitle(
+            progress.level
+        );
+
+    const nextTitleInfo =
+        getNextShopTitleInfo(
+            progress.level
+        );
+
+    const overlay =
+        document.createElement("div");
+
+    overlay.id =
+        "shop-level-overlay";
+
+    overlay.className =
+        "shop-level-overlay";
+
+    overlay.innerHTML = `
+        <section
+            class="shop-level-popup"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Level tiệm"
+        >
+            <button
+                class="shop-level-popup-close"
+                type="button"
+                aria-label="Đóng"
+            >×</button>
+
+            <div class="shop-level-popup-icon">
+                🥖
+            </div>
+
+            <div class="shop-level-popup-eyebrow">
+                LEVEL TIỆM
+            </div>
+
+            <h2>
+                Level ${progress.level}
+            </h2>
+
+            <div class="shop-level-popup-title">
+                ${title}
+            </div>
+
+            <div class="shop-level-popup-progress">
+                <div>
+                    <span>EXP hiện tại</span>
+                    <strong>
+                        ${progress.xpIntoLevel}
+                        /
+                        ${progress.needed}
+                    </strong>
+                </div>
+
+                <div class="shop-level-popup-track">
+                    <span
+                        style="
+                            width:
+                            ${progress.percent}%;
+                        "
+                    ></span>
+                </div>
+            </div>
+
+            <div class="shop-level-popup-info">
+                <div>
+                    <span>Tổng EXP</span>
+                    <strong>
+                        ${Math.round(game.shopXp || 0)}
+                    </strong>
+                </div>
+
+                <div>
+                    <span>Danh hiệu tiếp theo</span>
+
+                    <strong>
+                        ${nextTitleInfo.level
+                            ? `Mở ở Lv.${nextTitleInfo.level}`
+                            : "Đã đạt tối đa"}
+                    </strong>
+
+                    <small>
+                        ${nextTitleInfo.title}
+                    </small>
+                </div>
+            </div>
+
+            <p class="shop-level-popup-note">
+                Phục vụ đúng khách để nhận EXP.
+                Đơn 4★ nhận 8 EXP,
+                đơn 5★ nhận 9 EXP.
+            </p>
+
+            <button
+                class="shop-level-popup-done"
+                type="button"
+            >
+                Đóng
+            </button>
+        </section>
+    `;
+
+    const close = () =>
+        overlay.remove();
+
+    overlay
+        .querySelector(
+            ".shop-level-popup-close"
+        )
+        .addEventListener(
+            "click",
+            close
+        );
+
+    overlay
+        .querySelector(
+            ".shop-level-popup-done"
+        )
+        .addEventListener(
+            "click",
+            close
+        );
+
+    overlay.addEventListener(
+        "click",
+        event => {
+            if (
+                event.target === overlay
+            ) {
+                close();
+            }
+        }
+    );
+
+    document.body.appendChild(
+        overlay
+    );
 }
 
 
@@ -1041,7 +1678,7 @@ function openShopPanel(type) {
 
     } else if (type === "revenue") {
 
-        renderRevenuePanel();
+        renderManagementPanel();
     }
 }
 
@@ -1092,23 +1729,156 @@ const REAL_DAILY_KEY =
     "mot-o-nha-real-daily-v1";
 
 
-function getRealDateKey() {
+function getVietnamDateKey(
+    offsetDays = 0
+) {
+    const date =
+        new Date(
+            Date.now() +
+            offsetDays * 86400000
+        );
 
-    const now = new Date();
+    const parts =
+        new Intl.DateTimeFormat(
+            "en-CA",
+            {
+                timeZone: "Asia/Ho_Chi_Minh",
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit"
+            }
+        )
+        .formatToParts(date);
 
-    const year =
-        now.getFullYear();
+    const values = {};
 
-    const month =
-        String(now.getMonth() + 1)
-            .padStart(2, "0");
+    parts.forEach(part => {
+        values[part.type] =
+            part.value;
+    });
 
-    const day =
-        String(now.getDate())
-            .padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
+    return (
+        `${values.year}-` +
+        `${values.month}-` +
+        `${values.day}`
+    );
 }
+
+
+function getRealDateKey() {
+    return getVietnamDateKey();
+}
+
+
+function getVietnamServerTimeText() {
+
+    return new Intl.DateTimeFormat(
+        "vi-VN",
+        {
+            timeZone: "Asia/Ho_Chi_Minh",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false
+        }
+    ).format(new Date());
+}
+
+
+function updateLiveServerTimes() {
+
+    document
+        .querySelectorAll(
+            "[data-vietnam-server-time]"
+        )
+        .forEach(element => {
+
+            element.textContent =
+                getVietnamServerTimeText();
+        });
+}
+
+
+setInterval(
+    updateLiveServerTimes,
+    1000
+);
+
+const LOGIN_STREAK_KEY =
+    "mot-o-nha-login-streak-v1";
+
+
+function loadLoginStreak() {
+    try {
+        return JSON.parse(
+            localStorage.getItem(
+                LOGIN_STREAK_KEY
+            ) || "{}"
+        );
+    } catch {
+        return {};
+    }
+}
+
+
+function syncLoginStreak() {
+    const today =
+        getVietnamDateKey();
+
+    const yesterday =
+        getVietnamDateKey(-1);
+
+    const saved =
+        loadLoginStreak();
+
+    let streak =
+        Number(saved.streak) || 0;
+
+    const lastLogin =
+        saved.lastLogin || null;
+
+
+    // Đã tính streak hôm nay rồi.
+    if (lastLogin === today) {
+        return {
+            streak,
+            lastLogin
+        };
+    }
+
+
+    // Hôm qua có vào game -> nối streak.
+    if (lastLogin === yesterday) {
+        streak++;
+    }
+
+    // Lần đầu hoặc bỏ lỡ ít nhất 1 ngày.
+    else {
+        streak = 1;
+    }
+
+
+    const data = {
+        streak,
+        lastLogin: today
+    };
+
+
+    localStorage.setItem(
+        LOGIN_STREAK_KEY,
+        JSON.stringify(data)
+    );
+
+
+    return data;
+}
+
+
+let loginStreak =
+    syncLoginStreak();
 
 
 function createFreshRealDailyData() {
@@ -1119,7 +1889,10 @@ function createFreshRealDailyData() {
         stats: {
             correctOrders: 0,
             revenue: 0,
-            pateSold: 0
+
+            // Generic ingredient tracking.
+            // Key = đúng tên nguyên liệu trong ingredients.
+            ingredientSold: {}
         },
 
         claimed: []
@@ -1170,6 +1943,31 @@ function loadRealDailyData() {
     }
 
 
+    // Migration từ hệ thống cũ chỉ track Pâté.
+    // Không làm mất progress của ngày hiện tại.
+    if (
+        !data.stats.ingredientSold ||
+        typeof data.stats.ingredientSold !== "object"
+    ) {
+
+        data.stats.ingredientSold = {};
+
+        const oldPateProgress =
+            Number(
+                data.stats.pateSold
+            ) || 0;
+
+        if (oldPateProgress > 0) {
+            data.stats.ingredientSold["Pâté"] =
+                oldPateProgress;
+        }
+
+        delete data.stats.pateSold;
+
+        saveRealDailyData(data);
+    }
+
+
     return data;
 }
 
@@ -1199,54 +1997,75 @@ let realDaily =
 const DAILY_MISSION_POOL = [
 
     {
-        id: "serve-10",
-        name: "Phục vụ đúng 10 khách",
+        id: "serve-18",
+        name: "Phục vụ đúng 18 khách",
         type: "orders",
+        target: 18,
+        reward: 16000
+    },
+
+    {
+        id: "serve-24",
+        name: "Phục vụ đúng 24 khách",
+        type: "orders",
+        target: 24,
+        reward: 22000
+    },
+
+    {
+        id: "ingredient-pate-10",
+        name: "Bán 10 bánh mì có Pâté",
+        type: "ingredient",
+        ingredient: "Pâté",
         target: 10,
-        reward: 20000
+        reward: 17000
     },
 
     {
-        id: "serve-14",
-        name: "Phục vụ đúng 14 khách",
-        type: "orders",
-        target: 14,
-        reward: 30000
+        id: "ingredient-trung-8",
+        name: "Bán 8 bánh mì có Trứng",
+        type: "ingredient",
+        ingredient: "Trứng",
+        target: 8,
+        reward: 16000
     },
 
     {
-        id: "pate-6",
-        name: "Bán 6 bánh mì có Pâté",
-        type: "pate",
-        target: 6,
+        id: "ingredient-rau-16",
+        name: "Bán 16 bánh mì có Rau",
+        type: "ingredient",
+        ingredient: "Rau",
+        target: 16,
         reward: 18000
     },
 
     {
-        id: "pate-10",
-        name: "Bán 10 bánh mì có Pâté",
-        type: "pate",
-        target: 10,
-        reward: 28000
+        id: "ingredient-dua-leo-12",
+        name: "Bán 12 bánh mì có Dưa leo",
+        type: "ingredient",
+        ingredient: "Dưa leo",
+        target: 12,
+        reward: 17000
     },
 
     {
-        id: "revenue-100k",
-        name: "Kiếm 100k doanh thu",
+        id: "revenue-180k",
+        name: "Kiếm 180k doanh thu",
         type: "revenue",
-        target: 100000,
-        reward: 20000
+        target: 180000,
+        reward: 18000
     },
 
     {
-        id: "revenue-150k",
-        name: "Kiếm 150k doanh thu",
+        id: "revenue-250k",
+        name: "Kiếm 250k doanh thu",
         type: "revenue",
-        target: 150000,
-        reward: 30000
+        target: 250000,
+        reward: 24000
     }
 
 ];
+
 
 function dailySeedFromDate() {
 
@@ -1344,11 +2163,14 @@ function getDailyMissionProgress(
 
 
     if (
-        mission.type === "pate"
+        mission.type === "ingredient"
     ) {
 
         return (
-            realDaily.stats.pateSold ||
+            realDaily.stats
+                .ingredientSold?.[
+                    mission.ingredient
+                ] ||
             0
         );
     }
@@ -1692,6 +2514,19 @@ function renderDailyMissionContent() {
 
     container.innerHTML = `
 
+        <div class="server-time-card">
+            <strong>
+                🕒 Giờ server:
+                <span data-vietnam-server-time>
+                    ${getVietnamServerTimeText()}
+                </span>
+            </strong>
+
+            <small>
+                🇻🇳 GMT+7 • Nhiệm vụ làm mới lúc 00:00
+            </small>
+        </div>
+
         <p class="
             daily-mission-intro
         ">
@@ -1705,6 +2540,8 @@ function renderDailyMissionContent() {
         </div>
 
     `;
+
+    updateLiveServerTimes();
 
 
     container
@@ -1736,24 +2573,261 @@ function renderEventMissionContent() {
             "mission-tab-content"
         );
 
+    if (!container) {
+        return;
+    }
 
-    const progress =
+
+    // =========================
+    // SAKURA - KHÔNG GIỚI HẠN
+    // =========================
+
+    syncEventProgress();
+
+    const sakuraProgress =
         Math.min(
             20,
             eventProgress
                 .highestDayCompleted
         );
 
+    const sakuraCompleted =
+        sakuraProgress >= 20;
 
-    const completed =
-        progress >= 20;
+    const sakuraPercent =
+        sakuraProgress / 20 * 100;
 
 
-    const percent =
-        progress / 20 * 100;
+    // =========================
+    // TRUNG THU - GIỚI HẠN
+    // =========================
+
+    const midAutumnActive =
+        isMidAutumnEventActive();
+
+    const midAutumnUnlocked =
+        midAutumnEventUnlocked();
+
+    const midAutumnTotal =
+        getMidAutumnTotalProgress();
+
+    const midAutumnTarget =
+        MID_AUTUMN_REQUIRED_SERVES *
+        MID_AUTUMN_CUSTOMERS.length;
+
+    const midAutumnPercent =
+        Math.min(
+            100,
+            midAutumnTotal / midAutumnTarget * 100
+        );
+
+
+    const midAutumnCustomerCards =
+        MID_AUTUMN_CUSTOMERS
+            .map(customer => {
+
+                const progress =
+                    Math.min(
+                        MID_AUTUMN_REQUIRED_SERVES,
+                        midAutumnProgress
+                            .counts[
+                                customer.id
+                            ] || 0
+                    );
+
+                const completed =
+                    progress >= MID_AUTUMN_REQUIRED_SERVES;
+
+                const percent =
+                    progress / MID_AUTUMN_REQUIRED_SERVES * 100;
+
+
+                return `
+                    <article
+                        class="
+                            daily-mission-card
+                            ${
+                                completed
+                                    ? "is-complete"
+                                    : ""
+                            }
+                        "
+                    >
+
+                        <div class="
+                            daily-mission-top
+                        ">
+
+                            <span class="
+                                daily-mission-name
+                            ">
+                                ${
+                                    completed
+                                        ? "✅"
+                                        : "🥮"
+                                }
+
+                                Phục vụ
+                                ${customer.name}
+                            </span>
+
+                            <span class="
+                                daily-mission-progress-text
+                            ">
+                                ${progress} / ${MID_AUTUMN_REQUIRED_SERVES}
+                            </span>
+
+                        </div>
+
+
+                        <div class="
+                            daily-mission-track
+                        ">
+                            <span
+                                style="
+                                    width:${percent}%;
+                                "
+                            ></span>
+                        </div>
+
+                    </article>
+                `;
+
+            })
+            .join("");
 
 
     container.innerHTML = `
+
+        <div class="
+            event-mission-banner
+            mid-autumn-banner
+        ">
+
+            <div class="
+                event-mission-emoji
+            ">
+                🥮
+            </div>
+
+            <div>
+                <strong>
+                    Đêm Rằm Trung Thu
+                </strong>
+
+                <p>
+                    Phục vụ Chị Hằng,
+                    Chú Cuội và Thỏ Ngọc
+                    đủ ${MID_AUTUMN_REQUIRED_SERVES} lần mỗi người
+                    để mở quyền mua
+                    bộ Đêm Rằm Trung Thu.
+                </p>
+
+                <div class="
+                    event-countdown
+                ">
+                    ⏳
+                    ${getMidAutumnCountdownText()}
+                </div>
+            </div>
+
+        </div>
+
+
+        <article
+            class="
+                daily-mission-card
+                ${
+                    midAutumnUnlocked
+                        ? "is-complete"
+                        : ""
+                }
+            "
+        >
+
+            <div class="
+                daily-mission-top
+            ">
+
+                <span class="
+                    daily-mission-name
+                ">
+                    ${
+                        midAutumnUnlocked
+                            ? "✅"
+                            : "🌕"
+                    }
+
+                    Đêm Rằm Trung Thu
+                </span>
+
+                <span class="
+                    daily-mission-progress-text
+                ">
+                    ${midAutumnTotal} / ${midAutumnTarget}
+                </span>
+
+            </div>
+
+
+            <div class="
+                daily-mission-track
+            ">
+                <span
+                    style="
+                        width:${midAutumnPercent}%;
+                    "
+                ></span>
+            </div>
+
+
+            <div class="
+                event-reward-preview
+            ">
+
+                ${
+                    midAutumnUnlocked
+
+                        ? `
+                            🔓 Đã mở quyền mua
+                            bộ Đêm Rằm Trung Thu trong
+                            Trang trí!
+                        `
+
+                        : midAutumnActive
+
+                            ? `
+                                🔒 Phần thưởng:
+                                mở quyền mua
+                                bộ Đêm Rằm Trung Thu
+                            `
+
+                            : `
+                                ⏰ Sự kiện đã kết thúc.
+                                Tiến độ được giữ lại,
+                                nhưng không thể nhận
+                                thêm lượt phục vụ.
+                            `
+                }
+
+            </div>
+
+        </article>
+
+
+        <div class="
+            mid-autumn-customer-list
+        ">
+            ${midAutumnCustomerCards}
+        </div>
+
+
+        <div class="
+            event-section-divider
+        ">
+            🌸 Sự kiện thường trực
+        </div>
+
 
         <div class="
             event-mission-banner
@@ -1771,9 +2845,10 @@ function renderEventMissionContent() {
                 </strong>
 
                 <p>
+                    Không giới hạn thời gian.
                     Hoàn thành 20 ngày trong
                     game để mở quyền mua
-                    bộ trang trí Sakura.
+                    bộ Hoa Anh Đào.
                 </p>
             </div>
 
@@ -1784,7 +2859,7 @@ function renderEventMissionContent() {
             class="
                 daily-mission-card
                 ${
-                    completed
+                    sakuraCompleted
                         ? "is-complete"
                         : ""
                 }
@@ -1799,7 +2874,7 @@ function renderEventMissionContent() {
                     daily-mission-name
                 ">
                     ${
-                        completed
+                        sakuraCompleted
                             ? "✅"
                             : "🌸"
                     }
@@ -1810,7 +2885,7 @@ function renderEventMissionContent() {
                 <span class="
                     daily-mission-progress-text
                 ">
-                    ${progress} / 20
+                    ${sakuraProgress} / 20
                 </span>
 
             </div>
@@ -1821,7 +2896,7 @@ function renderEventMissionContent() {
             ">
                 <span
                     style="
-                        width:${percent}%;
+                        width:${sakuraPercent}%;
                     "
                 ></span>
             </div>
@@ -1832,18 +2907,18 @@ function renderEventMissionContent() {
             ">
 
                 ${
-                    completed
+                    sakuraCompleted
 
                         ? `
                             🔓 Đã mở quyền mua
-                            set Sakura trong
+                            bộ Hoa Anh Đào trong
                             Trang trí!
                         `
 
                         : `
                             🔒 Phần thưởng:
                             mở quyền mua
-                            set Sakura
+                            bộ Hoa Anh Đào
                         `
                 }
 
@@ -1853,6 +2928,7 @@ function renderEventMissionContent() {
 
     `;
 }
+
 
 // ======================================================
 // EVENT MISSIONS
@@ -1937,6 +3013,492 @@ function sakuraEventUnlocked() {
     );
 }
 
+
+// ======================================================
+// MID-AUTUMN EVENT 2026
+// Event chạy hết ngày 15/10/2026 theo giờ Việt Nam.
+// Tự kết thúc lúc 00:00 ngày 16/10/2026 GMT+7.
+// ======================================================
+
+const MID_AUTUMN_EVENT_KEY =
+    "mot-o-nha-mid-autumn-2026-v1";
+
+const MID_AUTUMN_EVENT_END =
+    new Date(
+        "2026-10-16T00:00:00+07:00"
+    ).getTime();
+
+
+const MID_AUTUMN_CUSTOMERS = [
+    {
+        id: "HANG",
+        name: "Chị Hằng",
+        spritePrefix: "A",
+        fallback: "🌙"
+    },
+
+    {
+        id: "CUOI",
+        name: "Chú Cuội",
+        spritePrefix: "B",
+        fallback: "🌳"
+    },
+
+    {
+        id: "THO",
+        name: "Thỏ Ngọc",
+        spritePrefix: "C",
+        fallback: "🐇"
+    }
+];
+
+const MID_AUTUMN_SPRITE_DIR =
+    "images/customer/special/trung-thu";
+
+
+function isMidAutumnEventActive() {
+    return (
+        Date.now() <
+        MID_AUTUMN_EVENT_END
+    );
+}
+
+
+function loadMidAutumnProgress() {
+
+    try {
+
+        const saved =
+            JSON.parse(
+                localStorage.getItem(
+                    MID_AUTUMN_EVENT_KEY
+                ) || "{}"
+            );
+
+
+        return {
+            counts: {
+                HANG:
+                    Number(
+                        saved.counts?.HANG
+                    ) || 0,
+
+                CUOI:
+                    Number(
+                        saved.counts?.CUOI
+                    ) || 0,
+
+                THO:
+                    Number(
+                        saved.counts?.THO
+                    ) || 0
+            },
+
+            unlocked:
+                saved.unlocked === true,
+
+            visitState: {
+                day:
+                    Number(
+                        saved.visitState?.day
+                    ) || 0,
+
+                willVisit:
+                    saved.visitState?.willVisit === true,
+
+                targetCustomerNumber:
+                    Number(
+                        saved.visitState
+                            ?.targetCustomerNumber
+                    ) || 0,
+
+                spawned:
+                    saved.visitState?.spawned === true
+            }
+        };
+
+    } catch {
+
+        return {
+            counts: {
+                HANG: 0,
+                CUOI: 0,
+                THO: 0
+            },
+
+            unlocked: false,
+
+            visitState: {
+                day: 0,
+                willVisit: false,
+                targetCustomerNumber: 0,
+                spawned: false
+            }
+        };
+    }
+}
+
+
+let midAutumnProgress =
+    loadMidAutumnProgress();
+
+
+function saveMidAutumnProgress() {
+
+    localStorage.setItem(
+        MID_AUTUMN_EVENT_KEY,
+        JSON.stringify(
+            midAutumnProgress
+        )
+    );
+}
+
+
+function midAutumnCustomerById(id) {
+
+    return (
+        MID_AUTUMN_CUSTOMERS.find(
+            customer =>
+                customer.id === id
+        ) || null
+    );
+}
+
+
+function isMidAutumnCustomer(id) {
+
+    return Boolean(
+        midAutumnCustomerById(id)
+    );
+}
+
+
+function isKnownCustomerId(id) {
+
+    return (
+        /^[A-F]$/.test(id) ||
+        isMidAutumnCustomer(id)
+    );
+}
+
+
+function getMidAutumnTotalProgress() {
+
+    return (
+        Math.min(
+            MID_AUTUMN_REQUIRED_SERVES,
+            midAutumnProgress
+                .counts.HANG
+        )
+        +
+        Math.min(
+            MID_AUTUMN_REQUIRED_SERVES,
+            midAutumnProgress
+                .counts.CUOI
+        )
+        +
+        Math.min(
+            MID_AUTUMN_REQUIRED_SERVES,
+            midAutumnProgress
+                .counts.THO
+        )
+    );
+}
+
+
+function midAutumnEventUnlocked() {
+
+    return (
+        midAutumnProgress
+            .unlocked === true
+    );
+}
+
+
+function recordMidAutumnServe(
+    customerId
+) {
+
+    if (
+        !isMidAutumnEventActive() ||
+        !isMidAutumnCustomer(
+            customerId
+        ) ||
+        midAutumnProgress.unlocked
+    ) {
+        return;
+    }
+
+
+    const current =
+        midAutumnProgress
+            .counts[customerId] || 0;
+
+
+    if (current < MID_AUTUMN_REQUIRED_SERVES) {
+
+        midAutumnProgress
+            .counts[customerId] =
+                current + 1;
+    }
+
+
+    const completed =
+        MID_AUTUMN_CUSTOMERS.every(
+            customer =>
+                (
+                    midAutumnProgress
+                        .counts[
+                            customer.id
+                        ] || 0
+                ) >= MID_AUTUMN_REQUIRED_SERVES
+        );
+
+
+    if (completed) {
+
+        midAutumnProgress.unlocked =
+            true;
+    }
+
+
+    saveMidAutumnProgress();
+}
+
+
+function getMidAutumnCountdownText() {
+
+    const remaining =
+        MID_AUTUMN_EVENT_END -
+        Date.now();
+
+
+    if (remaining <= 0) {
+        return "Sự kiện đã kết thúc";
+    }
+
+
+    const totalHours =
+        Math.ceil(
+            remaining /
+            (1000 * 60 * 60)
+        );
+
+
+    const days =
+        Math.floor(
+            totalHours / 24
+        );
+
+
+    const hours =
+        totalHours % 24;
+
+
+    if (days > 0) {
+
+        return (
+            `Còn ${days} ngày ` +
+            `${hours} giờ`
+        );
+    }
+
+
+    return `Còn ${hours} giờ`;
+}
+
+
+const MID_AUTUMN_DAILY_VISIT_CHANCE = 0.42;
+const MID_AUTUMN_REQUIRED_SERVES = 4;
+
+
+function ensureMidAutumnVisitPlan() {
+
+    if (
+        !isMidAutumnEventActive() ||
+        midAutumnProgress.unlocked
+    ) {
+        return null;
+    }
+
+
+    const previous =
+        midAutumnProgress.visitState || {
+            day: 0,
+            willVisit: false,
+            targetCustomerNumber: 0,
+            spawned: false
+        };
+
+
+    if (previous.day === game.day) {
+        return previous;
+    }
+
+
+    /*
+        Mỗi ngày tối đa 1 khách Trung Thu.
+
+        Bình thường:
+        42% cơ hội ngày đó có 1 khách đặc biệt.
+
+        Nếu ngày ngay trước đó không có khách đặc biệt:
+        ngày hôm nay bắt buộc có 1 người.
+
+        => May mắn: ngày nào cũng có thể gặp 1 người.
+        => Xui nhất: trong 2 ngày liên tiếp chắc chắn
+           gặp ít nhất 1 khách Trung Thu.
+    */
+
+    const yesterdayWasTracked =
+        previous.day === game.day - 1;
+
+    const forceToday =
+        yesterdayWasTracked &&
+        !previous.spawned;
+
+
+    const willVisit =
+        forceToday ||
+        Math.random() <
+            MID_AUTUMN_DAILY_VISIT_CHANCE;
+
+
+    // Nếu có khách đặc biệt, cho xuất hiện trong 4 lượt đầu.
+    const latestSlot =
+        Math.max(
+            1,
+            Math.min(
+                4,
+                Number(game.customersToday) || 1
+            )
+        );
+
+
+    const targetCustomerNumber =
+        willVisit
+            ? 1 +
+              Math.floor(
+                  Math.random() *
+                  latestSlot
+              )
+            : 0;
+
+
+    midAutumnProgress.visitState = {
+        day: game.day,
+        willVisit,
+        targetCustomerNumber,
+        spawned: false
+    };
+
+
+    saveMidAutumnProgress();
+
+    return midAutumnProgress.visitState;
+}
+
+
+function getMidAutumnSpawnCandidates(
+    atCounter = []
+) {
+
+    if (
+        !isMidAutumnEventActive() ||
+        midAutumnProgress.unlocked
+    ) {
+        return [];
+    }
+
+
+    return MID_AUTUMN_CUSTOMERS
+        .filter(customer => {
+
+            const progress =
+                midAutumnProgress
+                    .counts[
+                        customer.id
+                    ] || 0;
+
+
+            return (
+                progress < MID_AUTUMN_REQUIRED_SERVES &&
+                !atCounter.includes(
+                    customer.id
+                )
+            );
+        })
+        .map(
+            customer =>
+                customer.id
+        );
+}
+
+
+function getPlannedMidAutumnCustomer(
+    atCounter = []
+) {
+
+    const candidates =
+        getMidAutumnSpawnCandidates(
+            atCounter
+        );
+
+
+    if (!candidates.length) {
+        return null;
+    }
+
+
+    const plan =
+        ensureMidAutumnVisitPlan();
+
+
+    if (
+        !plan ||
+        !plan.willVisit ||
+        plan.spawned
+    ) {
+        return null;
+    }
+
+
+    const incomingCustomerNumber =
+        game.customerNumber + 1;
+
+
+    if (
+        incomingCustomerNumber <
+        plan.targetCustomerNumber
+    ) {
+        return null;
+    }
+
+
+    return randomItem(candidates);
+}
+
+
+function markMidAutumnVisitSpawned() {
+
+    const plan =
+        midAutumnProgress.visitState;
+
+
+    if (
+        !plan ||
+        plan.day !== game.day
+    ) {
+        return;
+    }
+
+
+    plan.spawned = true;
+
+    saveMidAutumnProgress();
+}
+
+
 // ======================================================
 // DECORATION SKINS
 // ======================================================
@@ -1959,7 +3521,7 @@ const SKIN_CATALOG = {
 
         {
             id: "sakura",
-            name: "Sakura",
+            name: "Hoa Anh Đào",
             image:
                 "images/skins/recipe-skin/sakura.png",
             price: 200000,
@@ -1967,13 +3529,30 @@ const SKIN_CATALOG = {
         },
 
         {
-            id: "trung-thu",
-            name: "Trung thu",
-            image:
-                "images/skins/recipe-skin/trung-thu.png",
-            event: "trung-thu",
-            unavailable: true
-        }
+    id: "trung-thu",
+    name: "Đêm Rằm Trung Thu",
+
+    image:
+        "images/skins/recipe-skin/trung-thu.png",
+
+    price: 200000,
+
+    event: "trung-thu"
+},
+
+{
+    id: "halloween",
+    name: "Halloween",
+
+    image:
+        "images/skins/recipe-skin/halloween.png",
+
+    price: 200000,
+
+    event: "halloween",
+
+    unavailable: true
+}
 
     ],
 
@@ -1998,7 +3577,7 @@ const SKIN_CATALOG = {
 
         {
             id: "sakura",
-            name: "Sakura",
+            name: "Hoa Anh Đào",
             image:
                 "images/skins/background/sakura.jpg",
             price: 250000,
@@ -2006,13 +3585,30 @@ const SKIN_CATALOG = {
         },
 
         {
-            id: "trung-thu",
-            name: "Trung thu",
-            image:
-                "images/skins/background/trung-thu.jpg",
-            event: "trung-thu",
-            unavailable: true
-        }
+    id: "trung-thu",
+    name: "Đêm Rằm Trung Thu",
+
+    image:
+        "images/skins/background/trung-thu.jpg",
+
+    price: 250000,
+
+    event: "trung-thu"
+},
+
+{
+    id: "halloween",
+    name: "Halloween",
+
+    image:
+        "images/skins/background/halloween.jpg",
+
+    price: 250000,
+
+    event: "halloween",
+
+    unavailable: true
+}
 
     ],
 
@@ -2029,7 +3625,7 @@ const SKIN_CATALOG = {
 
         {
             id: "sakura",
-            name: "Sakura",
+            name: "Hoa Anh Đào",
             image:
                 "images/skins/board/sakura.png",
             price: 220000,
@@ -2037,15 +3633,73 @@ const SKIN_CATALOG = {
         },
 
         {
-            id: "trung-thu",
-            name: "Trung thu",
+    id: "trung-thu",
+    name: "Đêm Rằm Trung Thu",
+
+    image:
+        "images/skins/board/trung-thu.png",
+
+    price: 220000,
+
+    event: "trung-thu"
+},
+
+{
+    id: "halloween",
+    name: "Halloween",
+
+    image:
+        "images/skins/board/halloween.png",
+
+    price: 220000,
+
+    event: "halloween",
+
+    unavailable: true
+}
+
+    ],
+
+    ingredientTable: [
+
+        {
+            id: "mac-dinh",
+            name: "Mặc định",
             image:
-                "images/skins/board/trung-thu.png",
-            event: "trung-thu",
+                "images/skins/ingredient-table/mac-dinh.png",
+            price: 0
+        },
+
+        {
+            id: "sakura",
+            name: "Hoa Anh Đào",
+            image:
+                "images/skins/ingredient-table/sakura.png",
+            price: 180000,
+            event: "sakura"
+        },
+
+        {
+            id: "trung-thu",
+            name: "Đêm Rằm Trung Thu",
+            image:
+                "images/skins/ingredient-table/trung-thu.png",
+            price: 180000,
+            event: "trung-thu"
+        },
+
+        {
+            id: "halloween",
+            name: "Halloween",
+            image:
+                "images/skins/ingredient-table/halloween.png",
+            price: 180000,
+            event: "halloween",
             unavailable: true
         }
 
     ],
+
 
     counter: [
 
@@ -2057,17 +3711,30 @@ const SKIN_CATALOG = {
 
     {
         id: "sakura",
-        name: "Sakura",
+        name: "Hoa Anh Đào",
         price: 120000,
         event: "sakura"
     },
 
     {
-        id: "trung-thu",
-        name: "Trung thu",
-        event: "trung-thu",
-        unavailable: true
-    }
+    id: "trung-thu",
+    name: "Đêm Rằm Trung Thu",
+
+    price: 120000,
+
+    event: "trung-thu"
+},
+
+{
+    id: "halloween",
+    name: "Halloween",
+
+    price: 120000,
+
+    event: "halloween",
+
+    unavailable: true
+}
 
     ]
 };
@@ -2077,6 +3744,7 @@ const DEFAULT_SKINS = {
     recipe: "mac-dinh",
     background: "troi-xanh",
     board: "mac-dinh",
+    ingredientTable: "mac-dinh",
     counter: "mac-dinh"
 };
 
@@ -2163,6 +3831,14 @@ function canAccessSkin(
     }
 
 
+    if (
+        skin.event === "trung-thu"
+    ) {
+
+        return midAutumnEventUnlocked();
+    }
+
+
     return true;
 }
 
@@ -2186,7 +3862,7 @@ function buySkin(
             icon: "🔒",
             title: "Chưa mở",
             message:
-                "Skin này thuộc một sự kiện sắp tới.",
+                "Skin này thuộc một sự kiện sắp mở.",
             confirmText: "Okii"
         });
 
@@ -2201,9 +3877,28 @@ function buySkin(
 
         showCutePopup({
             icon: "🌸",
-            title: "Skin Sakura",
+            title: "Bộ Hoa Anh Đào",
             message:
-                "Hoàn thành 20 ngày trong game để mở quyền mua set Sakura.",
+                "Hoàn thành 20 ngày trong game để mở quyền mua bộ Hoa Anh Đào.",
+            confirmText: "Okii"
+        });
+
+        return;
+    }
+
+
+    if (
+        skin.event === "trung-thu" &&
+        !midAutumnEventUnlocked()
+    ) {
+
+        showCutePopup({
+            icon: "🥮",
+            title: "Bộ Đêm Rằm Trung Thu",
+            message:
+                isMidAutumnEventActive()
+                    ? `Phục vụ Chị Hằng, Chú Cuội và Thỏ Ngọc đủ ${MID_AUTUMN_REQUIRED_SERVES} lần mỗi người trong sự kiện Đêm Rằm Trung Thu để mở quyền mua bộ này.`
+                    : "Sự kiện Trung Thu đã kết thúc và set này chưa được mở khóa.",
             confirmText: "Okii"
         });
 
@@ -2341,7 +4036,14 @@ function applySelectedSkins() {
         );
 
     
-    document
+    
+    const ingredientTable =
+        skinById(
+            "ingredientTable",
+            selectedSkins.ingredientTable
+        );
+
+document
     .querySelectorAll(
         ".banhmi-workspace"
     )
@@ -2350,7 +4052,8 @@ function applySelectedSkins() {
         panel.classList.remove(
             "counter-mac-dinh",
             "counter-sakura",
-            "counter-trung-thu"
+            "counter-trung-thu",
+            "counter-halloween"
         );
 
         panel.classList.add(
@@ -2388,6 +4091,18 @@ function applySelectedSkins() {
 
             panel.style.backgroundRepeat =
                 "no-repeat";
+
+        });
+
+
+    document
+        .querySelectorAll(
+            ".ingredient-table-image"
+        )
+        .forEach(image => {
+
+            image.src =
+                ingredientTable.image;
 
         });
 
@@ -2444,7 +4159,7 @@ function renderSkinCards(type) {
                     <span class="
                         skin-lock-badge
                     ">
-                        🔒 Sắp tới
+                        🔒 Sắp mở
                     </span>
                 `;
 
@@ -2515,6 +4230,11 @@ function renderSkinCards(type) {
         ${
             type === "counter"
                 ? `counter-preview counter-preview-${skin.id}`
+                : ""
+        }
+        ${
+            type === "ingredientTable"
+                ? "ingredient-table-preview"
                 : ""
         }
     "
@@ -2622,6 +4342,15 @@ function renderDecorationPanel() {
         <div class="skin-grid">
             ${renderSkinCards("board")}
         </div>
+
+        <h3 class="shop-section-title">
+            🧺 Quầy nguyên liệu
+        </h3>
+
+        <div class="skin-grid">
+            ${renderSkinCards("ingredientTable")}
+        </div>
+
 
         <h3 class="shop-section-title">
             🪵 Bàn bếp
@@ -2756,7 +4485,7 @@ const UPGRADE_CONFIG = {
 function customersForNewDay() {
 
     const base =
-        randomCustomersToday();
+        randomCustomersToday(game.day);
 
     const level =
         getUpgradeLevel(
@@ -3002,25 +4731,207 @@ function renderUpgradePanel() {
         });
 }
 
-function renderRevenuePanel() {
+let managementPanelSection =
+    "revenue";
+
+
+const COLLECTION_ACHIEVEMENTS = [
+
+    {
+        id: "hoa-anh-dao",
+        name: "Bộ Hoa Anh Đào",
+        description:
+            "Sở hữu trọn bộ sưu tập Hoa Anh Đào.",
+        event: "sakura",
+        emoji: "🌸"
+    },
+
+    {
+        id: "dem-ram-trung-thu",
+        name: "Bộ Đêm Rằm Trung Thu",
+        description:
+            "Sở hữu trọn bộ sưu tập Đêm Rằm Trung Thu.",
+        event: "trung-thu",
+        emoji: "🌕"
+    }
+
+];
+
+
+function getCollectionAchievementProgress(
+    achievement
+) {
+
+    const types = [
+        "recipe",
+        "background",
+        "board",
+        "ingredientTable",
+        "counter"
+    ];
+
+
+    let collected = 0;
+    let total = 0;
+
+
+    types.forEach(type => {
+
+        const eventSkin =
+            SKIN_CATALOG[type]
+                .find(
+                    skin =>
+                        skin.event ===
+                        achievement.event
+                );
+
+
+        if (!eventSkin) {
+            return;
+        }
+
+
+        total++;
+
+
+        if (
+            ownsSkin(
+                type,
+                eventSkin.id
+            )
+        ) {
+            collected++;
+        }
+
+    });
+
+
+    return {
+        collected,
+        total,
+        complete:
+            total > 0 &&
+            collected >= total
+    };
+}
+
+
+function renderManagementPanel() {
+
+    shopPanelEyebrow.textContent =
+        "Sổ sách & bộ sưu tập";
+
+    shopPanelTitle.textContent =
+        "🗂️ Quản lý";
+
+
+    shopPanelContent.innerHTML = `
+
+        <div class="mission-tabs management-tabs">
+
+            <button
+                class="
+                    mission-tab
+                    ${
+                        managementPanelSection ===
+                        "revenue"
+                            ? "active"
+                            : ""
+                    }
+                "
+                type="button"
+                data-management-tab="revenue"
+            >
+                📊 Doanh thu
+            </button>
+
+
+            <button
+                class="
+                    mission-tab
+                    ${
+                        managementPanelSection ===
+                        "achievements"
+                            ? "active"
+                            : ""
+                    }
+                "
+                type="button"
+                data-management-tab="achievements"
+            >
+                🏆 Thành tựu
+            </button>
+
+        </div>
+
+
+        <div id="management-tab-content"></div>
+
+    `;
+
+
+    shopPanelContent
+        .querySelectorAll(
+            "[data-management-tab]"
+        )
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    managementPanelSection =
+                        button.dataset
+                            .managementTab;
+
+                    renderManagementPanel();
+                }
+            );
+
+        });
+
+
+    if (
+        managementPanelSection ===
+        "achievements"
+    ) {
+
+        renderAchievementContent();
+
+    } else {
+
+        renderRevenueContent();
+    }
+}
+
+
+function renderRevenueContent() {
+
+    const container =
+        document.getElementById(
+            "management-tab-content"
+        );
+
+    if (!container) return;
+
+
+    const utilities =
+        game.dailyRentPaid > 0
+            ? game.dailyRentPaid
+            : getDailyUtilityCost();
+
 
     const expenses =
         game.dailyIngredientSpend +
-        game.dailyRentPaid;
+        utilities;
+
 
     const profit =
         game.dailyRevenue -
         expenses;
 
 
-    shopPanelEyebrow.textContent =
-        `Ngày ${game.day}`;
-
-    shopPanelTitle.textContent =
-        "📊 Doanh thu";
-
-
-    shopPanelContent.innerHTML = `
+    container.innerHTML = `
 
         <div class="revenue-summary">
 
@@ -3056,11 +4967,11 @@ function renderRevenuePanel() {
 
 
             <div class="revenue-card revenue-negative">
-                <span>Tiền thuê</span>
+                <span>Điện nước</span>
 
                 <strong>
                     -${formatMoney(
-                        game.dailyRentPaid
+                        utilities
                     )}
                 </strong>
             </div>
@@ -3095,7 +5006,146 @@ function renderRevenuePanel() {
             </div>
 
         </div>
+
+
+        <p class="management-note">
+            💡 Điện nước tăng theo cấp
+            Chỗ ngồi và Làm mát.
+        </p>
     `;
+}
+
+
+function renderAchievementContent() {
+
+    const container =
+        document.getElementById(
+            "management-tab-content"
+        );
+
+    if (!container) return;
+
+
+    const cards =
+        COLLECTION_ACHIEVEMENTS
+            .map(achievement => {
+
+                const progress =
+                    getCollectionAchievementProgress(
+                        achievement
+                    );
+
+
+                const percent =
+                    progress.total
+                        ? (
+                            progress.collected /
+                            progress.total *
+                            100
+                        )
+                        : 0;
+
+
+                return `
+
+                    <article
+                        class="
+                            achievement-card
+                            ${
+                                progress.complete
+                                    ? "is-complete"
+                                    : ""
+                            }
+                        "
+                    >
+
+                        <div class="
+                            achievement-icon
+                        ">
+                            ${achievement.emoji}
+                        </div>
+
+
+                        <div class="
+                            achievement-body
+                        ">
+
+                            <div class="
+                                achievement-title-row
+                            ">
+
+                                <strong>
+                                    ${achievement.name}
+                                </strong>
+
+                                <span>
+                                    ${progress.collected}
+                                    /
+                                    ${progress.total}
+                                </span>
+
+                            </div>
+
+
+                            <p>
+                                ${achievement.description}
+                            </p>
+
+
+                            <div class="
+                                daily-mission-track
+                            ">
+                                <span
+                                    style="
+                                        width:${percent}%;
+                                    "
+                                ></span>
+                            </div>
+
+
+                            <div class="
+                                achievement-status
+                            ">
+                                ${
+                                    progress.complete
+                                        ? "🏆 Đã hoàn thành"
+                                        : `Còn ${
+                                            progress.total -
+                                            progress.collected
+                                        } món`
+                                }
+                            </div>
+
+                        </div>
+
+                    </article>
+
+                `;
+
+            })
+            .join("");
+
+
+    container.innerHTML = `
+
+        <p class="management-note">
+            Thu thập trọn bộ trang trí sự kiện
+            để hoàn thành thành tựu.
+        </p>
+
+
+        <div class="achievement-list">
+            ${cards}
+        </div>
+
+    `;
+}
+
+
+// Giữ alias để code cũ nếu có gọi trực tiếp vẫn hoạt động.
+function renderRevenuePanel() {
+    managementPanelSection = "revenue";
+    renderManagementPanel();
 }
 
 // ======================================================
@@ -3161,6 +5211,25 @@ function saveGame() {
 
             dailyRentPaid:
                 game.dailyRentPaid,
+
+        shopXp:
+            game.shopXp,
+
+        ratingStreak:
+            game.ratingStreak,
+
+        ratingHistory:
+            JSON.parse(
+                JSON.stringify(
+                    game.ratingHistory || []
+                )
+            ),
+
+        reviewStarsTotal:
+            game.reviewStarsTotal,
+
+        reviewCount:
+            game.reviewCount,
             waitingCustomers: game.waitingCustomers,
             activeTicketId: game.activeTicketId,
             nextTicketId: game.nextTicketId,
@@ -3168,6 +5237,9 @@ function saveGame() {
             dailyReviewCount: game.dailyReviewCount,
             reviewStarsTotal: game.reviewStarsTotal,
             reviewCount: game.reviewCount,
+            ratingStreak: game.ratingStreak,
+            ratingHistory: game.ratingHistory,
+            shopXp: game.shopXp,
             
             upgrades: {
     ...game.upgrades
@@ -3183,8 +5255,11 @@ skinOwned: {
     board: [
         ...game.skinOwned.board
     ],
+    ingredientTable: [
+        ...game.skinOwned.ingredientTable
+    ],
     counter: [
-    ...game.skinOwned.counter
+        ...game.skinOwned.counter
     ]
 },
 
@@ -3283,16 +5358,43 @@ function loadGame() {
         saved.dailyRentPaid ?? 0;
     game.waitingCustomers = Array.isArray(saved.waitingCustomers)
         ? saved.waitingCustomers.filter(ticket =>
-            ticket && /^[A-F]$/.test(ticket.customer) &&
+            ticket && isKnownCustomerId(ticket.customer) &&
             recipes.some(recipe => recipe.name === ticket.recipeName) &&
             Array.isArray(ticket.order) && Number.isFinite(ticket.remainingMs))
         : [];
+
+
+    // Save cũ chưa có số thứ tự riêng cho từng ticket.
+    // Suy ra số thứ tự từ vị trí hiện tại trong hàng chờ.
+    const inferredFirstCustomerNumber =
+        Math.max(
+            1,
+            game.customerNumber -
+            game.waitingCustomers.length +
+            1
+        );
+
+    game.waitingCustomers =
+        game.waitingCustomers.map(
+            (ticket, index) => ({
+                ...ticket,
+                customerNumber:
+                    Number(ticket.customerNumber) ||
+                    inferredFirstCustomerNumber +
+                    index
+            })
+        );
     game.activeTicketId = saved.activeTicketId ?? null;
     game.nextTicketId = saved.nextTicketId ?? 1;
     game.dailyStarTotal = saved.dailyStarTotal ?? 0;
     game.dailyReviewCount = saved.dailyReviewCount ?? 0;
     game.reviewStarsTotal = saved.reviewStarsTotal ?? 0;
     game.reviewCount = saved.reviewCount ?? 0;
+    game.ratingStreak = saved.ratingStreak ?? 0;
+    game.ratingHistory = Array.isArray(saved.ratingHistory)
+        ? saved.ratingHistory.slice(0, 10)
+        : [];
+    game.shopXp = Math.max(0, Number(saved.shopXp) || 0);
     
     game.upgrades = {
     advertising:
@@ -3328,6 +5430,14 @@ game.skinOwned = {
         )
             ? saved.skinOwned.board
             : ["mac-dinh"],
+
+    ingredientTable:
+        Array.isArray(
+            saved.skinOwned?.ingredientTable
+        )
+            ? saved.skinOwned.ingredientTable
+            : ["mac-dinh"],
+
     counter:
         Array.isArray(
             saved.skinOwned?.counter
@@ -3442,6 +5552,25 @@ function saveDayStartCheckpoint() {
         dailyRentPaid:
             game.dailyRentPaid,
 
+        shopXp:
+            game.shopXp,
+
+        ratingStreak:
+            game.ratingStreak,
+
+        ratingHistory:
+            JSON.parse(
+                JSON.stringify(
+                    game.ratingHistory || []
+                )
+            ),
+
+        reviewStarsTotal:
+            game.reviewStarsTotal,
+
+        reviewCount:
+            game.reviewCount,
+
         ingredients: ingredientSnapshot,
         upgrades: {
     ...game.upgrades
@@ -3457,8 +5586,11 @@ skinOwned: {
     board: [
         ...game.skinOwned.board
     ],
+    ingredientTable: [
+        ...game.skinOwned.ingredientTable
+    ],
     counter: [
-    ...game.skinOwned.counter
+        ...game.skinOwned.counter
     ]
 },
 
@@ -3469,6 +5601,12 @@ selectedSkins: {
 realDailySnapshot: JSON.parse(
     JSON.stringify(
         loadRealDailyData()
+    )
+),
+
+midAutumnSnapshot: JSON.parse(
+    JSON.stringify(
+        midAutumnProgress
     )
 ),
     };
@@ -3557,6 +5695,11 @@ game.skinOwned = {
     board:
         snapshot.skinOwned?.board ||
         ["mac-dinh"],
+
+    ingredientTable:
+        snapshot.skinOwned?.ingredientTable ||
+        ["mac-dinh"],
+
     counter:
         snapshot.skinOwned?.counter ||
         ["mac-dinh"]
@@ -3589,6 +5732,22 @@ if (
         realDaily
     );
 }
+
+if (
+    snapshot.midAutumnSnapshot &&
+    isMidAutumnEventActive()
+) {
+
+    midAutumnProgress =
+        JSON.parse(
+            JSON.stringify(
+                snapshot.midAutumnSnapshot
+            )
+        );
+
+    saveMidAutumnProgress();
+}
+
             game.customersToday = snapshot.customersToday;
 
             if (snapshot.ingredients) {
@@ -3633,8 +5792,91 @@ if (
 
             game.dailyRentPaid =
                 snapshot.dailyRentPaid ?? 0;
-            game.reviewStarsTotal = Math.max(0, game.reviewStarsTotal - game.dailyStarTotal);
-            game.reviewCount = Math.max(0, game.reviewCount - game.dailyReviewCount);
+            // Restore long-term rating / level data to the
+            // state it had at the START of this game day.
+            //
+            // Older checkpoints (before this fix) did not contain
+            // these fields. In that case, preserve previous reviews
+            // instead of accidentally wiping the entire shop rating.
+            const checkpointHasRating =
+                Number.isFinite(
+                    Number(snapshot.reviewCount)
+                ) &&
+                Number.isFinite(
+                    Number(snapshot.reviewStarsTotal)
+                );
+
+            if (checkpointHasRating) {
+                game.reviewStarsTotal =
+                    Math.max(
+                        0,
+                        Number(snapshot.reviewStarsTotal) || 0
+                    );
+
+                game.reviewCount =
+                    Math.max(
+                        0,
+                        Number(snapshot.reviewCount) || 0
+                    );
+
+                game.ratingStreak =
+                    Math.max(
+                        0,
+                        Number(snapshot.ratingStreak) || 0
+                    );
+
+                game.ratingHistory =
+                    Array.isArray(snapshot.ratingHistory)
+                        ? JSON.parse(
+                            JSON.stringify(
+                                snapshot.ratingHistory
+                            )
+                        ).slice(0, 10)
+                        : [];
+            } else {
+                // Legacy checkpoint fallback:
+                // remove only today's aggregate ratings.
+                game.reviewStarsTotal =
+                    Math.max(
+                        0,
+                        (Number(game.reviewStarsTotal) || 0) -
+                        (Number(game.dailyStarTotal) || 0)
+                    );
+
+                game.reviewCount =
+                    Math.max(
+                        0,
+                        (Number(game.reviewCount) || 0) -
+                        (Number(game.dailyReviewCount) || 0)
+                    );
+
+                // Keep reviews from earlier days when possible.
+                game.ratingHistory =
+                    Array.isArray(game.ratingHistory)
+                        ? game.ratingHistory
+                            .filter(
+                                review =>
+                                    Number(review?.day) !==
+                                    Number(game.day)
+                            )
+                            .slice(0, 10)
+                        : [];
+            }
+
+            // XP is restored exactly when the new checkpoint has it.
+            // For an old checkpoint, keep the current XP rather than
+            // erasing the player's long-term level progress.
+            if (
+                snapshot.shopXp !== undefined &&
+                snapshot.shopXp !== null
+            ) {
+                game.shopXp =
+                    Math.max(
+                        0,
+                        Number(snapshot.shopXp) || 0
+                    );
+            }
+
             game.dailyStarTotal = 0;
             game.dailyReviewCount = 0;
             game.waitingCustomers = [];
@@ -3722,7 +5964,7 @@ function resetGameSave() {
             game.shopOpen = false;
 
             game.customersToday =
-                randomCustomersToday();
+                randomCustomersToday(1);
 
             game.customerNumber = 0;
             game.completedOrders = 0;
@@ -3740,6 +5982,9 @@ function resetGameSave() {
 
             game.reviewStarsTotal = 0;
             game.reviewCount = 0;
+            game.ratingStreak = 0;
+            game.ratingHistory = [];
+            game.shopXp = 0;
 
             game.upgrades = {
     advertising: 0,
@@ -3752,6 +5997,7 @@ game.skinOwned = {
     recipe: ["mac-dinh"],
     background: ["troi-xanh"],
     board: ["mac-dinh"],
+    ingredientTable: ["mac-dinh"],
     counter: ["mac-dinh"]
 };
 
@@ -3905,10 +6151,22 @@ function recipeBookButton() {
     `;
 }
 
+const LATEST_VERSION = "0.3.1";
+
+const LATEST_HIGHLIGHTS = [
+    "Thêm nhiệm vụ ngày, Hoa Anh Đào thường trực và sự kiện Đêm Rằm Trung Thu.",
+    "Tối ưu mạnh dung lượng hình ảnh, tốc độ tải game và hiệu năng trên điện thoại.",
+    "Thêm cơ chế bóp sốt mới với nhấn giữ, thanh tiến trình, hiệu ứng và âm thanh riêng.",
+    "Cập nhật hướng dẫn, cân bằng lượng khách.",
+    "Cải thiện cân bằng lượng khách, hiệu năng và nhiều chi tiết giao diện.",
+    "Thêm menu trang trí và hệ thống skin.",
+    "Thêm menu nâng cấp và cải thiện giao diện khu chuẩn bị."
+];
 
 // ======================================================
 // HOME
 // ======================================================
+
 
 function showHome() {
 
@@ -3920,6 +6178,49 @@ function showHome() {
 
     game.phase = "home";
 
+
+    loginStreak =
+        syncLoginStreak();
+
+    syncEventProgress();
+
+
+    const sakuraProgress =
+        Math.min(
+            20,
+            eventProgress.highestDayCompleted
+        );
+
+    const sakuraPercent =
+        Math.min(
+            100,
+            sakuraProgress / 20 * 100
+        );
+
+    const sakuraDone =
+        sakuraProgress >= 20;
+
+
+    const midAutumnProgressTotal =
+        getMidAutumnTotalProgress();
+
+    const midAutumnTarget =
+        MID_AUTUMN_REQUIRED_SERVES *
+        MID_AUTUMN_CUSTOMERS.length;
+
+    const midAutumnPercent =
+        Math.min(
+            100,
+            midAutumnProgressTotal / midAutumnTarget * 100
+        );
+
+    const midAutumnDone =
+        midAutumnEventUnlocked();
+
+    const midAutumnActive =
+        isMidAutumnEventActive();
+
+
     updateHeader(
         "Một Ổ Nha! 🥖",
 
@@ -3928,96 +6229,285 @@ function showHome() {
             : "Tiệm bánh mì nhỏ"
     );
 
+
     screen.innerHTML = `
-        <div class="home-screen">
+        <section class="home-dashboard">
 
-            <div class="home-art-wrap">
-
+            <div class="home-hero-card">
                 <img
-                    class="home-banhmi-art"
+                    class="home-hero-banhmi"
                     src="images/banh-mi.png"
                     alt="Bánh mì"
                     draggable="false"
-
-                    onerror="
-                        this.style.display='none';
-                        this.nextElementSibling.style.display='block';
-                    "
                 >
 
-                <div
-                    class="home-fallback"
-                    style="display:none;"
-                >
-                    🥖
+                <h1 class="home-hero-title">
+                    Một Ổ Nha!
+                </h1>
+
+                <p class="home-hero-subtitle">
+                    Ngày ${game.day} • ${getPhaseStatusText()}
+                </p>
+
+            <div class="home-server-time">
+                🕒 Giờ server:
+                <span data-vietnam-server-time>
+                    ${getVietnamServerTimeText()}
+                </span>
+                • GMT+7
+            </div>
+            </div>
+
+
+            <div class="home-stats-grid">
+
+                <div class="home-stat-card">
+                    <span class="home-stat-label">
+                        Ngày
+                    </span>
+
+                    <strong class="home-stat-value">
+                        ${game.day}
+                    </strong>
+                </div>
+
+
+                <div class="home-stat-card">
+                    <span class="home-stat-label">
+                        Tiền
+                    </span>
+
+                    <strong class="home-stat-value">
+                        ${formatMoney(game.money)}
+                    </strong>
+                </div>
+
+
+                <div class="home-stat-card">
+                    <span class="home-stat-label">
+                        Đăng nhập
+                    </span>
+
+                    <strong class="home-stat-value">
+                        🔥 ${loginStreak.streak}
+                    </strong>
+
+                    <small class="home-stat-small">
+                        ngày liên tiếp
+                    </small>
                 </div>
 
             </div>
 
 
-            <h1 class="game-title">Một Ổ Nha!</h1>
+            ${(() => {
+
+                const levelProgress =
+                    getShopLevelProgress();
+
+                const levelTitle =
+                    getShopLevelTitle(
+                        levelProgress.level
+                    );
+
+                return `
+                    <button
+                        class="home-level-card"
+                        type="button"
+                        onclick="showShopLevelPopup()"
+                    >
+                        <div class="home-level-top">
+
+                            <strong>
+                                LV. ${levelProgress.level}
+                            </strong>
+
+                            <span>
+                                ${levelTitle}
+                            </span>
+
+                            <small>
+                                ${levelProgress.xpIntoLevel}
+                                /
+                                ${levelProgress.needed} EXP
+                            </small>
+
+                        </div>
+
+                        <div class="home-level-track">
+                            <span
+                                style="
+                                    width:
+                                    ${levelProgress.percent}%;
+                                "
+                            ></span>
+                        </div>
+
+                    </button>
+                `;
+            })()}
 
 
-            <p>
-                ${
-                    game.hasStarted
+            <div class="home-event-card">
 
-                        ? (
-                            game.shopOpen
+                <div class="home-card-heading">
 
-                                ? `Ngày ${game.day} • Khách ${game.customerNumber}/${game.customersToday}`
+                    <div>
+                        <span class="home-card-eyebrow">
+                            🌸 Sự kiện
+                        </span>
 
-                                : `Ngày ${game.day} • Đang chuẩn bị mở cửa`
-                        )
-
-                        : "Bánh nóng, nhân đầy, khách vui."
-                }
-            </p>
+                        <strong>
+                            Mùa Hoa Anh Đào
+                        </strong>
+                    </div>
 
 
-            <div class="home-stats">
+                    <span class="${
+                        sakuraDone
+                            ? "home-event-complete"
+                            : "home-event-count"
+                    }">
+                        ${
+                            sakuraDone
+                                ? "Đã mở 🔓"
+                                : `${sakuraProgress}/20`
+                        }
+                    </span>
 
-                <div class="stat-card">
-                    Ngày
-                    <strong>${game.day}</strong>
                 </div>
 
-                <div class="stat-card">
-                    Tiền
-                    <strong>${formatMoney(game.money)}</strong>
+
+                <p>
+                    ${
+                        sakuraDone
+                            ? "Bạn đã mở quyền mua bộ Hoa Anh Đào!"
+                            : `Hoàn thành thêm ${
+                                20 - sakuraProgress
+                            } ngày để mở quyền mua bộ Hoa Anh Đào.`
+                    }
+                </p>
+
+
+                <div class="home-event-track">
+                    <span
+                        style="width:${sakuraPercent}%;"
+                    ></span>
                 </div>
 
             </div>
 
 
             <div
-                class="home-save-actions"
-                style="
-                    display:flex;
-                    justify-content:center;
-                    gap:10px;
-                    flex-wrap:wrap;
-                    margin-top:18px;
+                class="
+                    home-event-card
+                    mid-autumn-home
                 "
             >
+
+                <div class="home-card-heading">
+
+                    <div>
+                        <span class="home-card-eyebrow">
+                            🌕 Sự kiện giới hạn
+                        </span>
+
+                        <strong>
+                            Đêm Rằm Trung Thu
+                        </strong>
+                    </div>
+
+
+                    <span class="${
+                        midAutumnDone
+                            ? "home-event-complete"
+                            : "home-event-count"
+                    }">
+                        ${
+                            midAutumnDone
+                                ? "Đã mở 🔓"
+                                : midAutumnActive
+                                    ? `${midAutumnProgressTotal}/${midAutumnTarget}`
+                                    : "Đã hết"
+                        }
+                    </span>
+
+                </div>
+
+
+                <p>
+                    ${
+                        midAutumnDone
+                            ? "Bạn đã mở quyền mua bộ Đêm Rằm Trung Thu!"
+                            : midAutumnActive
+                                ? `Phục vụ 3 vị khách đặc biệt đủ ${MID_AUTUMN_REQUIRED_SERVES} lần mỗi người. ${getMidAutumnCountdownText()}.`
+                                : "Sự kiện Trung Thu đã kết thúc."
+                    }
+                </p>
+
+
+                <div class="home-event-track">
+                    <span
+                        style="width:${midAutumnPercent}%;"
+                    ></span>
+                </div>
+
+            </div>
+
+
+            <div class="home-update-card">
+
+                <div class="home-update-header">
+
+                    <span class="home-update-badge">
+                        ✨ Mới nhất
+                    </span>
+
+                    <strong>
+                        v${LATEST_VERSION}
+                    </strong>
+
+                </div>
+
+
+                <h3>
+                    Cập nhật gần đây
+                </h3>
+
+
+                <ul>
+                    ${
+                        LATEST_HIGHLIGHTS
+                            .map(
+                                item =>
+                                    `<li>${item}</li>`
+                            )
+                            .join("")
+                    }
+                </ul>
+
+
+                <button
+                    id="home-update-history"
+                    class="home-update-button"
+                    type="button"
+                >
+                    Xem lịch sử cập nhật ›
+                </button>
+
+            </div>
+
+
+            <div class="home-save-actions">
 
                 ${
                     game.hasStarted
 
                         ? `
                             <button
+                                id="home-replay-day"
+                                class="home-save-button home-restart-button"
                                 type="button"
-                                onclick="restartCurrentDay()"
-                                style="
-                                    border:0;
-                                    border-radius:14px;
-                                    padding:10px 14px;
-                                    cursor:pointer;
-                                    background:#f4dfb5;
-                                    color:#70482c;
-                                    box-shadow:0 4px 0 #d0a469;
-                                    font-family:inherit;
-                                "
                             >
                                 ↻ Chơi lại ngày này
                             </button>
@@ -4028,26 +6518,47 @@ function showHome() {
 
 
                 <button
+                    id="home-reset-save"
+                    class="home-save-button home-reset-button"
                     type="button"
-                    onclick="resetGameSave()"
-                    style="
-                        border:0;
-                        border-radius:14px;
-                        padding:10px 14px;
-                        cursor:pointer;
-                        background:#f7c9d2;
-                        color:#7a3042;
-                        box-shadow:0 4px 0 #d98a9c;
-                        font-family:inherit;
-                    "
                 >
                     🗑 Chơi lại từ đầu
                 </button>
 
             </div>
 
-        </div>
+        </section>
     `;
+
+
+    document
+        .getElementById(
+            "home-update-history"
+        )
+        ?.addEventListener(
+            "click",
+            openUpdateHistory
+        );
+
+
+    document
+        .getElementById(
+            "home-replay-day"
+        )
+        ?.addEventListener(
+            "click",
+            restartCurrentDay
+        );
+
+
+    document
+        .getElementById(
+            "home-reset-save"
+        )
+        ?.addEventListener(
+            "click",
+            resetGameSave
+        );
 
 
     mainButton.innerHTML =
@@ -4057,6 +6568,22 @@ function showHome() {
 
 
     saveGame();
+}
+
+function getPhaseStatusText() {
+    if (game.phase === "prep") {
+        return "Đang chuẩn bị mở cửa";
+    }
+
+    if (game.phase === "order" || game.phase === "making" || game.phase === "result" || game.phase === "waiting") {
+        return "Game đang tạm dừng";
+    }
+
+    if (game.phase === "dayEnd") {
+        return "Đã đóng cửa";
+    }
+
+    return "Sẵn sàng vào tiệm";
 }
 
 
@@ -4134,7 +6661,7 @@ function showPrep() {
 
     updateHeader(
         `Ngày ${game.day}`,
-        "Nhập hàng trước khi mở cửa"
+        ""
     );
 
 
@@ -4167,7 +6694,7 @@ function showPrep() {
 
                     <img
                         class="cutting-board"
-                        src="images/board.png"
+                        src="${skinById("board", selectedSkins.board).image}"
                         draggable="false"
                         alt="Thớt"
                     >
@@ -4183,7 +6710,7 @@ function showPrep() {
 
                     <img
                         class="ingredient-table-image"
-                        src="images/ingredient-table.png"
+                        src="${skinById("ingredientTable", selectedSkins.ingredientTable).image}"
                         draggable="false"
                         alt="Bàn nguyên liệu"
                     >
@@ -4391,8 +6918,20 @@ function playOpenShopTransition() {
 
 function createOrder() {
 
-    const possibleRecipes =
+    const allPossibleRecipes =
         availableRecipes();
+
+
+    const possibleRecipes =
+        game.currentCustomer === "THO"
+
+            ? allPossibleRecipes.filter(
+                recipe =>
+                    recipe.name === "Bánh mì chay" ||
+                    recipe.name === "Bánh mì không"
+            )
+
+            : allPossibleRecipes;
 
 
     if (!possibleRecipes.length) {
@@ -4792,6 +7331,8 @@ function renderCurrentOrder() {
 
 function startMaking() {
 
+    cancelActiveSauceHold();
+
     game.selectedIngredients = [];
 
     game.breadSelected = false;
@@ -4854,7 +7395,7 @@ function renderMakingScreen() {
 
                     <img
                         class="cutting-board"
-                        src="images/board.png"
+                        src="${skinById("board", selectedSkins.board).image}"
                         draggable="false"
                         alt="Thớt"
                     >
@@ -4889,7 +7430,7 @@ function renderMakingScreen() {
 
                     <img
                         class="ingredient-table-image"
-                        src="images/ingredient-table.png"
+                        src="${skinById("ingredientTable", selectedSkins.ingredientTable).image}"
                         draggable="false"
                         alt="Bàn nguyên liệu"
                     >
@@ -5031,7 +7572,7 @@ function renderStationItems(mode = null) {
         breadHTML;
 
 
-    // Click handler
+    // Interaction handler
 
     station
         .querySelectorAll(
@@ -5039,12 +7580,38 @@ function renderStationItems(mode = null) {
         )
         .forEach(button => {
 
+            const ingredientName =
+                button.dataset.ingredient;
+
+            const isSauce =
+                sauceSlots.includes(
+                    ingredientName
+                );
+
+
+            // Trong màn làm bánh:
+            // sốt phải NHẤN GIỮ đủ 5 giây.
+            if (
+                mode === "making" &&
+                isSauce
+            ) {
+
+                bindSauceHoldButton(
+                    button,
+                    ingredientName
+                );
+
+                return;
+            }
+
+
+            // Các nguyên liệu khác vẫn click như cũ.
             button.addEventListener(
                 "click",
                 () => {
 
                     handleStationClick(
-                        button.dataset.ingredient,
+                        ingredientName,
                         mode
                     );
                 }
@@ -5184,6 +7751,25 @@ function createStationButton({
             >
 
 
+            ${
+                mode === "making" &&
+                sauceSlots.includes(name)
+
+                    ? `
+                        <span
+                            class="sauce-hold-ring"
+                            aria-hidden="true"
+                        >
+                            <span class="sauce-hold-ring-inner">
+                                GIỮ
+                            </span>
+                        </span>
+                    `
+
+                    : ""
+            }
+
+
             ${overlayHTML}
 
         </button>
@@ -5293,6 +7879,475 @@ function createBreadStationButton(mode) {
 
 
 // ======================================================
+// HOLD SAUCE
+// ======================================================
+
+function bindSauceHoldButton(
+    button,
+    name
+) {
+
+    if (
+        !button ||
+        !sauceSlots.includes(name)
+    ) {
+        return;
+    }
+
+
+    // Đã có sốt trên bánh:
+    // click bình thường để bỏ sốt ra.
+    if (
+        game.selectedIngredients.includes(
+            name
+        )
+    ) {
+
+        button.addEventListener(
+            "click",
+            event => {
+
+                event.preventDefault();
+
+                cancelActiveSauceHold();
+
+                toggleIngredient(name);
+            }
+        );
+
+        return;
+    }
+
+
+    button.addEventListener(
+        "contextmenu",
+        event =>
+            event.preventDefault()
+    );
+
+
+    button.addEventListener(
+        "pointerdown",
+        event => {
+
+            // Chỉ nhận nút chuột trái / touch / pen.
+            if (
+                event.pointerType === "mouse" &&
+                event.button !== 0
+            ) {
+                return;
+            }
+
+            event.preventDefault();
+
+            startSauceHold(
+                button,
+                name,
+                event.pointerId
+            );
+        }
+    );
+
+
+    const stopHold =
+        event => {
+
+            if (
+                activeSauceHold &&
+                activeSauceHold.button === button &&
+                (
+                    event.pointerId === undefined ||
+                    event.pointerId ===
+                        activeSauceHold.pointerId
+                )
+            ) {
+
+                cancelActiveSauceHold();
+            }
+        };
+
+
+    button.addEventListener(
+        "pointerup",
+        stopHold
+    );
+
+    button.addEventListener(
+        "pointercancel",
+        stopHold
+    );
+
+    button.addEventListener(
+        "lostpointercapture",
+        stopHold
+    );
+}
+
+
+function startSauceHold(
+    button,
+    name,
+    pointerId
+) {
+
+    const data =
+        ingredients[name];
+
+
+    if (
+        !data ||
+        !data.unlocked ||
+        data.stock <= 0 ||
+        game.selectedIngredients.includes(
+            name
+        )
+    ) {
+        return;
+    }
+
+
+    // Có bánh thì animation sốt mới có chỗ để hiện.
+    if (!game.breadSelected) {
+
+        showIngredientFeedback(
+            "🥖 Lấy bánh mì trước rồi mới bóp sốt nha!"
+        );
+
+        return;
+    }
+
+
+    cancelActiveSauceHold();
+
+
+    try {
+        button.setPointerCapture(
+            pointerId
+        );
+    } catch {}
+
+
+    button.classList.add(
+        "is-holding-sauce"
+    );
+
+    button.style.setProperty(
+        "--sauce-hold-angle",
+        "0deg"
+    );
+
+    startSquirtSound();
+
+
+    const previewLayer =
+        createSauceHoldPreview(
+            name
+        );
+
+
+    const startedAt =
+        performance.now();
+
+
+    activeSauceHold = {
+        button,
+        name,
+        pointerId,
+        previewLayer,
+        startedAt,
+        frameId: null,
+        completed: false
+    };
+
+
+    showIngredientFeedback(
+        `Giữ chai ${name} đủ 3 giây...`
+    );
+
+
+    const animate =
+        now => {
+
+            if (
+                !activeSauceHold ||
+                activeSauceHold.button !==
+                    button ||
+                activeSauceHold.completed
+            ) {
+                return;
+            }
+
+
+            const elapsed =
+                now - startedAt;
+
+
+            const progress =
+                Math.max(
+                    0,
+                    Math.min(
+                        1,
+                        elapsed /
+                            SAUCE_HOLD_MS
+                    )
+                );
+
+
+            const angle =
+                progress * 360;
+
+
+            button.style.setProperty(
+                "--sauce-hold-angle",
+                `${angle}deg`
+            );
+
+
+            updateSauceHoldPreview(
+                previewLayer,
+                progress
+            );
+
+
+            if (progress >= 1) {
+
+                completeSauceHold(
+                    name
+                );
+
+                return;
+            }
+
+
+            activeSauceHold.frameId =
+                requestAnimationFrame(
+                    animate
+                );
+        };
+
+
+    activeSauceHold.frameId =
+        requestAnimationFrame(
+            animate
+        );
+}
+
+
+function createSauceHoldPreview(name) {
+
+    const fillings =
+        document.getElementById(
+            "sandwich-fillings"
+        );
+
+
+    const data =
+        ingredients[name];
+
+
+    if (
+        !fillings ||
+        !data?.image ||
+        !game.breadSelected
+    ) {
+        return null;
+    }
+
+
+    const layer =
+        document.createElement("img");
+
+
+    layer.className =
+        [
+            "sandwich-layer",
+            `layer-${slugify(name)}`,
+            "sauce-live-reveal"
+        ].join(" ");
+
+
+    layer.src =
+        data.image;
+
+    layer.alt =
+        name;
+
+    layer.title =
+        name;
+
+    layer.draggable =
+        false;
+
+
+    layer.style.zIndex =
+        String(
+            game.selectedIngredients.length +
+            40
+        );
+
+
+    // Bắt đầu hoàn toàn ẩn.
+    layer.style.clipPath =
+        "inset(0 100% 0 0)";
+
+
+    fillings.appendChild(
+        layer
+    );
+
+
+    return layer;
+}
+
+
+function updateSauceHoldPreview(
+    layer,
+    progress
+) {
+
+    if (!layer) {
+        return;
+    }
+
+
+    const hiddenRight =
+        Math.max(
+            0,
+            100 - progress * 100
+        );
+
+
+    layer.style.clipPath =
+        `inset(0 ${hiddenRight}% 0 0)`;
+}
+
+
+function completeSauceHold(name) {
+
+    if (
+        !activeSauceHold ||
+        activeSauceHold.name !== name
+    ) {
+        return;
+    }
+
+
+    const hold =
+        activeSauceHold;
+
+
+    hold.completed =
+        true;
+
+
+    if (hold.frameId) {
+        cancelAnimationFrame(
+            hold.frameId
+        );
+    }
+
+
+    hold.button.classList.remove(
+        "is-holding-sauce"
+    );
+
+    hold.button.style.removeProperty(
+        "--sauce-hold-angle"
+    );
+
+    stopSquirtSound();
+
+
+    activeSauceHold =
+        null;
+
+
+    // Sau 5 giây mới thật sự thêm sốt vào order.
+    if (
+        !game.selectedIngredients.includes(
+            name
+        )
+    ) {
+
+        game.selectedIngredients.push(
+            name
+        );
+
+        playIngredientSound();
+    }
+
+
+    // updateSandwich sẽ thay preview đang reveal
+    // bằng sprite sốt đầy đủ.
+    updateSandwich();
+
+    renderStationItems(
+        "making"
+    );
+
+
+    showIngredientFeedback(
+        `✓ Đã bóp ${name}`
+    );
+
+
+    saveGame();
+}
+
+
+function cancelActiveSauceHold() {
+
+    if (!activeSauceHold) {
+        return;
+    }
+
+
+    const hold =
+        activeSauceHold;
+
+
+    activeSauceHold =
+        null;
+
+
+    if (hold.frameId) {
+
+        cancelAnimationFrame(
+            hold.frameId
+        );
+    }
+
+
+    hold.button?.classList.remove(
+        "is-holding-sauce"
+    );
+
+    hold.button?.style.removeProperty(
+        "--sauce-hold-angle"
+    );
+
+    stopSquirtSound();
+
+
+    if (
+        hold.previewLayer &&
+        hold.previewLayer.isConnected
+    ) {
+
+        hold.previewLayer.remove();
+    }
+
+
+    if (!hold.completed) {
+
+        showIngredientFeedback(
+            `Thả sớm rồi, ${hold.name} chưa được thêm.`
+        );
+    }
+}
+
+
+// ======================================================
 // CLICK INGREDIENT
 // ======================================================
 
@@ -5363,6 +8418,17 @@ function handleStationClick(
 
 
     // TOPPING
+
+    // Sauce khi đang làm bánh được xử lý bằng
+    // press-and-hold trong bindSauceHoldButton().
+    if (
+        sauceSlots.includes(name) &&
+        !game.selectedIngredients.includes(
+            name
+        )
+    ) {
+        return;
+    }
 
     toggleIngredient(name);
 }
@@ -5730,6 +8796,10 @@ function updateSandwich() {
     // Chưa lấy bánh mì.
 
     if (!game.breadSelected) {
+
+        if (activeSauceHold) {
+            cancelActiveSauceHold();
+        }
 
         bottom.innerHTML = "";
         fillings.innerHTML = "";
@@ -6160,14 +9230,15 @@ function renderDayEnd() {
     game.shopOpen = false;
 
 
-    // Rent chỉ trừ đúng 1 lần mỗi ngày.
+    // Điện nước chỉ trừ đúng 1 lần mỗi ngày.
+    // Chi phí tăng theo nâng cấp Chỗ ngồi và Làm mát.
     if (game.dailyRentPaid === 0) {
 
         game.dailyRentPaid =
-            DAILY_RENT;
+            getDailyUtilityCost();
 
         game.money -=
-            DAILY_RENT;
+            game.dailyRentPaid;
     }
 
 
@@ -6249,7 +9320,7 @@ function renderDayEnd() {
                 <div class="receipt-row negative">
 
                     <span>
-                        🏠 Tiền thuê mặt bằng
+                        💡 Điện nước & vận hành
                     </span>
 
                     <strong>
@@ -7358,151 +10429,620 @@ creditButton.addEventListener("click", () => {
 }
 
 function openUpdateHistory() {
-    document.getElementById("update-history-overlay")?.remove();
+    document
+        .getElementById("update-history-overlay")
+        ?.remove();
 
-    const overlay = document.createElement("div");
-    overlay.id = "update-history-overlay";
+    const overlay =
+        document.createElement("div");
+
+    overlay.id =
+        "update-history-overlay";
 
     overlay.innerHTML = `
         <div class="update-history-panel">
-            <h2>📜 Lịch sử cập nhật</h2>
+
+            <h2>
+                📜 Lịch sử cập nhật
+            </h2>
 
             <div class="update-history-list">
 
+
+                <!-- =========================
+                     VERSION 0.3.1
+                     ========================= -->
+
                 <div class="update-entry">
+
                     <div class="update-entry-header">
-                        <strong>Phiên bản 0.3.0</strong>
+
+                        <strong>
+                            Phiên bản 0.3.1
+                        </strong>
 
                         <div class="update-entry-meta">
-                            <span class="current-version-badge">Hiện tại</span>
-                            <span class="update-date">27/09/2026</span>
+
+                            <span class="current-version-badge">
+                                Hiện tại
+                            </span>
+
+                            <span class="update-date">
+                                27/09/2026
+                            </span>
+
                         </div>
+
                     </div>
 
                     <ul>
-                        <li>Thêm hệ thống quản lý tiệm với Nhiệm vụ, Nâng cấp, Trang trí và theo dõi Doanh thu.</li>
-                        <li>Thêm nhiệm vụ ngày với các mục tiêu thay đổi theo ngày thật và phần thưởng tiền khi hoàn thành.</li>
-                        <li>Thêm nhiệm vụ sự kiện Mùa Hoa Anh Đào, hoàn thành 20 ngày để mở quyền mua bộ trang trí Sakura.</li>
-                        <li>Thêm hệ thống nâng cấp tiệm gồm Quảng bá, Chỗ ngồi và Làm mát, giúp tăng lượng khách, thời gian kiên nhẫn và khả năng nhận đánh giá cao.</li>
-                        <li>Thêm hệ thống trang trí với skin cho sổ công thức, khung cảnh, thớt và bàn bếp.</li>
-                        <li>Thêm các bộ trang trí Sakura và Trung Thu, cùng khung cảnh Thành thị mới.</li>
-                        <li>Khách hàng giờ có cách xưng hô riêng phù hợp với từng nhân vật thay vì tất cả đều xưng “mình”.</li>
-                        <li>Cải thiện hệ thống lưu tiến trình để lưu các nâng cấp, skin đã sở hữu và trang trí đang sử dụng.</li>
-                        <li>Cải thiện khả năng cài Một Ổ Nha! lên màn hình chính như một ứng dụng web.</li>
+
+                        <li>
+                            Thêm màn hình tải game với thanh tiến trình,
+                            giúp chuẩn bị trước các tài nguyên quan trọng
+                            trước khi người chơi vào tiệm.
+                        </li>
+
+                        <li>
+                            Tối ưu hệ thống tải tài nguyên để ưu tiên
+                            nguyên liệu, khách hàng, âm thanh và bộ trang trí
+                            đang sử dụng, giúp giảm tình trạng giật khi
+                            tài nguyên xuất hiện lần đầu.
+                        </li>
+
+                        <li>
+                            Tối ưu dung lượng hình ảnh trên toàn bộ game,
+                            giúp giảm đáng kể kích thước tài nguyên và
+                            cải thiện thời gian tải trên thiết bị di động.
+                        </li>
+
+                        <li>
+                            Thêm cơ chế bóp sốt mới:
+                            Ketchup, Sriracha và Mayonnaise giờ cần được
+                            nhấn giữ để thêm vào bánh.
+                        </li>
+
+                        <li>
+                            Trong lúc bóp sốt, vòng tiến trình sẽ hiển thị
+                            trực tiếp trên chai và lớp sốt dần xuất hiện
+                            trên ổ bánh.
+                        </li>
+
+                        <li>
+                            Nếu thả tay quá sớm khi bóp sốt,
+                            thao tác sẽ bị hủy và phần sốt chưa hoàn thành
+                            sẽ biến mất.
+                        </li>
+
+                        <li>
+                            Thêm âm thanh riêng cho thao tác bóp sốt,
+                            phát liên tục trong thời gian giữ chai và
+                            dừng ngay khi hoàn thành hoặc hủy thao tác.
+                        </li>
+
+                        <li>
+                            Thời gian bóp sốt được điều chỉnh còn 3 giây
+                            để thao tác có cảm giác rõ ràng nhưng
+                            không làm chậm nhịp phục vụ khách.
+                        </li>
+
+                        <li>
+                            Hướng dẫn chơi được mở rộng từ 5 lên 6 trang,
+                            bổ sung một trang riêng giải thích cách
+                            nhấn giữ để sử dụng các loại sốt.
+                        </li>
+
+                        <li>
+                            Cập nhật hệ thống trang trí để thớt,
+                            sổ công thức, khung cảnh và quầy nguyên liệu
+                            sử dụng chính xác skin mà người chơi đang chọn.
+                        </li>
+
+                        <li>
+                            Chuẩn bị thêm bộ trang trí Halloween với
+                            thớt, sổ công thức, khung cảnh và các tài nguyên
+                            theo chủ đề Halloween.
+                        </li>
+
+                        <li>
+                            Cải thiện hệ thống khách mỗi ngày:
+                            số lượng khách tăng dần theo tiến độ ngày chơi
+                            thay vì dao động quá thấp ở những ngày sau.
+                        </li>
+
+                        <li>
+                            Điều chỉnh nhịp khách đến để tiệm bớt khoảng
+                            trống quá lâu nhưng vẫn giữ thời gian đủ để
+                            người chơi chuẩn bị giữa các lượt phục vụ.
+                        </li>
+
+                        <li>
+                            Cải thiện cách tải sprite khách hàng để
+                            giảm hiện tượng khách xuất hiện chậm hoặc
+                            hình bị tải muộn trong lúc chơi.
+                        </li>
+
+                        <li>
+                            Cải thiện hệ thống level của tiệm,
+                            tiếp tục tích EXP khi phục vụ đúng và
+                            hiển thị danh hiệu theo từng cột mốc level.
+                        </li>
+
+                        <li>
+                            Cải thiện tính ổn định của hệ thống đánh giá,
+                            tiến trình ngày và dữ liệu khi chơi lại ngày.
+                        </li>
+
+                        <li>
+                            Sửa một số trường hợp dữ liệu cũ có thể
+                            giữ số khách không còn phù hợp với hệ thống
+                            cân bằng mới.
+                        </li>
+
+                        <li>
+                            Cải thiện hiệu năng tổng thể trên điện thoại,
+                            đặc biệt khi chuyển giữa màn chuẩn bị,
+                            chờ khách và làm bánh.
+                        </li>
+
                     </ul>
+
                 </div>
 
+
+                <!-- =========================
+                     VERSION 0.3.0
+                     ========================= -->
+
                 <div class="update-entry">
+
                     <div class="update-entry-header">
-                        <strong>Phiên bản 0.2.3</strong>
+
+                        <strong>
+                            Phiên bản 0.3.0
+                        </strong>
 
                         <div class="update-entry-meta">
-                            <span class="update-date">27/09/2026</span>
+
+                            <span class="update-date">
+                                27/09/2026
+                            </span>
+
                         </div>
+
                     </div>
 
                     <ul>
-                        <li>Thêm hướng dẫn chơi gồm 5 trang minh họa cho người chơi mới.</li>
-                        <li>Có thể mở lại hướng dẫn bất cứ lúc nào trong phần Cài đặt.</li>
-                        <li>Phóng to và điều chỉnh vị trí sổ công thức để dễ nhìn và dễ bấm hơn.</li>
-                        <li>Làm rõ một số yêu cầu của khách như “không cho rau”, “không cho ớt” và “không cho sốt” để tránh hiểu nhầm khi làm bánh.</li>
+
+                        <li>
+                            Thêm hệ thống quản lý tiệm với
+                            Nhiệm vụ, Nâng cấp, Trang trí
+                            và theo dõi Doanh thu.
+                        </li>
+
+                        <li>
+                            Thêm nhiệm vụ ngày với các mục tiêu
+                            thay đổi theo ngày thật và phần thưởng
+                            tiền khi hoàn thành.
+                        </li>
+
+                        <li>
+                            Thêm nhiệm vụ sự kiện Mùa Hoa Anh Đào,
+                            hoàn thành 20 ngày để mở quyền mua
+                            bộ Hoa Anh Đào.
+                        </li>
+
+                        <li>
+                            Thêm sự kiện giới hạn Đêm Rằm Trung Thu
+                            với Chị Hằng, Chú Cuội và Thỏ Ngọc.
+                        </li>
+
+                        <li>
+                            Phục vụ đủ các vị khách Trung Thu
+                            để mở quyền mua bộ trang trí
+                            Đêm Rằm Trung Thu.
+                        </li>
+
+                        <li>
+                            Thêm hệ thống nâng cấp tiệm gồm
+                            Quảng bá, Chỗ ngồi và Làm mát,
+                            giúp tăng lượng khách, thời gian kiên nhẫn
+                            và khả năng nhận đánh giá cao.
+                        </li>
+
+                        <li>
+                            Thêm hệ thống level cho tiệm,
+                            nhận EXP khi phục vụ đúng và
+                            mở các danh hiệu mới khi tăng level.
+                        </li>
+
+                        <li>
+                            Thêm hệ thống trang trí với skin cho
+                            sổ công thức, khung cảnh, thớt,
+                            quầy nguyên liệu và bàn bếp.
+                        </li>
+
+                        <li>
+                            Thêm các bộ Hoa Anh Đào và Trung Thu,
+                            cùng khung cảnh Thành thị mới.
+                        </li>
+
+                        <li>
+                            Thêm trang Thành tựu trong phần Quản lý
+                            để theo dõi tiến độ hoàn thành
+                            các bộ sưu tập trang trí.
+                        </li>
+
+                        <li>
+                            Khách hàng giờ có cách xưng hô riêng
+                            phù hợp với từng nhân vật thay vì
+                            tất cả đều xưng “mình”.
+                        </li>
+
+                        <li>
+                            Cải thiện hệ thống lưu tiến trình để lưu
+                            các nâng cấp, level, skin đã sở hữu
+                            và trang trí đang sử dụng.
+                        </li>
+
+                        <li>
+                            Cải thiện khả năng cài Một Ổ Nha!
+                            lên màn hình chính như một ứng dụng web.
+                        </li>
+
                     </ul>
+
                 </div>
 
+
+                <!-- =========================
+                     VERSION 0.2.3
+                     ========================= -->
+
                 <div class="update-entry">
+
                     <div class="update-entry-header">
-                        <strong>Phiên bản 0.2.2</strong>
+
+                        <strong>
+                            Phiên bản 0.2.3
+                        </strong>
 
                         <div class="update-entry-meta">
-                            <span class="update-date">26/09/2026</span>
+
+                            <span class="update-date">
+                                27/09/2026
+                            </span>
+
                         </div>
+
                     </div>
 
                     <ul>
-                        <li>Thêm hiệu ứng đóng cửa tiệm trước khi hiện tổng kết cuối ngày.</li>
-                        <li>Tiệm có khoảng thời gian vắng khách sau khi mở cửa và sau khi phục vụ hết hàng chờ.</li>
-                        <li>Điều chỉnh số khách mỗi ngày: có ngày vắng, ngày vừa và thỉnh thoảng có ngày rất đông.</li>
-                        <li>Điều chỉnh giá nhập một số nguyên liệu để cân bằng tốc độ kiếm tiền khi lượng khách tăng.</li>
+
+                        <li>
+                            Thêm hướng dẫn chơi gồm 5 trang minh họa
+                            cho người chơi mới.
+                        </li>
+
+                        <li>
+                            Có thể mở lại hướng dẫn bất cứ lúc nào
+                            trong phần Cài đặt.
+                        </li>
+
+                        <li>
+                            Phóng to và điều chỉnh vị trí sổ công thức
+                            để dễ nhìn và dễ bấm hơn.
+                        </li>
+
+                        <li>
+                            Làm rõ một số yêu cầu của khách như
+                            “không cho rau”, “không cho ớt”
+                            và “không cho sốt”.
+                        </li>
+
                     </ul>
+
                 </div>
 
+
+                <!-- =========================
+                     VERSION 0.2.2
+                     ========================= -->
+
                 <div class="update-entry">
+
                     <div class="update-entry-header">
-                        <strong>Phiên bản 0.2.1</strong>
+
+                        <strong>
+                            Phiên bản 0.2.2
+                        </strong>
 
                         <div class="update-entry-meta">
-                            <span class="update-date">25/09/2026</span>
+
+                            <span class="update-date">
+                                26/09/2026
+                            </span>
+
                         </div>
+
                     </div>
 
                     <ul>
-                        <li>Thêm hàng chờ 2–3 khách cùng lúc; có thể chọn khách để xem và làm đơn.</li>
-                        <li>Thêm thanh kiên nhẫn trong lời thoại và hàng chờ. Khách đổi sang biểu cảm khó chịu khi sắp hết kiên nhẫn và có thể rời tiệm nếu đợi quá lâu.</li>
-                        <li>Thêm đánh giá sao sau mỗi đơn, điểm đánh giá của tiệm trên thanh trạng thái và thống kê đánh giá cuối ngày.</li>
-                        <li>Thêm bánh mì pâté cùng nhiều biến thể theo yêu cầu của khách: thêm sốt, không cho rau hoặc kết hợp nhiều yêu cầu trong một đơn, tùy nguyên liệu đã mở khóa và còn trong kho.</li>
-                        <li>Sửa lỗi nhạc nền bị mất sau khi rời ứng dụng rồi quay lại hoặc khi chơi lại ngày; cải thiện chuyển nhạc giữa các màn và âm thanh khi chọn nguyên liệu.</li>
-                        <li>Làm mới giao diện sổ công thức, hàng chờ và thanh trạng thái; tăng kích thước và căn giữa số tiền.</li>
-                        <li>Điều chỉnh kích thước nút điều khiển và độ trong suốt của các loại sốt.</li>
+
+                        <li>
+                            Thêm hiệu ứng đóng cửa tiệm trước khi
+                            hiện tổng kết cuối ngày.
+                        </li>
+
+                        <li>
+                            Tiệm có khoảng thời gian vắng khách
+                            sau khi mở cửa và sau khi
+                            phục vụ hết hàng chờ.
+                        </li>
+
+                        <li>
+                            Điều chỉnh số khách mỗi ngày:
+                            có ngày vắng, ngày vừa và
+                            thỉnh thoảng có ngày rất đông.
+                        </li>
+
+                        <li>
+                            Điều chỉnh giá nhập một số nguyên liệu
+                            để cân bằng tốc độ kiếm tiền
+                            khi lượng khách tăng.
+                        </li>
+
                     </ul>
+
                 </div>
 
+
+                <!-- =========================
+                     VERSION 0.2.1
+                     ========================= -->
+
                 <div class="update-entry">
+
                     <div class="update-entry-header">
-                        <strong>Phiên bản 0.2.0</strong>
+
+                        <strong>
+                            Phiên bản 0.2.1
+                        </strong>
 
                         <div class="update-entry-meta">
-                            <span class="update-date">25/09/2026</span>
+
+                            <span class="update-date">
+                                25/09/2026
+                            </span>
+
                         </div>
+
                     </div>
 
                     <ul>
-                        <li>Khách hàng xuất hiện trực tiếp tại quầy, với biểu cảm thay đổi theo món được phục vụ.</li>
-                        <li>Thêm khách hàng mới cùng hiệu ứng khi khách đến và rời tiệm.</li>
-                        <li>Anh giao hàng xuất hiện khi chuẩn bị nguyên liệu và thông báo sau khi giao hàng.</li>
-                        <li>Thêm hiệu ứng mở cửa tiệm, điều chỉnh thời gian chờ giữa các khách.</li>
-                        <li>Thêm âm thanh tương tác và cải thiện nhạc nền, giao diện trên điện thoại.</li>
+
+                        <li>
+                            Thêm hàng chờ 2 đến 3 khách cùng lúc,
+                            có thể chọn khách để xem và làm đơn.
+                        </li>
+
+                        <li>
+                            Thêm thanh kiên nhẫn trong lời thoại
+                            và hàng chờ.
+                        </li>
+
+                        <li>
+                            Khách đổi sang biểu cảm khó chịu
+                            khi sắp hết kiên nhẫn và có thể
+                            rời tiệm nếu đợi quá lâu.
+                        </li>
+
+                        <li>
+                            Thêm đánh giá sao sau mỗi đơn,
+                            điểm đánh giá của tiệm trên thanh trạng thái
+                            và thống kê đánh giá cuối ngày.
+                        </li>
+
+                        <li>
+                            Thêm bánh mì pâté cùng nhiều biến thể
+                            theo yêu cầu của khách.
+                        </li>
+
+                        <li>
+                            Khách có thể yêu cầu thêm sốt,
+                            không cho rau, không cho ớt,
+                            không cho sốt hoặc kết hợp
+                            nhiều yêu cầu trong một đơn.
+                        </li>
+
+                        <li>
+                            Sửa lỗi nhạc nền bị mất sau khi
+                            rời ứng dụng rồi quay lại
+                            hoặc khi chơi lại ngày.
+                        </li>
+
+                        <li>
+                            Cải thiện chuyển nhạc giữa các màn
+                            và âm thanh khi chọn nguyên liệu.
+                        </li>
+
+                        <li>
+                            Làm mới giao diện sổ công thức,
+                            hàng chờ và thanh trạng thái.
+                        </li>
+
+                        <li>
+                            Điều chỉnh kích thước nút điều khiển
+                            và độ trong suốt của các loại sốt.
+                        </li>
+
                     </ul>
+
                 </div>
 
+
+                <!-- =========================
+                     VERSION 0.2.0
+                     ========================= -->
+
                 <div class="update-entry">
+
                     <div class="update-entry-header">
-                        <strong>Phiên bản 0.1.0</strong>
+
+                        <strong>
+                            Phiên bản 0.2.0
+                        </strong>
 
                         <div class="update-entry-meta">
-                            <span class="update-date">24/09/2026</span>
+
+                            <span class="update-date">
+                                25/09/2026
+                            </span>
+
                         </div>
+
                     </div>
 
                     <ul>
-                        <li>Ra mắt phiên bản đầu tiên của Một Ổ Nha!</li>
-                        <li>Thêm hệ thống khách hàng và làm bánh theo yêu cầu.</li>
-                        <li>Thêm nhập hàng, kho nguyên liệu và mở khóa nguyên liệu mới.</li>
-                        <li>Thêm sổ công thức.</li>
-                        <li>Thêm hệ thống ngày, doanh thu, chi phí và tiền thuê mặt bằng.</li>
-                        <li>Thêm lưu tiến trình và chơi lại ngày hiện tại.</li>
-                        <li>Thêm nhạc nền cho tiệm và khu vực bếp.</li>
+
+                        <li>
+                            Khách hàng xuất hiện trực tiếp tại quầy,
+                            với biểu cảm thay đổi theo món
+                            được phục vụ.
+                        </li>
+
+                        <li>
+                            Thêm khách hàng mới cùng hiệu ứng
+                            khi khách đến và rời tiệm.
+                        </li>
+
+                        <li>
+                            Anh giao hàng xuất hiện khi chuẩn bị
+                            nguyên liệu và thông báo sau khi giao hàng.
+                        </li>
+
+                        <li>
+                            Thêm hiệu ứng mở cửa tiệm.
+                        </li>
+
+                        <li>
+                            Điều chỉnh thời gian chờ giữa các khách.
+                        </li>
+
+                        <li>
+                            Thêm âm thanh tương tác và cải thiện
+                            nhạc nền, giao diện trên điện thoại.
+                        </li>
+
                     </ul>
+
                 </div>
+
+
+                <!-- =========================
+                     VERSION 0.1.0
+                     ========================= -->
+
+                <div class="update-entry">
+
+                    <div class="update-entry-header">
+
+                        <strong>
+                            Phiên bản 0.1.0
+                        </strong>
+
+                        <div class="update-entry-meta">
+
+                            <span class="update-date">
+                                24/09/2026
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                    <ul>
+
+                        <li>
+                            Ra mắt phiên bản đầu tiên của
+                            Một Ổ Nha!
+                        </li>
+
+                        <li>
+                            Thêm hệ thống khách hàng và
+                            làm bánh theo yêu cầu.
+                        </li>
+
+                        <li>
+                            Thêm nhập hàng, kho nguyên liệu
+                            và mở khóa nguyên liệu mới.
+                        </li>
+
+                        <li>
+                            Thêm sổ công thức.
+                        </li>
+
+                        <li>
+                            Thêm hệ thống ngày, doanh thu,
+                            chi phí và tiền thuê mặt bằng.
+                        </li>
+
+                        <li>
+                            Thêm lưu tiến trình
+                            và chơi lại ngày hiện tại.
+                        </li>
+
+                        <li>
+                            Thêm nhạc nền cho tiệm
+                            và khu vực bếp.
+                        </li>
+
+                    </ul>
+
+                </div>
+
 
             </div>
 
-            <button class="update-history-close" type="button">
+
+            <button
+                class="update-history-close"
+                type="button"
+            >
                 Đã hiểu
             </button>
+
         </div>
     `;
 
-    document.body.appendChild(overlay);
+
+    document.body.appendChild(
+        overlay
+    );
+
 
     overlay
-        .querySelector(".update-history-close")
-        .addEventListener("click", () => overlay.remove());
+        .querySelector(
+            ".update-history-close"
+        )
+        .addEventListener(
+            "click",
+            () => overlay.remove()
+        );
 
-    overlay.addEventListener("click", event => {
-        if (event.target === overlay) {
-            overlay.remove();
+
+    overlay.addEventListener(
+        "click",
+        event => {
+
+            if (
+                event.target === overlay
+            ) {
+                overlay.remove();
+            }
+
         }
-    });
+    );
 }
 
 function openPauseMenu() {
@@ -7749,9 +11289,437 @@ bindTutorialEvents();
 const startScreen =
     document.getElementById("start-screen");
 
-startScreen.addEventListener(
+const startScreenStatus =
+    document.getElementById(
+        "start-screen-status"
+    );
+
+const loadingProgressWrap =
+    document.getElementById(
+        "loading-progress-wrap"
+    );
+
+const loadingProgressBar =
+    document.getElementById(
+        "loading-progress-bar"
+    );
+
+let startScreenReady = false;
+let startScreenEntered = false;
+
+
+// ======================================================
+// STARTUP PRELOADER
+//
+// Chỉ tải những asset cần cho gameplay chính.
+// Event skin chưa equip / asset phụ sẽ được browser tải khi cần.
+// ======================================================
+
+function getStartupPreloadAssets() {
+
+    const assetSet = new Set();
+
+
+    // Ảnh lobby / gameplay cơ bản.
+    [
+        "images/banh-mi.png",
+        "images/bread.png"
+    ].forEach(
+        src => assetSet.add(src)
+    );
+
+
+    // Toàn bộ sprite nguyên liệu đang có trong game:
+    // - ảnh trên bàn
+    // - ảnh nằm trong bánh
+    Object.values(ingredients)
+        .forEach(ingredient => {
+
+            if (ingredient.tableImage) {
+                assetSet.add(
+                    ingredient.tableImage
+                );
+            }
+
+            if (ingredient.image) {
+                assetSet.add(
+                    ingredient.image
+                );
+            }
+        });
+
+
+    // Chỉ preload bộ skin ĐANG EQUIP.
+    [
+        ["board", selectedSkins.board],
+        ["background", selectedSkins.background],
+        ["recipe", selectedSkins.recipe],
+        [
+            "ingredientTable",
+            selectedSkins.ingredientTable
+        ]
+    ].forEach(([type, id]) => {
+
+        const skin =
+            skinById(type, id);
+
+        if (skin?.image) {
+            assetSet.add(skin.image);
+        }
+    });
+
+
+    // Customer thường A-F, đủ 3 trạng thái.
+    // Những customer event đặc biệt được lazy-load khi thực sự xuất hiện.
+    [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+    ].forEach(id => {
+
+        [1, 2, 3].forEach(mood => {
+            assetSet.add(
+                `images/customer/${id}/${id}${mood}.png`
+            );
+        });
+    });
+
+
+    // Nếu người chơi chưa xem tutorial 0.3.0,
+    // preload luôn 6 ảnh để tutorial mở ra không khựng.
+    const seenTutorialVersion =
+        localStorage.getItem(
+            TUTORIAL_SEEN_KEY
+        );
+
+    if (
+        seenTutorialVersion !==
+        TUTORIAL_VERSION
+    ) {
+
+        tutorialSlides.forEach(slide => {
+            if (slide.image) {
+                assetSet.add(slide.image);
+            }
+        });
+    }
+
+
+    // SFX gameplay. Nhạc nền vẫn được browser quản lý riêng,
+    // vì mobile cần cú chạm của người chơi mới được play().
+    [
+        "audio/click.mp3",
+        "audio/ingredient.mp3",
+        "audio/correct.mp3",
+        "audio/wrong.mp3",
+        "audio/openstore.mp3",
+        "audio/squirt.mp3"
+    ].forEach(
+        src => assetSet.add(src)
+    );
+
+
+    return [...assetSet];
+}
+
+
+function preloadStartupImage(src) {
+
+    return new Promise(resolve => {
+
+        const image =
+            new Image();
+
+        let finished = false;
+
+        const finish =
+            ok => {
+
+                if (finished) return;
+
+                finished = true;
+
+                resolve({
+                    src,
+                    ok
+                });
+            };
+
+
+        image.onload =
+            () => finish(true);
+
+        image.onerror =
+            () => finish(false);
+
+        image.src = src;
+
+
+        if (
+            image.complete &&
+            image.naturalWidth > 0
+        ) {
+            finish(true);
+        }
+    });
+}
+
+
+function preloadStartupAudio(src) {
+
+    return new Promise(resolve => {
+
+        const audio =
+            new Audio();
+
+        let finished = false;
+
+        let timeoutId = null;
+
+        const finish =
+            ok => {
+
+                if (finished) return;
+
+                finished = true;
+
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
+
+                audio.removeEventListener(
+                    "canplaythrough",
+                    onReady
+                );
+
+                audio.removeEventListener(
+                    "loadeddata",
+                    onReady
+                );
+
+                audio.removeEventListener(
+                    "error",
+                    onError
+                );
+
+                resolve({
+                    src,
+                    ok
+                });
+            };
+
+        const onReady =
+            () => finish(true);
+
+        const onError =
+            () => finish(false);
+
+
+        audio.preload = "auto";
+
+        audio.addEventListener(
+            "canplaythrough",
+            onReady,
+            { once: true }
+        );
+
+        // loadeddata giúp tránh bị treo progress
+        // trên browser mobile không bắn canplaythrough sớm.
+        audio.addEventListener(
+            "loadeddata",
+            onReady,
+            { once: true }
+        );
+
+        audio.addEventListener(
+            "error",
+            onError,
+            { once: true }
+        );
+
+        audio.src = src;
+        audio.load();
+
+
+        // Không cho một file audio lỗi làm kẹt game mãi.
+        timeoutId =
+            setTimeout(
+                () => finish(false),
+                12000
+            );
+    });
+}
+
+
+function updateStartupLoadingUI(
+    loaded,
+    total
+) {
+
+    const percent =
+        total > 0
+            ? Math.round(
+                loaded / total * 100
+            )
+            : 100;
+
+
+    if (loadingProgressBar) {
+        loadingProgressBar.style.width =
+            `${percent}%`;
+    }
+
+
+    if (loadingProgressWrap) {
+        loadingProgressWrap.setAttribute(
+            "aria-valuenow",
+            String(percent)
+        );
+    }
+
+
+    if (startScreenStatus) {
+        startScreenStatus.textContent =
+            `Đang chuẩn bị tiệm... ${percent}%`;
+    }
+}
+
+
+function markStartScreenReady() {
+
+    startScreenReady = true;
+
+    startScreen?.classList.remove(
+        "is-loading"
+    );
+
+    startScreen?.classList.add(
+        "is-ready"
+    );
+
+    startScreen?.setAttribute(
+        "aria-busy",
+        "false"
+    );
+
+
+    if (loadingProgressBar) {
+        loadingProgressBar.style.width =
+            "100%";
+    }
+
+
+    if (loadingProgressWrap) {
+        loadingProgressWrap.setAttribute(
+            "aria-valuenow",
+            "100"
+        );
+    }
+
+
+    if (startScreenStatus) {
+        startScreenStatus.textContent =
+            "Nhấn để vào tiệm 🥖";
+    }
+}
+
+
+const MIN_LOADING_MS = 1800;
+
+
+async function preloadStartupAssets() {
+
+    const loadingStartedAt = Date.now();
+
+    const assets =
+        getStartupPreloadAssets();
+
+    const total =
+        assets.length;
+
+    let loaded = 0;
+
+    const failed = [];
+
+
+    updateStartupLoadingUI(
+        0,
+        total
+    );
+
+
+    await Promise.all(
+        assets.map(async src => {
+
+            const isAudio =
+                /\.(mp3|wav|ogg|m4a)(?:[?#].*)?$/i
+                    .test(src);
+
+            const result =
+                isAudio
+                    ? await preloadStartupAudio(src)
+                    : await preloadStartupImage(src);
+
+
+            if (!result.ok) {
+                failed.push(src);
+            }
+
+
+            loaded++;
+
+            updateStartupLoadingUI(
+                loaded,
+                total
+            );
+        })
+    );
+
+
+    if (failed.length) {
+        console.warn(
+            "Một số asset preload không thành công:",
+            failed
+        );
+    }
+
+
+    const elapsed =
+        Date.now() - loadingStartedAt;
+
+    const remaining =
+        Math.max(
+            0,
+            MIN_LOADING_MS - elapsed
+        );
+
+    if (remaining > 0) {
+        await new Promise(resolve =>
+            setTimeout(resolve, remaining)
+        );
+    }
+
+
+    markStartScreenReady();
+}
+
+
+startScreen?.addEventListener(
     "click",
     () => {
+
+        if (
+            !startScreenReady ||
+            startScreenEntered
+        ) {
+            return;
+        }
+
+        startScreenEntered = true;
+
         unlockMusic();
 
         startScreen.classList.add("hide");
@@ -7761,11 +11729,25 @@ startScreen.addEventListener(
 
             maybeShowTutorialOnFirstTime();
         }, 800);
-    },
-    { once: true }
+    }
 );
 
+
+// Render home ở phía sau splash screen,
+// rồi bắt đầu preload ngay.
 showHome();
+
+preloadStartupAssets()
+    .catch(error => {
+
+        // Loading UI tuyệt đối không được làm người chơi kẹt.
+        console.warn(
+            "Startup preload gặp lỗi:",
+            error
+        );
+
+        markStartScreenReady();
+    });
 
 // Dán cuối game.js, ngay sau showHome();
 customers.splice(0, customers.length, "A", "B", "C", "D", "E", "F");
@@ -7799,6 +11781,21 @@ const CUSTOMER_SPEECH = {
     F: {
         self: "em",
         you: ""
+    },
+
+    HANG: {
+        self: "chị",
+        you: "em"
+    },
+
+    CUOI: {
+        self: "anh",
+        you: "em"
+    },
+
+    THO: {
+        self: "em",
+        you: ""
     }
 };
 
@@ -7814,9 +11811,54 @@ function getCustomerSpeech() {
     );
 }
 
-function customerImage(id, mood = 1) {
-    const safeId = customers.includes(id) ? id : "A";
-    return `images/customer/${safeId}/${safeId}${mood}.png`;
+function customerImage(
+    id,
+    mood = 1
+) {
+
+    const special =
+        midAutumnCustomerById(id);
+
+    if (special) {
+
+        const safeMood =
+            Math.max(
+                1,
+                Math.min(
+                    3,
+                    Number(mood) || 1
+                )
+            );
+
+        return (
+            `${MID_AUTUMN_SPRITE_DIR}/` +
+            `${special.spritePrefix}/` +
+            `${special.spritePrefix}` +
+            `${safeMood}.png`
+        );
+    }
+
+
+    const safeId =
+        customers.includes(id)
+            ? id
+            : "A";
+
+    return (
+        `images/customer/` +
+        `${safeId}/` +
+        `${safeId}${mood}.png`
+    );
+}
+
+
+function customerFallback(id) {
+
+    return (
+        midAutumnCustomerById(id)
+            ?.fallback ||
+        "🙂"
+    );
 }
 
 const oldRenderMakingScreen = renderMakingScreen;
@@ -7834,11 +11876,11 @@ renderMakingScreen = function () {
                      alt="Khách hàng"
                      draggable="false"
                      onerror="this.style.display='none'; this.nextElementSibling.hidden=false;">
-                <span hidden class="customer-fallback">🙂</span>
+                <span hidden class="customer-fallback">${customerFallback(game.currentCustomer)}</span>
             </div>
             <div class="customer-bubble">
                 <div class="customer-bubble-top">
-                    <span>Khách ${game.customerNumber}/${game.customersToday}</span>
+                    <span>Khách ${activeTicket()?.customerNumber || game.customerNumber}/${game.customersToday}</span>
                     ${recipeBookButton()}
                 </div>
                 <strong>${game.currentRecipe.name}</strong>
@@ -8003,7 +12045,7 @@ function renderWaitingScreen() {
         game.breadSelected = false;
     }
 
-    updateHeader(`Ngày ${game.day}`, "Đang chờ khách...");
+    updateHeader(`Ngày ${game.day}`, "");
 
     screen.innerHTML = `
         <div class="making-screen waiting-screen">
@@ -8026,7 +12068,7 @@ function renderWaitingScreen() {
             <div class="banhmi-workspace">
                 <div class="board-stage">
                     <img class="cutting-board"
-                         src="images/board.png"
+                         src="${skinById("board", selectedSkins.board).image}"
                          draggable="false"
                          alt="Thớt">
 
@@ -8041,7 +12083,7 @@ function renderWaitingScreen() {
             <div class="ingredient-station">
                 <div class="ingredient-table-wrap">
                     <img class="ingredient-table-image"
-                         src="images/ingredient-table.png"
+                         src="${skinById("ingredientTable", selectedSkins.ingredientTable).image}"
                          draggable="false"
                          alt="Bàn nguyên liệu">
                     <div id="station-items"></div>
@@ -8252,56 +12294,408 @@ function setActiveTicket(ticket) {
     game.orderNote = ticket.note;
 }
 
-function recordCustomerRating(stars) {
-    game.dailyStarTotal += stars;
+function getShopRatingAverage() {
+    return game.reviewCount
+        ? game.reviewStarsTotal / game.reviewCount
+        : 0;
+}
+
+function renderRatingStars(
+    rating,
+    extraClass = ""
+) {
+    const value =
+        Math.max(
+            0,
+            Math.min(
+                5,
+                Number(rating) || 0
+            )
+        );
+
+    let html = "";
+
+    for (
+        let index = 0;
+        index < 5;
+        index++
+    ) {
+        const fill =
+            Math.max(
+                0,
+                Math.min(
+                    100,
+                    (value - index) * 100
+                )
+            );
+
+        html += `
+            <span
+                class="
+                    rating-meter-star
+                    ${extraClass}
+                "
+                style="
+                    --star-fill:
+                    ${fill}%;
+                "
+            >★</span>
+        `;
+    }
+
+    return html;
+}
+
+function pickReviewVariant(list) {
+    return list[
+        Math.floor(
+            Math.random() * list.length
+        )
+    ];
+}
+
+
+function ratingSpeedLabel(ticket, stars, correct, reason) {
+    if (reason === "left") {
+        return pickReviewVariant([
+            "Chờ lâu quá nên bỏ đi",
+            "Khách mất kiên nhẫn",
+            "Đợi mãi không được phục vụ",
+            "Khách rời tiệm vì chờ quá lâu"
+        ]);
+    }
+
+    if (reason === "stock") {
+        return pickReviewVariant([
+            "Tiệm hết nguyên liệu",
+            "Không đủ nguyên liệu để làm món",
+            "Món gọi không còn bán được",
+            "Khách thất vọng vì hết hàng"
+        ]);
+    }
+
+    if (!correct) {
+        return pickReviewVariant([
+            "Món làm chưa đúng yêu cầu",
+            "Bị nhầm nguyên liệu",
+            "Đơn hàng không đúng",
+            "Khách nhận sai món"
+        ]);
+    }
+
+    if (stars >= 5) {
+        return pickReviewVariant([
+            "Nhanh và chính xác",
+            "Phục vụ cực nhanh",
+            "Đúng món, làm rất gọn",
+            "Nhanh tay, món chuẩn"
+        ]);
+    }
+
+    if (stars >= 4) {
+        return pickReviewVariant([
+            "Đúng món, phục vụ ổn",
+            "Khá nhanh và chính xác",
+            "Món chuẩn, chờ không lâu",
+            "Phục vụ tốt"
+        ]);
+    }
+
+    if (stars >= 3) {
+        return pickReviewVariant([
+            "Đúng món nhưng hơi lâu",
+            "Phải chờ một lúc",
+            "Món ổn, tốc độ bình thường",
+            "Chính xác nhưng chưa nhanh"
+        ]);
+    }
+
+    return pickReviewVariant([
+        "Phục vụ quá chậm",
+        "Khách phải chờ rất lâu",
+        "Tốc độ phục vụ chưa ổn",
+        "Món đúng nhưng đợi quá lâu"
+    ]);
+}
+
+function recordCustomerRating(
+    stars,
+    ticket = null,
+    {
+        correct = stars >= 3,
+        reason = "served"
+    } = {}
+) {
+    const safeStars = Math.max(1, Math.min(5, Math.round(stars)));
+
+    game.dailyStarTotal += safeStars;
     game.dailyReviewCount++;
-    game.reviewStarsTotal += stars;
+    game.reviewStarsTotal += safeStars;
     game.reviewCount++;
+
+    if (safeStars >= 4) {
+        game.ratingStreak = (game.ratingStreak || 0) + 1;
+    } else {
+        game.ratingStreak = 0;
+    }
+
+    if (
+        correct &&
+        reason === "served"
+    ) {
+        let earnedXp = 6;
+
+        if (safeStars >= 5) {
+            earnedXp += 3;
+        } else if (safeStars >= 4) {
+            earnedXp += 2;
+        }
+
+        addShopXp(earnedXp);
+    }
+
+    if (ticket) {
+        game.ratingHistory = Array.isArray(game.ratingHistory)
+            ? game.ratingHistory
+            : [];
+
+        game.ratingHistory.unshift({
+            stars: safeStars,
+            day: game.day,
+            customerNumber:
+                Number(ticket.customerNumber) ||
+                Number(game.customerNumber) ||
+                1,
+            customer: ticket.customer || game.currentCustomer || "A",
+            correct: Boolean(correct),
+            reason,
+            label: ratingSpeedLabel(ticket, safeStars, correct, reason)
+        });
+
+        game.ratingHistory = game.ratingHistory.slice(0, 10);
+    }
+
     refreshShopRating();
 }
 
 function refreshShopRating() {
-    const label = document.getElementById("shop-rating-score");
-    if (label) label.textContent = game.reviewCount
-        ? `${(game.reviewStarsTotal / game.reviewCount).toFixed(1)} · ${game.reviewCount} lượt`
-        : "Chưa đánh giá";
+    const button = document.getElementById("shop-rating");
+    if (!button) return;
+
+    const average = getShopRatingAverage();
+
+    button.innerHTML = game.reviewCount
+        ? `
+            <span class="shop-rating-stars">
+                ${renderRatingStars(average)}
+            </span>
+
+            <strong class="shop-rating-number">
+                ${average.toFixed(1)}
+            </strong>
+
+            <small class="shop-rating-streak">
+                🔥 ${game.ratingStreak || 0} liên tiếp
+            </small>
+        `
+        : `
+            <span class="shop-rating-stars">
+                ${renderRatingStars(0)}
+            </span>
+
+            <strong class="shop-rating-number">
+                --
+            </strong>
+
+            <small class="shop-rating-streak">
+                🔥 0 liên tiếp
+            </small>
+        `;
+}
+
+function showRatingHistoryPopup() {
+    document.getElementById("rating-history-overlay")?.remove();
+
+    const average = getShopRatingAverage();
+    const history = Array.isArray(game.ratingHistory)
+        ? game.ratingHistory.slice(0, 10)
+        : [];
+
+    const rows = history.length
+        ? history.map(review => {
+            const mood = review.stars >= 4 ? 2 : 3;
+            const customer = review.customer || "A";
+
+            return `
+                <article class="rating-history-row">
+                    <div class="rating-history-avatar">
+                        <img
+                            src="${customerImage(customer, mood)}"
+                            alt="Khách hàng"
+                            draggable="false"
+                            onerror="
+                                this.style.display='none';
+                                this.nextElementSibling.hidden=false;
+                            "
+                        >
+                        <span hidden>${customerFallback(customer)}</span>
+                    </div>
+
+                    <div class="rating-history-info">
+                        <div class="rating-history-row-top">
+                            <span class="rating-history-stars">
+                                ${renderRatingStars(review.stars)}
+                            </span>
+                            <span class="rating-history-day">
+                                Ngày ${review.day}
+                            </span>
+                        </div>
+
+                        <strong>${review.label || "Đánh giá khách hàng"}</strong>
+
+                        <small>
+                            Khách ${review.customerNumber || "?"}
+                        </small>
+                    </div>
+                </article>
+            `;
+        }).join("")
+        : `
+            <div class="rating-history-empty">
+                Chưa có đánh giá gần đây.
+            </div>
+        `;
+
+    const overlay = document.createElement("div");
+    overlay.id = "rating-history-overlay";
+    overlay.className = "rating-history-overlay";
+
+    overlay.innerHTML = `
+        <section
+            class="rating-history-card"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Đánh giá tiệm"
+        >
+            <button
+                class="rating-history-close"
+                type="button"
+                aria-label="Đóng"
+            >×</button>
+
+            <div class="rating-history-badge">⭐</div>
+
+            <h2>Đánh giá tiệm</h2>
+
+            <div class="rating-history-summary">
+                <div class="rating-history-main-stars">
+                    ${renderRatingStars(game.reviewCount ? average : 0)}
+                </div>
+
+                <strong>
+                    ${game.reviewCount ? average.toFixed(1) : "--"}
+                </strong>
+
+                <small>
+                    ${game.reviewCount} lượt đánh giá
+                    · Hôm nay ${game.dailyReviewCount} lượt
+                </small>
+
+                <div class="rating-history-streak">
+                    🔥 ${game.ratingStreak || 0}
+                    khách hài lòng liên tiếp
+                </div>
+            </div>
+
+            <div class="rating-history-heading">
+                10 đánh giá gần nhất
+            </div>
+
+            <div class="rating-history-list">
+                ${rows}
+            </div>
+
+            <button
+                class="rating-history-done"
+                type="button"
+            >
+                Đóng
+            </button>
+        </section>
+    `;
+
+    const close = () => overlay.remove();
+
+    overlay
+        .querySelector(".rating-history-close")
+        .addEventListener("click", close);
+
+    overlay
+        .querySelector(".rating-history-done")
+        .addEventListener("click", close);
+
+    overlay.addEventListener("click", event => {
+        if (event.target === overlay) close();
+    });
+
+    document.body.appendChild(overlay);
 }
 
 function syncShopRating() {
     const header = document.querySelector(".top-bar");
     const center = header?.querySelector(".top-center");
     if (!header || !center) return;
-    const atCounter = Boolean(screen.querySelector(".making-screen:not(.waiting-screen)"));
-    let rating = document.getElementById("shop-rating");
-    if (atCounter) {
+
+    const showShopHud =
+        game.phase === "prep" ||
+        (
+            game.shopOpen &&
+            [
+                "waiting",
+                "making",
+                "order",
+                "result"
+            ].includes(game.phase)
+        );
+
+    let rating =
+        document.getElementById("shop-rating");
+
+    if (showShopHud) {
         header.classList.add("has-shop-rating");
-        if (moneyDisplay.parentElement !== center) center.appendChild(moneyDisplay);
+
+        if (moneyDisplay.parentElement !== center) {
+            center.appendChild(moneyDisplay);
+        }
+
         if (!rating) {
             rating = document.createElement("button");
             rating.id = "shop-rating";
             rating.type = "button";
             rating.setAttribute("aria-label", "Xem đánh giá tiệm");
-            rating.innerHTML = '<span aria-hidden="true">★★★★★</span><small id="shop-rating-score"></small>';
-            rating.addEventListener("click", () => {
-                showCutePopup({
-                    icon: "⭐", title: "Đánh giá tiệm",
-                    message: game.reviewCount
-                        ? `Trung bình ${(game.reviewStarsTotal / game.reviewCount).toFixed(1)}/5 từ ${game.reviewCount} lượt. Hôm nay: ${game.dailyReviewCount} lượt đánh giá.`
-                        : "Chưa có đánh giá nào. Phục vụ khách để nhận sao nhé!",
-                    confirmText: "Đóng"
-                });
-            });
+            rating.addEventListener("click", showRatingHistoryPopup);
             header.appendChild(rating);
         }
+
         refreshShopRating();
+
     } else {
         header.classList.remove("has-shop-rating");
         rating?.remove();
-        if (moneyDisplay.parentElement !== header) header.appendChild(moneyDisplay);
+
+        if (moneyDisplay.parentElement !== header) {
+            header.appendChild(moneyDisplay);
+        }
     }
 }
 
-new MutationObserver(syncShopRating).observe(screen, { childList: true, subtree: true });
+new MutationObserver(syncShopRating).observe(
+    screen,
+    {
+        childList: true,
+        subtree: true
+    }
+);
 
 function customerStars(
     ticket,
@@ -8371,9 +12765,31 @@ function createWaitingTicket() {
         customer: game.currentCustomer, recipe: game.currentRecipe,
         order: game.currentOrder, note: game.orderNote
     };
-    const atCounter = game.waitingCustomers.map(ticket => ticket.customer);
-    const choices = customers.filter(id => !atCounter.includes(id));
-    game.currentCustomer = randomItem(choices.length ? choices : customers);
+    const atCounter =
+        game.waitingCustomers
+            .map(
+                ticket =>
+                    ticket.customer
+            );
+
+    const normalChoices =
+        customers.filter(
+            id =>
+                !atCounter.includes(id)
+        );
+
+    const specialCustomer =
+        getPlannedMidAutumnCustomer(
+            atCounter
+        );
+
+    game.currentCustomer =
+        specialCustomer ||
+        randomItem(
+            normalChoices.length
+                ? normalChoices
+                : customers
+        );
     let feasible = false;
     for (let attempt = 0; attempt < 12; attempt++) {
         if (!createOrder()) break;
@@ -8395,12 +12811,25 @@ function createWaitingTicket() {
     }
 
     const ticket = {
-        id: game.nextTicketId++, customer: game.currentCustomer,
-        recipeName: game.currentRecipe.name, order: [...game.currentOrder],
-        note: game.orderNote, remainingMs: getCustomerPatienceMs(),
-totalPatienceMs: getCustomerPatienceMs()
+        id: game.nextTicketId++,
+        customerNumber: game.customerNumber + 1,
+        customer: game.currentCustomer,
+        recipeName: game.currentRecipe.name,
+        order: [...game.currentOrder],
+        note: game.orderNote,
+        remainingMs: getCustomerPatienceMs(),
+        totalPatienceMs: getCustomerPatienceMs()
     };
     game.waitingCustomers.push(ticket);
+
+    if (
+        isMidAutumnCustomer(
+            ticket.customer
+        )
+    ) {
+        markMidAutumnVisitSpawned();
+    }
+
     game.customerNumber++;
 
     if (previous.recipe && game.waitingCustomers.length > 1) {
@@ -8526,10 +12955,6 @@ function renderCustomerQueue() {
 
     const bubble = panel.querySelector(".customer-bubble");
     if (bubble && activeTicket()) {
-        const heading = bubble.querySelector(".customer-bubble-top span");
-        if (heading && game.reviewCount) {
-            heading.textContent += ` · ⭐ ${(game.reviewStarsTotal / game.reviewCount).toFixed(1)}`;
-        }
         const info = document.createElement("div");
         info.className = "active-patience";
         info.innerHTML = `<span id="customer-patience-label"></span>
@@ -8602,7 +13027,14 @@ function runPatienceClock() {
             ticket.remainingMs = Math.max(0, ticket.remainingMs - elapsed);
             if (ticket.remainingMs > 0) continue;
             game.waitingCustomers = game.waitingCustomers.filter(other => other !== ticket);
-            recordCustomerRating(1);
+            recordCustomerRating(
+                1,
+                ticket,
+                {
+                    correct: false,
+                    reason: "left"
+                }
+            );
             if (ticket.id === game.activeTicketId) {
                 showCustomerReaction(false);
                 const reaction = document.getElementById("customer-reaction");
@@ -8636,7 +13068,14 @@ nextCustomer = function () {
         const ticket of
         game.waitingCustomers
     ) {
-        recordCustomerRating(1);
+        recordCustomerRating(
+            1,
+            ticket,
+            {
+                correct: false,
+                reason: "stock"
+            }
+        );
     }
 
     game.waitingCustomers = [];
@@ -8674,7 +13113,14 @@ if (
         const ticket of
         game.waitingCustomers
     ) {
-        recordCustomerRating(1);
+        recordCustomerRating(
+            1,
+            ticket,
+            {
+                correct: false,
+                reason: "stock"
+            }
+        );
     }
 
     game.waitingCustomers = [];
@@ -8748,8 +13194,17 @@ completeCustomerOrder = function (correct) {
     if (!ticket) return;
     const stars = customerStars(ticket, correct);
     game.waitingCustomers = game.waitingCustomers.filter(other => other !== ticket);
-    recordCustomerRating(stars);
+    recordCustomerRating(
+        stars,
+        ticket,
+        {
+            correct,
+            reason: "served"
+        }
+    );
     game.lastOrderStars = stars;
+
+    syncDayHeaderInfo();
 
     playOrderResultSound(correct);
     ingredients["Bánh mì"].stock = Math.max(0, ingredients["Bánh mì"].stock - 1);
@@ -8783,16 +13238,47 @@ completeCustomerOrder = function (correct) {
 
 
     if (
-        game.selectedIngredients.includes(
-            "Pâté"
-        )
+        !realDaily.stats.ingredientSold ||
+        typeof realDaily.stats.ingredientSold !== "object"
     ) {
-        realDaily.stats.pateSold++;
+        realDaily.stats.ingredientSold = {};
     }
+
+
+    // Track mọi nguyên liệu trong đơn đúng.
+    // Dùng Set để mỗi nguyên liệu chỉ cộng 1 lần trên mỗi bánh.
+    [
+        ...new Set(
+            ticket.order || []
+        )
+    ].forEach(
+        ingredientName => {
+
+            realDaily.stats
+                .ingredientSold[
+                    ingredientName
+                ] =
+                (
+                    realDaily.stats
+                        .ingredientSold[
+                            ingredientName
+                        ] || 0
+                ) + 1;
+        }
+    );
 
 
     saveRealDailyData(
         realDaily
+    );
+
+
+    // =========================
+    // MID-AUTUMN EVENT
+    // =========================
+
+    recordMidAutumnServe(
+        ticket.customer
     );
 }
     showCustomerReaction(correct);
@@ -8831,6 +13317,11 @@ resumeGame = function () {
         !game.waitingCustomers.length && game.currentRecipe) {
         const ticket = {
             id: game.nextTicketId++,
+            customerNumber:
+                Math.max(
+                    1,
+                    game.customerNumber || 1
+                ),
             customer: game.currentCustomer,
             recipeName: game.currentRecipe.name,
             order: [...game.currentOrder],
@@ -8927,13 +13418,16 @@ document.addEventListener("visibilitychange", () => {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    width: min(160px, calc(100% - 220px));
+    width: min(300px, calc(100% - 210px));
     flex-direction: column;
     gap: 1px;
     line-height: 1.1;
 }
 
-.top-bar.has-shop-rating .top-center strong { font-size: 13px; }
+.top-bar.has-shop-rating .top-center strong {
+    font-size: 12px;
+    white-space: nowrap;
+}
 .top-bar.has-shop-rating #status-display { display: none; }
 
 .top-bar.has-shop-rating #money-display {
@@ -8946,17 +13440,14 @@ document.addEventListener("visibilitychange", () => {
 #shop-rating {
     grid-column: 3;
     justify-self: end;
-    width: 92px;
-    padding: 1px 0;
+    width: 94px;
+    padding: 3px 2px;
     border: 0;
     background: transparent;
-    color: #f2ac27;
-    font-size: 16px;
     font-weight: bold;
-    line-height: 1.1;
+    line-height: 1;
     cursor: pointer;
 }
-#shop-rating small { display: block; color: #855f48; font-size: 10px; }
 .making-screen:has(.patience-queue) .banhmi-workspace { height: 178px; }
 @media (max-width: 560px) {
     .patience-queue { height: 45px; }

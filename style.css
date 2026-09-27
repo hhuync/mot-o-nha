@@ -28,14 +28,6 @@
 
 }
 
-.game-title {
-
-    font-family: "Rush Hour", "Freude", sans-serif;
-
-    font-weight: normal;
-
-}
-
 * {
 
     box-sizing: border-box;
@@ -234,186 +226,6 @@ button {
 
 /* =========================================================
 
-   HOME
-
-   ========================================================= */
-
-.home-screen {
-
-    min-height: calc(100vh - 170px);
-
-    padding: 28px 25px 35px;
-
-    display: flex;
-
-    flex-direction: column;
-
-    justify-content: center;
-
-    align-items: center;
-
-    text-align: center;
-
-    background:
-
-        radial-gradient(
-
-            circle at 50% 25%,
-
-            rgba(255, 255, 255, 0.45),
-
-            transparent 30%
-
-        ),
-
-        linear-gradient(
-
-            #ffe7a8,
-
-            #f5c36e
-
-        );
-
-    overflow: hidden;
-
-}
-
-.home-art-wrap {
-
-    width: 330px;
-
-    max-width: 88%;
-
-    height: 190px;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    position: relative;
-
-}
-
-.home-banhmi-art {
-
-    display: block;
-
-    width: 100%;
-
-    height: 100%;
-
-    object-fit: contain;
-
-    filter:
-
-        drop-shadow(
-
-            0 12px 10px rgba(116, 67, 27, 0.18)
-
-        );
-
-    animation:
-
-        homeFloat
-
-        3s
-
-        ease-in-out
-
-        infinite;
-
-}
-
-.home-fallback {
-
-    display: none;
-
-    font-size: 90px;
-
-}
-
-@keyframes homeFloat {
-
-    0%,
-
-    100% {
-
-        transform:
-
-            translateY(0)
-
-            rotate(-1deg);
-
-    }
-
-    50% {
-
-        transform:
-
-            translateY(-8px)
-
-            rotate(1deg);
-
-    }
-
-}
-
-.home-screen h1 {
-
-    margin: 4px 0 5px;
-
-    font-size: 40px;
-
-}
-
-.home-screen p {
-
-    color: #75503a;
-
-}
-
-.home-stats {
-
-    width: 100%;
-
-    margin-top: 20px;
-
-    display: grid;
-
-    grid-template-columns: 1fr 1fr;
-
-    gap: 10px;
-
-}
-
-.stat-card {
-
-    padding: 14px;
-
-    background: rgba(255, 255, 255, 0.65);
-
-    border: 1px solid rgba(210, 161, 92, 0.35);
-
-    border-radius: 15px;
-
-}
-
-.stat-card strong {
-
-    display: block;
-
-    margin-top: 5px;
-
-    font-size: 20px;
-
-}
-
-
-
-/* =========================================================
-
    MAKING / PREP SCREEN
 
    ========================================================= */
@@ -423,8 +235,6 @@ button {
     padding-bottom: 4px;
 
 }
-
-
 
 
 /* =========================================================
@@ -548,12 +358,12 @@ button {
 .banhmi-workspace.counter-sakura {
     background:
         linear-gradient(
-            #ffd9e8,
-            #f3b8cf
+            #fdb9b1,
+            #fe9783
         );
 
     border-bottom-color:
-        #c77392;
+        #95232a;
 }
 
 
@@ -2047,326 +1857,6 @@ button {
 
 /* =========================================================
 
-   OLD CLASSES
-
-   Giữ lại để HTML cũ không vỡ nếu còn sót.
-
-   ========================================================= */
-
-.card {
-
-    margin-top: 18px;
-
-    padding: 18px;
-
-    background: #3f6048;
-
-    color: white;
-
-    border: 7px solid #8b5b3b;
-
-    border-radius: 17px;
-
-}
-
-.card h2 {
-
-    margin-top: 0;
-
-    text-align: center;
-
-}
-
-.menu-row {
-
-    display: flex;
-
-    justify-content: space-between;
-
-    gap: 10px;
-
-    padding: 9px 2px;
-
-    border-bottom:
-
-        1px dashed rgba(255, 255, 255, 0.25);
-
-}
-
-.menu-row strong {
-
-    color: #ffd67b;
-
-}
-
-.order-card {
-
-    margin-top: 16px;
-
-    padding: 16px;
-
-    background: #fff4da;
-
-    border: 2px solid #d9ad69;
-
-    border-radius: 16px;
-
-}
-
-.order-card h3 {
-
-    margin-top: 0;
-
-}
-
-.order-chips {
-
-    display: flex;
-
-    flex-wrap: wrap;
-
-    gap: 6px;
-
-    margin-top: 8px;
-
-}
-
-.order-chip {
-
-    padding: 6px 9px;
-
-    background: white;
-
-    border: 1px solid #d7b984;
-
-    border-radius: 20px;
-
-    font-size: 12px;
-
-    font-weight: bold;
-
-}
-
-.recipe-button,
-
-.small-recipe-button {
-
-    border: none;
-
-    background: #fff7e5;
-
-    color: #66452e;
-
-    font-weight: bold;
-
-    cursor: pointer;
-
-}
-
-/* =========================================================
-
-   OLD PURCHASE MODAL
-
-   Có thể xóa khỏi HTML sau này.
-
-   JS hiện tại dùng showCutePopup().
-
-   ========================================================= */
-
-.purchase-modal {
-
-    position: fixed;
-
-    inset: 0;
-
-    z-index: 9999;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    padding: 24px;
-
-    background: rgba(65, 42, 25, 0.48);
-
-    backdrop-filter: blur(3px);
-
-    -webkit-backdrop-filter: blur(3px);
-
-}
-
-.purchase-modal.hidden {
-
-    display: none;
-
-}
-
-.purchase-card {
-
-    width: min(340px, 88vw);
-
-    padding: 28px 24px 22px;
-
-    text-align: center;
-
-    background:
-
-        linear-gradient(
-
-            180deg,
-
-            #fff8e8 0%,
-
-            #ffedc4 100%
-
-        );
-
-    border: 3px solid #e5a64d;
-
-    border-radius: 26px;
-
-    box-shadow:
-
-        0 10px 0 #b96d32,
-
-        0 18px 35px rgba(70, 35, 10, 0.3);
-
-}
-
-.purchase-icon {
-
-    width: 64px;
-
-    height: 64px;
-
-    margin: -4px auto 12px;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    font-size: 34px;
-
-    background: #ffd46f;
-
-    border: 3px solid #e6a43e;
-
-    border-radius: 50%;
-
-    box-shadow: 0 5px 0 #c9822f;
-
-}
-
-.purchase-small-title {
-
-    margin-top: 18px;
-
-    color: #a76b31;
-
-    font-size: 12px;
-
-    font-weight: 900;
-
-    letter-spacing: 1.3px;
-
-}
-
-.purchase-card h2 {
-
-    margin: 7px 0 5px;
-
-    color: #4d2b18;
-
-    font-size: 27px;
-
-    font-weight: 900;
-
-}
-
-.purchase-price {
-
-    display: inline-block;
-
-    margin: 4px 0 12px;
-
-    padding: 7px 18px;
-
-    color: #8c541d;
-
-    background: #ffd878;
-
-    border-radius: 999px;
-
-    font-size: 19px;
-
-    font-weight: 900;
-
-}
-
-.purchase-message {
-
-    margin: 5px auto 22px;
-
-    color: #795039;
-
-    font-size: 14px;
-
-    line-height: 1.45;
-
-}
-
-.purchase-buttons {
-
-    display: grid;
-
-    grid-template-columns: 1fr 1fr;
-
-    gap: 10px;
-
-}
-
-.purchase-buttons button {
-
-    min-height: 48px;
-
-    border: 0;
-
-    border-radius: 15px;
-
-    font-size: 15px;
-
-    font-weight: 800;
-
-    cursor: pointer;
-
-}
-
-.purchase-cancel {
-
-    color: #76533e;
-
-    background: #f5dfbd;
-
-    box-shadow: 0 4px 0 #d3af7b;
-
-}
-
-.purchase-confirm {
-
-    color: white;
-
-    background: #ec5977;
-
-    box-shadow: 0 4px 0 #b93c58;
-
-}
-
-/* =========================================================
-
    RESPONSIVE
 
    ========================================================= */
@@ -2378,20 +1868,7 @@ button {
         box-shadow: none;
 
     }
-
-    .home-art-wrap {
-
-        height: 155px;
-
-    }
-
-    .home-screen h1 {
-
-        font-size: 34px;
-
-    }
-
-    .banhmi-workspace {
+.banhmi-workspace {
 
         height: 270px;
 
@@ -2704,8 +2181,6 @@ button {
     flex: 0 0 auto;
 
 }
-
-.home-screen,
 
 .customer-screen,
 
@@ -3483,7 +2958,10 @@ button {
     display: none;
 }
 
-.customer-panel.leaving {
+/* Chỉ nhân vật + bong bóng rời đi.
+   Background của customer-panel phải đứng yên. */
+.customer-panel.leaving .customer-portrait,
+.customer-panel.leaving .customer-bubble {
     opacity: 0;
     transform: translateX(-18px);
 
@@ -3494,44 +2972,6 @@ button {
 
 .making-screen.customer-reacting .station-item {
     pointer-events: none;
-}
-
-
-/* WAITING */
-
-.waiting-screen .customer-portrait {
-    align-items: center;
-    font-size: 40px;
-}
-
-.waiting-panel .customer-bubble::before {
-    display: none;
-}
-
-.waiting-screen .station-item:disabled {
-    opacity: 0.7;
-}
-
-
-/* CUSTOMER ARRIVAL */
-
-.making-screen:not(.waiting-screen):not(.prep-shopping-screen)
-.customer-panel .customer-portrait img {
-    animation:
-        customerArrive
-        0.55s
-        cubic-bezier(.2, 1.4, .5, 1)
-        both;
-}
-
-.making-screen:not(.waiting-screen):not(.prep-shopping-screen)
-.customer-panel .customer-bubble {
-    animation:
-        bubbleArrive
-        0.4s
-        0.16s
-        ease-out
-        both;
 }
 
 
@@ -4392,24 +3832,24 @@ body.tutorial-open {
 .counter-preview-sakura {
     background:
         linear-gradient(
-            #ffd9e8,
-            #f3b8cf
+            #fdb9b1,
+            #fe9783
         );
 
     border-bottom:
-        5px solid #c77392;
+        5px solid #95232a;
 }
 
 .counter-preview-sakura
 .counter-preview-board {
     background:
         linear-gradient(
-            #f7cada,
-            #e69ab8
+            #fc7068,
+            #d96148
         );
 
     border:
-        3px solid #c77392;
+        3px solid #95232a;
 }
 
 
@@ -4484,48 +3924,6 @@ body.tutorial-open {
 
     font-size: 7px;
     font-weight: 800;
-}
-
-
-/* =========================================================
-   UPGRADE PLACEHOLDER
-   ========================================================= */
-
-.upgrade-coming-card {
-    padding: 30px 20px;
-
-    text-align: center;
-
-    border: 2px dashed #dfc49b;
-    border-radius: 18px;
-
-    background: #fffaf0;
-
-    color: #76543d;
-}
-
-
-.upgrade-coming-icon {
-    margin-bottom: 8px;
-
-    font-size: 42px;
-}
-
-
-.upgrade-coming-card h3 {
-    margin: 0 0 7px;
-
-    color: #5f3c28;
-
-    font-size: 18px;
-}
-
-
-.upgrade-coming-card p {
-    margin: 0;
-
-    font-size: 11px;
-    line-height: 1.45;
 }
 
 
@@ -4891,4 +4289,2106 @@ body.tutorial-open {
     font-weight: 800;
 
     text-align: center;
+}
+
+/* =========================================
+   HOME DASHBOARD v0.3
+   Matches current game.js home class names
+========================================= */
+
+.home-dashboard {
+    min-height: 100%;
+    padding: 22px 24px 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background:
+        radial-gradient(circle at 50% 8%, rgba(255, 255, 255, 0.48), transparent 28%),
+        linear-gradient(#ffe7a8, #f5c36e);
+}
+
+.home-hero-card {
+    padding: 18px 18px 16px;
+    text-align: center;
+    background: rgba(255, 248, 230, 0.56);
+    border: 1px solid rgba(218, 170, 95, 0.34);
+    border-radius: 24px;
+    box-shadow: 0 6px 0 rgba(154, 104, 37, 0.12);
+}
+
+.home-hero-banhmi {
+    display: block;
+    width: min(88%, 430px);
+    height: 180px;
+    margin: 0 auto 8px;
+    object-fit: contain;
+    filter: drop-shadow(0 10px 15px rgba(100, 55, 20, 0.18));
+    animation: homeFloat 3s ease-in-out infinite;
+}
+
+@keyframes homeFloat {
+    0%, 100% {
+        transform: translateY(0) rotate(-1deg);
+    }
+    50% {
+        transform: translateY(-7px) rotate(1deg);
+    }
+}
+
+.home-hero-title {
+    margin: 2px 0 5px;
+    font-family: "Rush Hour", "Freude", sans-serif;
+    font-size: 36px;
+    font-weight: normal;
+    color: #54301d;
+}
+
+.home-hero-subtitle {
+    margin: 0;
+    color: #875533;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+/* HOME STATS */
+
+.home-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.home-stat-card {
+    min-width: 0;
+    padding: 14px 8px;
+    text-align: center;
+    background: rgba(255, 248, 231, 0.9);
+    border: 1px solid rgba(210, 161, 92, 0.35);
+    border-radius: 18px;
+    box-shadow: 0 4px 0 rgba(150, 96, 40, 0.14);
+}
+
+.home-stat-label {
+    display: block;
+    margin-bottom: 5px;
+    color: #815231;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.home-stat-value {
+    display: block;
+    color: #4e2d1b;
+    font-size: 22px;
+}
+
+.home-stat-small {
+    display: block;
+    margin-top: 3px;
+    color: #a06b44;
+    font-size: 10px;
+}
+
+/* SAKURA EVENT */
+
+.home-event-card {
+    padding: 16px 18px;
+    background: linear-gradient(180deg, #fff8fb, #ffe8f0);
+    border: 2px solid #efb8cb;
+    border-radius: 21px;
+    box-shadow: 0 5px 0 rgba(183, 91, 123, 0.14);
+}
+
+.home-event-top,
+.home-card-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.home-event-top > div,
+.home-card-heading > div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.home-event-top strong,
+.home-card-heading strong {
+    color: #72364b;
+    font-size: 16px;
+}
+
+.home-event-label,
+.home-card-eyebrow {
+    color: #d85d87;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.home-event-number,
+.home-event-count,
+.home-event-complete {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #ffd4e2;
+    color: #a94467;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.home-event-complete {
+    background: #dff3d7;
+    color: #4f8540;
+}
+
+.home-event-card p {
+    margin: 10px 0 12px;
+    color: #87556a;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.home-event-track {
+    width: 100%;
+    height: 10px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #f0ccd8;
+}
+
+.home-event-track span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #f297b4, #e56691);
+    transition: width 0.3s ease;
+}
+
+/* LATEST UPDATE */
+
+.home-update-card {
+    padding: 16px 18px 17px;
+    background: #fff8e8;
+    border: 2px solid #e9c57f;
+    border-radius: 21px;
+    box-shadow: 0 5px 0 rgba(154, 104, 37, 0.13);
+}
+
+.home-update-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.home-update-badge {
+    padding: 5px 10px;
+    background: #ffe9a8;
+    color: #9b6718;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.home-update-version {
+    color: #835b2f;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.home-update-title {
+    margin: 11px 0 8px;
+    color: #5a371f;
+    font-size: 16px;
+}
+
+.home-update-list {
+    margin: 0;
+    padding-left: 19px;
+    color: #755035;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.home-update-list li + li {
+    margin-top: 3px;
+}
+
+.home-update-link {
+    margin-top: 12px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #df5879;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+/* HOME SAVE ACTIONS */
+
+.home-secondary-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.home-small-button {
+    min-height: 48px;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 15px;
+    background: #f5e0b7;
+    color: #754925;
+    font-family: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #d2a365;
+}
+
+.home-small-button.danger {
+    background: #f8cad7;
+    color: #933f59;
+    box-shadow: 0 4px 0 #df8ba4;
+}
+
+.home-small-button:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #d2a365;
+}
+
+.home-small-button.danger:active {
+    box-shadow: 0 2px 0 #df8ba4;
+}
+
+@media (max-width: 520px) {
+    .home-dashboard {
+        padding: 16px 14px 22px;
+        gap: 12px;
+    }
+
+    .home-hero-card {
+        padding: 13px 12px 12px;
+    }
+
+    .home-hero-banhmi {
+        height: 135px;
+        margin-bottom: 4px;
+    }
+
+    .home-hero-title {
+        font-size: 31px;
+    }
+
+    .home-stats-grid {
+        gap: 7px;
+    }
+
+    .home-stat-card {
+        padding: 11px 5px;
+    }
+
+    .home-stat-value {
+        font-size: 18px;
+    }
+
+    .home-stat-label {
+        font-size: 10px;
+    }
+
+    .home-stat-small {
+        font-size: 8px;
+    }
+
+    .home-event-card,
+    .home-update-card {
+        padding: 13px 14px;
+    }
+}
+
+/* =========================================================
+   HOME BUTTON FIX
+   ========================================================= */
+
+/* XEM LỊCH SỬ CẬP NHẬT */
+
+.home-update-button,
+.home-update-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-top: 13px;
+
+    min-height: 40px;
+
+    padding: 8px 14px;
+
+    border: 0;
+    border-radius: 12px;
+
+    background: #ffe1e8;
+    color: #b94867;
+
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 800;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 3px 0 #dfa1b1;
+
+    transition:
+        transform 0.12s ease,
+        background 0.12s ease,
+        box-shadow 0.12s ease;
+}
+
+
+.home-update-button:hover,
+.home-update-link:hover {
+    background: #ffd6e0;
+}
+
+
+.home-update-button:active,
+.home-update-link:active {
+    transform: translateY(2px);
+
+    box-shadow:
+        0 1px 0 #dfa1b1;
+}
+
+
+/* 2 NÚT SAVE */
+
+.home-save-actions,
+.home-secondary-actions {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+
+    gap: 10px;
+}
+
+
+.home-save-button,
+.home-small-button {
+    width: 100%;
+
+    min-height: 50px;
+
+    padding: 10px 12px;
+
+    border: 0;
+    border-radius: 15px;
+
+    background: #fff0cf;
+    color: #754925;
+
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 800;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 4px 0 #d2a365;
+
+    transition:
+        transform 0.12s ease,
+        background 0.12s ease,
+        box-shadow 0.12s ease;
+}
+
+
+.home-save-button:hover,
+.home-small-button:hover {
+    background: #fff5dd;
+}
+
+
+.home-save-button:active,
+.home-small-button:active {
+    transform: translateY(3px);
+
+    box-shadow:
+        0 1px 0 #d2a365;
+}
+
+
+/* NÚT RESET */
+
+.home-reset-button,
+.home-small-button.danger {
+    background: #ffd5df;
+    color: #963e58;
+
+    box-shadow:
+        0 4px 0 #df8ba4;
+}
+
+
+.home-reset-button:hover,
+.home-small-button.danger:hover {
+    background: #ffcad7;
+}
+
+
+.home-reset-button:active,
+.home-small-button.danger:active {
+    box-shadow:
+        0 1px 0 #df8ba4;
+}
+
+
+/* MOBILE */
+
+@media (max-width: 520px) {
+
+    .home-save-actions,
+    .home-secondary-actions {
+        gap: 8px;
+    }
+
+    .home-save-button,
+    .home-small-button {
+        min-height: 46px;
+
+        padding: 9px 8px;
+
+        font-size: 11px;
+    }
+
+}
+
+/* =========================================================
+   CUTE SCROLLBARS
+   Áp dụng cho toàn bộ game
+   ========================================================= */
+
+/* Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color:
+        #e98aa4
+        #fff0d2;
+}
+
+
+/* Chrome / Edge / Safari */
+*::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+}
+
+
+/* Phần nền của thanh cuộn */
+*::-webkit-scrollbar-track {
+    background: #fff0d2;
+
+    border-radius: 999px;
+
+    margin:
+        5px 0;
+}
+
+
+/* Cục kéo */
+*::-webkit-scrollbar-thumb {
+    background:
+        linear-gradient(
+            180deg,
+            #f5a8bc,
+            #e56d8e
+        );
+
+    border:
+        3px solid
+        #fff0d2;
+
+    border-radius:
+        999px;
+
+    min-height:
+        38px;
+}
+
+
+/* Hover vào cục kéo */
+*::-webkit-scrollbar-thumb:hover {
+    background:
+        linear-gradient(
+            180deg,
+            #f79db6,
+            #dc587e
+        );
+}
+
+
+/* Khi đang click kéo */
+*::-webkit-scrollbar-thumb:active {
+    background:
+        #d94f76;
+}
+
+
+/* Góc giao nhau giữa scrollbar ngang + dọc */
+*::-webkit-scrollbar-corner {
+    background:
+        #fff0d2;
+}
+
+#screen::-webkit-scrollbar {
+    width: 9px;
+}
+
+#screen::-webkit-scrollbar-track {
+    background:
+        rgba(
+            255,
+            240,
+            210,
+            0.7
+        );
+}
+
+#screen::-webkit-scrollbar-thumb {
+    border-width:
+        2px;
+}
+
+
+/* =========================================================
+   MID-AUTUMN EVENT
+   ========================================================= */
+
+.mid-autumn-banner {
+    background:
+        linear-gradient(
+            135deg,
+            #fff5ce,
+            #ffe4ad
+        );
+
+    border-color:
+        #e6b85e;
+}
+
+.mid-autumn-banner .event-mission-emoji {
+    font-size: 38px;
+}
+
+.mid-autumn-banner strong {
+    color: #74441d;
+}
+
+.mid-autumn-banner p {
+    color: #8c6334;
+}
+
+.event-countdown {
+    margin-top: 6px;
+
+    color: #a65c2b;
+
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.mid-autumn-customer-list {
+    display: flex;
+    flex-direction: column;
+
+    gap: 8px;
+
+    margin-top: 10px;
+}
+
+.event-section-divider {
+    margin: 18px 0 10px;
+    padding-top: 14px;
+
+    border-top:
+        2px dashed
+        #ead2ad;
+
+    color: #9a6377;
+
+    font-size: 12px;
+    font-weight: 800;
+}
+
+
+/* HOME - TRUNG THU */
+
+.home-event-card.mid-autumn-home {
+    background:
+        linear-gradient(
+            180deg,
+            #fff8dc,
+            #ffe6b5
+        );
+
+    border-color:
+        #e9ba62;
+
+    box-shadow:
+        0 5px 0
+        rgba(
+            152,
+            92,
+            33,
+            0.16
+        );
+}
+
+.home-event-card.mid-autumn-home
+.home-card-eyebrow {
+    color: #b96d2d;
+}
+
+.home-event-card.mid-autumn-home
+.home-card-heading strong {
+    color: #6f4323;
+}
+
+.home-event-card.mid-autumn-home p {
+    color: #875c35;
+}
+
+.home-event-card.mid-autumn-home
+.home-event-count {
+    background: #ffe0a2;
+    color: #96571e;
+}
+
+.home-event-card.mid-autumn-home
+.home-event-track {
+    background: #efd3a3;
+}
+
+.home-event-card.mid-autumn-home
+.home-event-track span {
+    background:
+        linear-gradient(
+            90deg,
+            #eca74c,
+            #c97231
+        );
+}
+
+
+/* =========================================================
+   HALLOWEEN COUNTER / WORKSPACE
+   Locked for now, but preview is ready.
+   ========================================================= */
+
+.banhmi-workspace.counter-halloween {
+    background:
+        linear-gradient(
+            #382347,
+            #1d1428
+        );
+
+    border-bottom-color:
+        #e58b35;
+}
+
+.counter-preview-halloween {
+    background:
+        linear-gradient(
+            #382347,
+            #1d1428
+        );
+
+    border-bottom:
+        5px solid
+        #e58b35;
+}
+
+.counter-preview-halloween
+.counter-preview-board {
+    background:
+        linear-gradient(
+            #4d315b,
+            #291c36
+        );
+
+    border:
+        3px solid
+        #e58b35;
+}
+
+
+/* =========================================================
+   CUSTOMER BACKGROUND STAYS STATIC
+   ========================================================= */
+
+.customer-panel {
+    transform: none;
+    opacity: 1;
+}
+
+.customer-panel.leaving {
+    transform: none;
+    opacity: 1;
+}
+
+
+/* =========================================================
+   DAY / CLOCK / REMAINING CUSTOMER HEADER
+   ========================================================= */
+
+.top-bar.has-shop-rating .top-center {
+    width: min(300px, calc(100% - 145px));
+}
+
+.top-bar.has-shop-rating .top-center strong {
+    font-size: 12px;
+    letter-spacing: -0.1px;
+}
+
+@media (max-width: 430px) {
+    .top-bar.has-shop-rating .top-center {
+        width: calc(100% - 142px);
+    }
+
+    .top-bar.has-shop-rating .top-center strong {
+        font-size: 10.5px;
+    }
+}
+
+
+/* =========================================================
+   CONSISTENT OPEN-SHOP HEADER
+   Money stays centered, rating stays on the right.
+   ========================================================= */
+
+@media (max-width: 430px) {
+    .top-bar.has-shop-rating .top-center strong {
+        font-size: 10px;
+    }
+
+    #shop-rating {
+        width: 82px;
+    }
+}
+
+
+/* =========================================================
+   QUẢN LÝ / THÀNH TỰU
+   ========================================================= */
+
+.management-tabs {
+    margin-bottom: 14px;
+}
+
+.management-note {
+    margin: 0 0 12px;
+    color: #8a6a53;
+    font-size: 10px;
+    line-height: 1.45;
+}
+
+.achievement-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.achievement-card {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 11px;
+    padding: 12px;
+    background: #fffdf7;
+    border: 1px solid #ead4ae;
+    border-radius: 15px;
+}
+
+.achievement-card.is-complete {
+    background: #f3fff2;
+    border-color: #94c99d;
+}
+
+.achievement-icon {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background: #fff0d4;
+    font-size: 28px;
+}
+
+.achievement-card.is-complete .achievement-icon {
+    background: #e4f5e5;
+}
+
+.achievement-body {
+    min-width: 0;
+}
+
+.achievement-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.achievement-title-row strong {
+    color: #5d3c28;
+    font-size: 13px;
+}
+
+.achievement-title-row span {
+    flex: 0 0 auto;
+    color: #987059;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.achievement-body p {
+    margin: 0 0 8px;
+    color: #8c6b54;
+    font-size: 10px;
+    line-height: 1.35;
+}
+
+.achievement-card.is-complete
+.daily-mission-track span {
+    background: #5ba570;
+}
+
+.achievement-status {
+    margin-top: 6px;
+    color: #9b765e;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.achievement-card.is-complete
+.achievement-status {
+    color: #47855a;
+}
+
+
+
+/* =========================================================
+   INGREDIENT TABLE SKIN PREVIEW
+   ========================================================= */
+
+.skin-preview.ingredient-table-preview {
+    height: 92px;
+    background: #efe1cc;
+}
+
+.skin-preview.ingredient-table-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+
+
+/* =========================================================
+   VIETNAM SERVER TIME
+   ========================================================= */
+
+.server-time-card {
+    margin-bottom: 12px;
+    padding: 10px 12px;
+
+    background: #fff3da;
+    border: 1px solid #ead2ad;
+    border-radius: 12px;
+
+    color: #70482c;
+    text-align: center;
+}
+
+.server-time-card strong {
+    display: block;
+    font-size: 12px;
+}
+
+.server-time-card small {
+    display: block;
+    margin-top: 3px;
+
+    color: #9a765b;
+    font-size: 9px;
+}
+
+.home-server-time {
+    margin-top: 8px;
+
+    color: #8b5c3c;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+}
+
+
+/* =========================================================
+   SHOP RATING HUD
+   ========================================================= */
+
+#shop-rating {
+    width: 102px !important;
+    min-height: 48px;
+    padding: 3px 2px !important;
+
+    border: 0 !important;
+    background: transparent !important;
+
+    display: grid !important;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+        "stars number"
+        "streak streak";
+    align-items: center;
+    column-gap: 4px;
+    row-gap: 2px;
+
+    font-family: inherit;
+    cursor: pointer;
+}
+
+#shop-rating:hover {
+    transform: translateY(-1px);
+}
+
+.shop-rating-stars {
+    grid-area: stars;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+
+    white-space: nowrap;
+}
+
+.shop-rating-number {
+    grid-area: number;
+
+    color: #6b3d24;
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.shop-rating-streak {
+    grid-area: streak;
+
+    color: #9a5d34;
+    font-size: 7px;
+    font-weight: 900;
+    line-height: 1;
+    text-align: right;
+
+    white-space: nowrap;
+}
+
+.rating-meter-star {
+    display: inline-block;
+
+    background:
+        linear-gradient(
+            90deg,
+            #f4b82b 0%,
+            #f4b82b var(--star-fill),
+            #d8c8a8 var(--star-fill),
+            #d8c8a8 100%
+        );
+
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+
+    font-size: 11px;
+    line-height: 1;
+    letter-spacing: -0.6px;
+}
+
+
+/* =========================================================
+   SHOP LEVEL BAR
+   ========================================================= */
+
+.shop-level-bar {
+    width: 100%;
+    margin: 0 0 9px;
+    padding: 8px 11px 7px;
+
+    border: 1px solid #ead2ad;
+    border-radius: 13px;
+
+    background:
+        linear-gradient(
+            180deg,
+            #fff8e8,
+            #fff0cf
+        );
+
+    color: #70482c;
+    font-family: inherit;
+    cursor: pointer;
+
+    box-shadow:
+        0 3px 0 #d9b578;
+
+    transition:
+        transform 0.12s ease,
+        box-shadow 0.12s ease;
+}
+
+.shop-level-bar[hidden] {
+    display: none;
+}
+
+.shop-level-bar:hover {
+    transform: translateY(-1px);
+}
+
+.shop-level-bar:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 #d9b578;
+}
+
+.shop-level-topline {
+    display: grid;
+    grid-template-columns:
+        auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 7px;
+
+    line-height: 1;
+}
+
+.shop-level-topline strong {
+    padding: 4px 7px;
+
+    border-radius: 999px;
+    background: #ef5877;
+    color: white;
+
+    font-size: 9px;
+    white-space: nowrap;
+}
+
+.shop-level-topline span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    text-align: left;
+    font-size: 9px;
+    font-weight: 900;
+}
+
+.shop-level-topline small {
+    color: #9a765b;
+    font-size: 7.5px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.shop-level-track {
+    height: 6px;
+    margin-top: 7px;
+    overflow: hidden;
+
+    border-radius: 999px;
+    background: #ead8b8;
+}
+
+.shop-level-track > span {
+    display: block;
+    width: 0;
+    height: 100%;
+
+    border-radius: inherit;
+
+    background:
+        linear-gradient(
+            90deg,
+            #ef5877,
+            #f8a04f
+        );
+
+    transition: width 0.3s ease;
+}
+
+
+/* =========================================================
+   POPUP BASE
+   ========================================================= */
+
+.shop-level-overlay,
+.rating-history-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 15000;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 18px;
+
+    background: rgba(70, 43, 24, 0.48);
+    backdrop-filter: blur(3px);
+}
+
+.shop-level-popup {
+    position: relative;
+
+    width: min(410px, 94vw);
+    padding: 25px 18px 18px;
+
+    border: 3px solid #d99a4a;
+    border-radius: 24px;
+
+    background: #fff8e8;
+    color: #704328;
+
+    box-shadow: 0 11px 0 #b66f31;
+
+    text-align: center;
+}
+
+.shop-level-popup-close,
+.rating-history-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+
+    width: 38px;
+    height: 38px;
+
+    border: 0;
+    border-radius: 50%;
+
+    background: #f7dce2;
+    color: #764632;
+
+    font: inherit;
+    font-size: 25px;
+    line-height: 1;
+
+    cursor: pointer;
+}
+
+.shop-level-popup-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 8px;
+
+    display: grid;
+    place-items: center;
+
+    border: 3px solid #e2aa59;
+    border-radius: 50%;
+
+    background: #fff1c9;
+
+    font-size: 31px;
+}
+
+.shop-level-popup-eyebrow {
+    color: #b27643;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+}
+
+.shop-level-popup h2 {
+    margin: 4px 0 2px;
+    font-size: 25px;
+}
+
+.shop-level-popup-title {
+    font-size: 13px;
+    font-weight: 900;
+    color: #9a5d34;
+}
+
+.shop-level-popup-progress {
+    margin-top: 16px;
+    padding: 12px;
+
+    border: 1px solid #ebc77d;
+    border-radius: 15px;
+
+    background: #fff0ca;
+}
+
+.shop-level-popup-progress > div:first-child {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.shop-level-popup-track {
+    height: 8px;
+    margin-top: 8px;
+    overflow: hidden;
+
+    border-radius: 999px;
+    background: #e7d3ad;
+}
+
+.shop-level-popup-track > span {
+    display: block;
+    height: 100%;
+
+    border-radius: inherit;
+
+    background:
+        linear-gradient(
+            90deg,
+            #ef5877,
+            #f8a04f
+        );
+}
+
+.shop-level-popup-info {
+    display: grid;
+    grid-template-columns:
+        0.8fr 1.2fr;
+    gap: 8px;
+
+    margin-top: 10px;
+}
+
+.shop-level-popup-info > div {
+    padding: 10px 8px;
+
+    border: 1px solid #ecd9b8;
+    border-radius: 13px;
+
+    background: #fffdf6;
+}
+
+.shop-level-popup-info span,
+.shop-level-popup-info strong {
+    display: block;
+}
+
+.shop-level-popup-info span {
+    color: #a07a5f;
+    font-size: 8px;
+}
+
+.shop-level-popup-info strong {
+    margin-top: 3px;
+    font-size: 10px;
+}
+
+.shop-level-popup-note {
+    margin: 12px 8px 4px;
+
+    color: #92705a;
+    font-size: 9px;
+    line-height: 1.5;
+}
+
+.shop-level-popup-done,
+.rating-history-done {
+    width: 100%;
+    margin-top: 14px;
+    padding: 12px;
+
+    border: 0;
+    border-radius: 14px;
+
+    background: #ed5575;
+    box-shadow: 0 5px 0 #b93e58;
+
+    color: white;
+    font: inherit;
+    font-weight: 900;
+
+    cursor: pointer;
+}
+
+
+/* =========================================================
+   RATING HISTORY POPUP
+   ========================================================= */
+
+.rating-history-card {
+    position: relative;
+
+    width: min(440px, 94vw);
+    max-height: min(740px, 88vh);
+
+    overflow: visible;
+
+    padding: 43px 18px 18px;
+
+    background: #fff8e8;
+    border: 3px solid #d99a4a;
+    border-radius: 24px;
+
+    box-shadow: 0 12px 0 #b66f31;
+
+    color: #704328;
+}
+
+.rating-history-card h2 {
+    margin: 0;
+    text-align: center;
+    font-size: 22px;
+}
+
+.rating-history-badge {
+    position: absolute;
+    top: -31px;
+    left: 50%;
+    transform: translateX(-50%);
+
+    width: 68px;
+    height: 68px;
+
+    display: grid;
+    place-items: center;
+
+    border: 4px solid #d99a4a;
+    border-radius: 50%;
+
+    background: #fff8e8;
+    box-shadow: 0 6px 0 #bd7738;
+
+    font-size: 30px;
+}
+
+.rating-history-summary {
+    margin-top: 12px;
+    padding: 12px;
+
+    text-align: center;
+
+    background: #fff0ca;
+    border: 1px solid #ebc77d;
+    border-radius: 16px;
+}
+
+.rating-history-main-stars {
+    display: flex;
+    justify-content: center;
+
+    min-height: 23px;
+}
+
+.rating-history-main-stars
+.rating-meter-star {
+    font-size: 23px;
+    letter-spacing: 0;
+}
+
+.rating-history-summary > strong {
+    display: block;
+
+    margin-top: 3px;
+
+    font-size: 24px;
+}
+
+.rating-history-summary > small {
+    display: block;
+
+    margin-top: 4px;
+
+    color: #987156;
+    font-size: 9px;
+}
+
+.rating-history-streak {
+    display: inline-block;
+
+    margin-top: 9px;
+    padding: 5px 9px;
+
+    border-radius: 999px;
+    background: #ffe2b9;
+
+    font-size: 9px;
+    font-weight: 900;
+}
+
+.rating-history-heading {
+    margin: 15px 2px 8px;
+
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.rating-history-list {
+    max-height: 330px;
+    overflow-y: auto;
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    padding-right: 3px;
+}
+
+.rating-history-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 8px 10px;
+
+    background: #fffdf6;
+
+    border: 1px solid #ecd9b8;
+    border-radius: 14px;
+}
+
+.rating-history-avatar {
+    flex: 0 0 48px;
+
+    width: 48px;
+    height: 48px;
+
+    overflow: hidden;
+
+    display: grid;
+    place-items: center;
+
+    border: 2px solid #efc981;
+    border-radius: 50%;
+
+    background: #fff0d1;
+
+    font-size: 25px;
+}
+
+.rating-history-avatar img {
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+    object-position: top center;
+}
+
+.rating-history-info {
+    min-width: 0;
+    flex: 1;
+}
+
+.rating-history-row-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.rating-history-stars {
+    display: inline-flex;
+    white-space: nowrap;
+}
+
+.rating-history-stars
+.rating-meter-star {
+    font-size: 14px;
+}
+
+.rating-history-day {
+    color: #aa8466;
+    font-size: 8px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.rating-history-info strong {
+    display: block;
+
+    margin-top: 2px;
+
+    font-size: 10px;
+}
+
+.rating-history-info small {
+    display: block;
+
+    margin-top: 1px;
+
+    color: #9a765b;
+    font-size: 8px;
+}
+
+.rating-history-empty {
+    padding: 24px 12px;
+
+    text-align: center;
+    color: #9a765b;
+
+    border: 1px dashed #ddb982;
+    border-radius: 14px;
+}
+
+@media (max-width: 430px) {
+    #shop-rating {
+        width: 98px !important;
+    }
+
+    .rating-meter-star {
+        font-size: 10px;
+    }
+
+    .shop-rating-number {
+        font-size: 9px;
+    }
+
+    .shop-level-topline span {
+        font-size: 8.5px;
+    }
+
+    .shop-level-topline small {
+        font-size: 7px;
+    }
+
+    .rating-history-card,
+    .shop-level-popup {
+        width: 95vw;
+    }
+
+    .rating-history-list {
+        max-height: 300px;
+    }
+}
+
+
+/* =========================================================
+   LEVEL POLISH + HOME LEVEL + HEADER ALIGNMENT
+   ========================================================= */
+
+.shop-level-popup-eyebrow {
+    font-size: 12px;
+}
+
+.shop-level-popup h2 {
+    font-size: 31px;
+    line-height: 1.1;
+}
+
+.shop-level-popup-title {
+    margin-top: 4px;
+    font-size: 16px;
+}
+
+.shop-level-popup-progress > div:first-child {
+    font-size: 11px;
+}
+
+.shop-level-popup-info span {
+    font-size: 10px;
+}
+
+.shop-level-popup-info strong {
+    margin-top: 4px;
+    font-size: 13px;
+}
+
+.shop-level-popup-info small {
+    display: block;
+    margin-top: 4px;
+
+    color: #9a765b;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.shop-level-popup-note {
+    font-size: 10px;
+    line-height: 1.55;
+}
+
+
+.home-level-card {
+    width: 100%;
+    margin: 14px 0 19px;
+    padding: 12px 14px 11px;
+
+    border: 2px solid #efcad5;
+    border-radius: 18px;
+
+    background:
+        linear-gradient(
+            180deg,
+            #fff9ee,
+            #fff1d7
+        );
+
+    color: #704328;
+    font-family: inherit;
+    cursor: pointer;
+
+    box-shadow:
+        0 5px 0 #ddb878;
+}
+
+.home-level-card:hover {
+    transform: translateY(-1px);
+}
+
+.home-level-top {
+    display: grid;
+    grid-template-columns:
+        auto minmax(0, 1fr) auto;
+
+    align-items: center;
+    gap: 10px;
+}
+
+.home-level-top strong {
+    padding: 5px 9px;
+
+    border-radius: 999px;
+
+    background: #ef5877;
+    color: white;
+
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.home-level-top span {
+    min-width: 0;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    text-align: left;
+
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.home-level-top small {
+    color: #9a765b;
+
+    font-size: 9px;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.home-level-track {
+    height: 8px;
+    margin-top: 9px;
+
+    overflow: hidden;
+
+    border-radius: 999px;
+
+    background: #ead8b8;
+}
+
+.home-level-track > span {
+    display: block;
+    height: 100%;
+
+    border-radius: inherit;
+
+    background:
+        linear-gradient(
+            90deg,
+            #ef5877,
+            #f8a04f
+        );
+}
+
+
+/* Keep pause/settings button vertically centered in the header. */
+.top-bar.has-shop-rating .top-left,
+.top-bar .top-left {
+    align-self: center !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.top-bar.has-shop-rating .top-left > *,
+.top-bar .top-left > * {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+@media (max-width: 430px) {
+    .shop-level-popup h2 {
+        font-size: 29px;
+    }
+
+    .shop-level-popup-title {
+        font-size: 15px;
+    }
+
+    .shop-level-popup-info strong {
+        font-size: 12px;
+    }
+
+    .home-level-top span {
+        font-size: 11px;
+    }
+
+    .home-level-top small {
+        font-size: 8.5px;
+    }
+}
+
+
+/* =========================================================
+   HOME LAYOUT COMPACT FIX
+   ========================================================= */
+
+.home-dashboard {
+    gap: 10px !important;
+}
+
+.home-stats-grid {
+    gap: 8px !important;
+    margin-bottom: 0 !important;
+}
+
+.home-stat-card {
+    min-height: 0 !important;
+    padding: 9px 7px !important;
+    border-radius: 16px !important;
+}
+
+.home-stat-label {
+    margin-bottom: 2px !important;
+    font-size: 10px !important;
+}
+
+.home-stat-value {
+    font-size: 18px !important;
+    line-height: 1.05 !important;
+}
+
+.home-stat-small {
+    margin-top: 2px !important;
+    font-size: 7.5px !important;
+    line-height: 1.05 !important;
+}
+
+/* Remove the weird isolated gap around Level on Home. */
+.home-level-card {
+    margin: 0 !important;
+    padding: 10px 13px 9px !important;
+}
+
+.home-event-card {
+    margin-top: 0 !important;
+}
+
+
+/* =========================================================
+   HEADER RATING SPACING FIX
+   ========================================================= */
+
+#shop-rating {
+    width: 116px !important;
+    min-height: 50px !important;
+    padding: 4px 3px !important;
+
+    grid-template-columns:
+        minmax(0, 1fr) auto !important;
+
+    column-gap: 5px !important;
+    row-gap: 1px !important;
+}
+
+.shop-rating-stars {
+    justify-content: flex-end !important;
+}
+
+.rating-meter-star {
+    font-size: 12.5px !important;
+    letter-spacing: -0.35px !important;
+}
+
+.shop-rating-number {
+    font-size: 12px !important;
+}
+
+.shop-rating-streak {
+    margin-top: 0 !important;
+
+    font-size: 9px !important;
+    line-height: 1 !important;
+
+    text-align: right !important;
+}
+
+
+/* Keep pause button centered after the rating HUD got taller. */
+.top-bar.has-shop-rating .top-left,
+.top-bar .top-left {
+    align-self: center !important;
+    margin-block: 0 !important;
+}
+
+@media (max-width: 430px) {
+    .home-dashboard {
+        gap: 9px !important;
+    }
+
+    .home-stats-grid {
+        gap: 6px !important;
+    }
+
+    .home-stat-card {
+        padding: 8px 5px !important;
+    }
+
+    .home-stat-label {
+        font-size: 9px !important;
+    }
+
+    .home-stat-value {
+        font-size: 16px !important;
+    }
+
+    .home-stat-small {
+        font-size: 7px !important;
+    }
+
+    #shop-rating {
+        width: 112px !important;
+    }
+
+    .rating-meter-star {
+        font-size: 12px !important;
+    }
+
+    .shop-rating-number {
+        font-size: 11.5px !important;
+    }
+
+    .shop-rating-streak {
+        font-size: 8.5px !important;
+    }
+}
+
+
+/* =========================================================
+   SAUCE PRESS & HOLD
+   Giữ đủ 5 giây, vòng progress chạy quanh chai.
+   Sprite sốt trên bánh reveal từ trái sang phải.
+   ========================================================= */
+
+.sauce-bottle {
+    --sauce-hold-angle: 0deg;
+
+    touch-action: none;
+    -webkit-touch-callout: none;
+}
+
+.sauce-bottle.is-holding-sauce {
+    z-index: 30;
+    transform: scale(1.05);
+    filter:
+        drop-shadow(
+            0 0 5px rgba(255, 247, 168, 0.95)
+        )
+        drop-shadow(
+            0 0 10px rgba(239, 88, 119, 0.5)
+        );
+}
+
+.sauce-hold-ring {
+    position: absolute;
+
+    left: 50%;
+    top: 45%;
+
+    width: 45px;
+    height: 45px;
+
+    z-index: 35;
+
+    display: grid;
+    place-items: center;
+
+    transform:
+        translate(-50%, -50%)
+        scale(0.82);
+
+    border-radius: 50%;
+
+    background:
+        conic-gradient(
+            #ef5877
+                0deg
+                var(--sauce-hold-angle),
+            rgba(255, 248, 231, 0.78)
+                var(--sauce-hold-angle)
+                360deg
+        );
+
+    opacity: 0;
+    pointer-events: none;
+
+    box-shadow:
+        0 2px 5px rgba(80, 42, 25, 0.2);
+
+    transition:
+        opacity 0.12s ease,
+        transform 0.12s ease;
+}
+
+.sauce-bottle.is-holding-sauce
+.sauce-hold-ring {
+    opacity: 1;
+
+    transform:
+        translate(-50%, -50%)
+        scale(1);
+}
+
+.sauce-hold-ring::before {
+    content: "";
+
+    position: absolute;
+    inset: 5px;
+
+    border-radius: 50%;
+
+    background:
+        rgba(255, 249, 237, 0.96);
+}
+
+.sauce-hold-ring-inner {
+    position: relative;
+    z-index: 1;
+
+    color: #7c4a32;
+
+    font-size: 7px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+/*
+   Preview sốt giữ nguyên kích thước / vị trí sprite thật.
+   Chỉ clip phần bên phải, tuyệt đối không scale ngang ảnh.
+*/
+.sauce-live-reveal {
+    will-change: clip-path;
+
+    clip-path:
+        inset(0 100% 0 0);
+
+    transition: none !important;
+}
+
+@media (max-width: 430px) {
+    .sauce-hold-ring {
+        width: 41px;
+        height: 41px;
+    }
+
+    .sauce-hold-ring::before {
+        inset: 4px;
+    }
+
+    .sauce-hold-ring-inner {
+        font-size: 6.5px;
+    }
+}
+
+
+/* ======================================================
+   START SCREEN - REAL ASSET LOADING
+   ====================================================== */
+
+#start-screen.is-loading {
+    cursor: wait;
+}
+
+#start-screen.is-loading .start-content p {
+    animation: none;
+    opacity: 0.82;
+}
+
+#start-screen.is-ready {
+    cursor: pointer;
+}
+
+#loading-progress-wrap {
+    width: min(240px, 68vw);
+    height: 11px;
+
+    margin: 14px auto 0;
+
+    overflow: hidden;
+
+    background: rgba(109, 74, 55, 0.16);
+
+    border: 2px solid rgba(139, 79, 50, 0.18);
+    border-radius: 999px;
+
+    box-shadow:
+        inset 0 1px 2px rgba(90, 50, 30, 0.10);
+}
+
+#loading-progress-bar {
+    width: 0%;
+    height: 100%;
+
+    background:
+        linear-gradient(
+            90deg,
+            #b96c48,
+            #8b4f32
+        );
+
+    border-radius: inherit;
+
+    transition: width 0.14s ease;
+}
+
+#start-screen.is-ready #loading-progress-wrap {
+    opacity: 0;
+    transform: translateY(3px);
+
+    transition:
+        opacity 0.25s ease,
+        transform 0.25s ease;
+}
+
+#start-screen.is-ready .start-content p {
+    animation: startPulse 1.5s ease-in-out infinite;
+}
+
+/* FIX PAUSE / SETTINGS BUTTON VERTICAL ALIGNMENT */
+.top-bar #settings-button {
+    position: relative;
+    top: -3px;
 }
