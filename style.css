@@ -612,11 +612,11 @@ button {
 
 .layer-ot {
 
-    top: 70px;
+    top: 67px;
 
     z-index: 20;
 
-    transform: translateX(-50%) scale(1.3);
+    transform: translateX(-50%) scale(1.0);
 
 }
 
@@ -6694,5 +6694,59 @@ body.tutorial-open {
 
 .sauce-bottle {
     touch-action: manipulation;
+}
+
+/* ======================================================
+   PWA / iOS STANDALONE LONG-PRESS FIX
+   Chặn text selection / callout mạnh hơn cho web app.
+   ====================================================== */
+
+.sauce-bottle,
+.sauce-bottle *,
+.station-item,
+.station-item *,
+.hold-label,
+.hold-label *,
+.hold-text,
+.hold-text * {
+    -webkit-user-select: none !important;
+    user-select: none !important;
+
+    -webkit-touch-callout: none !important;
+    -webkit-user-drag: none !important;
+
+    -webkit-tap-highlight-color: transparent !important;
+}
+
+.sauce-bottle {
+    touch-action: none !important;
+}
+
+/* ======================================================
+   PWA TALL-VIEWPORT FIX
+   Trong standalone PWA, 100dvh cao hơn Safari có thanh địa chỉ.
+   #screen trước đây flex:1 nên nó kéo giãn phần trống,
+   đẩy Level / menu / Giao bánh xuống sát đáy máy.
+   Chỉ sửa màn làm bánh, không ảnh hưởng Home.
+   ====================================================== */
+
+@media (max-width: 560px) {
+
+    #game:has(
+        .making-screen:not(.prep-shopping-screen)
+    ) #screen {
+        flex:
+            0
+            1
+            auto !important;
+
+        min-height: 0 !important;
+    }
+
+    #game:has(
+        .making-screen:not(.prep-shopping-screen)
+    ) .bottom-area {
+        margin-top: 0 !important;
+    }
 }
 
