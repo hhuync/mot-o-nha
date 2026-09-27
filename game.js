@@ -35,12 +35,98 @@ const DAY_START_KEY = "mot-o-nha-day-start-v1";
 // BACKGROUND MUSIC
 // ======================================================
 
-const ingredientSound = new Audio("audio/ingredient.mp3");
-ingredientSound.volume = 0.45;
+// ======================================================
+// LOW-LATENCY SFX
+// iOS/PWA có thể bị trễ khi liên tục rewind cùng 1 Audio element.
+// Dùng một pool nhỏ để lần bấm kế tiếp có audio sẵn sàng phát.
+// ======================================================
 
-function playIngredientSound() {
-    ingredientSound.currentTime = 0;
-    ingredientSound.play().catch(() => {});
+function createSfxPool(
+    src,
+    volume,
+    size = 4
+) {
+    return Array.from(
+        { length: size },
+        () => {
+            const sound = new Audio(src);
+
+            sound.volume = volume;
+            sound.preload = "auto";
+
+            try {
+                sound.load();
+            } catch {}
+
+            return sound;
+        }
+    );
+}
+
+
+const ingredientSoundPool =
+    createSfxPool(
+        "audio/ingredient.mp3",
+        0.45,
+        4
+    );
+
+let ingredientSoundCursor = 0;
+
+let earlyIngredientSound = {
+    name: null,
+    at: 0
+};
+
+
+function playIngredientSoundNow() {
+    const sound =
+        ingredientSoundPool[
+            ingredientSoundCursor %
+            ingredientSoundPool.length
+        ];
+
+    ingredientSoundCursor++;
+
+    try {
+        sound.pause();
+        sound.currentTime = 0;
+    } catch {}
+
+    sound.play().catch(() => {});
+}
+
+
+function primeIngredientSound(name) {
+    earlyIngredientSound = {
+        name,
+        at: performance.now()
+    };
+
+    playIngredientSoundNow();
+}
+
+
+function playIngredientSound(name = null) {
+    const now =
+        performance.now();
+
+    // Nếu âm thanh đã phát ngay ở pointerdown,
+    // click/toggle sau đó không phát lại lần thứ hai.
+    if (
+        name &&
+        earlyIngredientSound.name === name &&
+        now - earlyIngredientSound.at < 600
+    ) {
+        earlyIngredientSound = {
+            name: null,
+            at: 0
+        };
+
+        return;
+    }
+
+    playIngredientSoundNow();
 }
 
 
@@ -8292,7 +8378,7 @@ function completeSauceHold(name) {
             name
         );
 
-        playIngredientSound();
+        playIngredientSound(name);
     }
 
 
@@ -8666,7 +8752,7 @@ function toggleBread() {
         !game.breadSelected;
 
     if (game.breadSelected) {
-        playIngredientSound();
+        playIngredientSound("Bánh mì");
 }
 
     updateSandwich();
@@ -8728,7 +8814,7 @@ function toggleIngredient(name) {
             name
         );
 
-        playIngredientSound();
+        playIngredientSound(name);
     }
 
 
@@ -11166,25 +11252,141 @@ function openPauseMenu() {
     );
 }
 
-const uiClickSound = new Audio("audio/click.mp3");
-uiClickSound.volume = 0.45;
+const uiClickSoundPool =
+    createSfxPool(
+        "audio/click.mp3",
+        0.45,
+        4
+    );
 
-document.addEventListener("click", (event) => {
-    const button = event.target.closest("button");
+let uiClickSoundCursor = 0;
 
-    if (!button || button.disabled) return;
 
-    // Khi đang làm bánh, nguyên liệu đã có tiếng riêng.
-    if (
-        (game.phase === "making" || game.phase === "waiting") &&
-        button.classList.contains("station-item")
-    ) {
-        return;
+function playUiClickSound() {
+    const sound =
+        uiClickSoundPool[
+            uiClickSoundCursor %
+            uiClickSoundPool.length
+        ];
+
+    uiClickSoundCursor++;
+
+    try {
+        sound.pause();
+        sound.currentTime = 0;
+    } catch {}
+
+    sound.play().catch(() => {});
+}
+
+
+// Phát tiếng click ngay khi ngón tay CHẠM xuống.
+// Logic button vẫn chạy bằng click như cũ.
+document.addEventListener(
+    "pointerdown",
+    event => {
+        const button =
+            event.target.closest("button");
+
+        if (
+            !button ||
+            button.disabled
+        ) {
+            return;
+        }
+
+        // Khi đang làm bánh, nguyên liệu có tiếng riêng.
+        if (
+            (
+                game.phase === "making" ||
+                game.phase === "waiting"
+            ) &&
+            button.classList.contains(
+                "station-item"
+            )
+        ) {
+            return;
+        }
+
+        playUiClickSound();
+    },
+    {
+        passive: true
     }
+);
 
-    uiClickSound.currentTime = 0;
-    uiClickSound.play().catch(() => {});
-});
+
+// Với topping/bánh mì, phát ingredient.mp3 ngay ở pointerdown.
+// Logic chọn nguyên liệu vẫn chạy ở click như cũ.
+document.addEventListener(
+    "pointerdown",
+    event => {
+        const button =
+            event.target.closest(
+                ".station-item"
+            );
+
+        if (
+            !button ||
+            button.disabled ||
+            (
+                game.phase !== "making" &&
+                game.phase !== "waiting"
+            )
+        ) {
+            return;
+        }
+
+        const name =
+            button.dataset.ingredient;
+
+        const data =
+            ingredients[name];
+
+        if (
+            !name ||
+            !data ||
+            !data.unlocked ||
+            data.stock <= 0 ||
+            sauceSlots.includes(name)
+        ) {
+            return;
+        }
+
+        // Tutorial Day 1: bấm nhầm nút bị khóa thì không phát tiếng.
+        if (
+            typeof day1TutorialActive ===
+                "function" &&
+            day1TutorialActive() &&
+            !button.classList.contains(
+                "day1-tutorial-target"
+            )
+        ) {
+            return;
+        }
+
+        // Khi bỏ nguyên liệu ra thì code cũ vốn không phát ingredient SFX.
+        if (
+            (
+                name === "Bánh mì" &&
+                game.breadSelected
+            ) ||
+            (
+                name !== "Bánh mì" &&
+                game.selectedIngredients.includes(
+                    name
+                )
+            )
+        ) {
+            return;
+        }
+
+        primeIngredientSound(name);
+    },
+    {
+        passive: true
+    }
+);
 
 // ======================================================
 // EVENTS
