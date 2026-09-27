@@ -5890,6 +5890,15 @@ if (
             game.selectedIngredients = [];
             game.breadSelected = false;
 
+            // Chơi lại Day 1 = tutorial quay về bước đầu.
+            if (game.day === 1) {
+                localStorage.removeItem(
+                    DAY1_TUTORIAL_STATE_KEY
+                );
+                day1TutorialStep = null;
+                clearDay1TutorialUI();
+            }
+
             game.orderNote =
                 "Cho mình một ổ như bình thường nha!";
 
@@ -5934,6 +5943,16 @@ function resetGameSave() {
 
             localStorage.removeItem(SAVE_KEY);
             localStorage.removeItem(DAY_START_KEY);
+
+            // Reset game = tutorial Day 1 phải bắt đầu lại từ đầu.
+            localStorage.removeItem(
+                DAY1_TUTORIAL_DONE_KEY
+            );
+            localStorage.removeItem(
+                DAY1_TUTORIAL_STATE_KEY
+            );
+            day1TutorialStep = null;
+            clearDay1TutorialUI();
 
             localStorage.removeItem("mot-o-nha-last-reaction");
             localStorage.removeItem("mot-o-nha-wait-until");
@@ -13113,3 +13132,1266 @@ document.addEventListener("visibilitychange", () => {
 `;
     document.head.appendChild(style);
 })();
+
+// ======================================================
+// DAY 1 - INTERACTIVE TUTORIAL (V5)
+// 3 khách tự đến, không có nút "khách tiếp theo".
+// Fix recipe close, pause/reset cleanup, mobile coach.
+// ======================================================
+
+const DAY1_TUTORIAL_DONE_KEY =
+    "mot-o-nha-day1-interactive-tutorial-v6";
+
+const DAY1_TUTORIAL_STATE_KEY =
+    "mot-o-nha-day1-interactive-state-v6";
+
+const DAY1_TUTORIAL_CUSTOMERS = [
+    {
+        customer: "A",
+        recipeName: "Bánh mì pâté",
+        note: "Cho chị một ổ bánh mì pâté như bình thường nha!"
+    },
+    {
+        customer: "C",
+        recipeName: "Bánh mì trứng",
+        note: "Cho anh một ổ bánh mì trứng như bình thường nha!"
+    },
+    {
+        customer: "E",
+        recipeName: "Bánh mì không",
+        note: "Cho em một ổ bánh mì không thôi nha, không cần nhân!"
+    }
+];
+
+let day1TutorialStep = null;
+
+
+// DEV MIGRATION:
+// Dọn state tutorial test cũ để bản mới hiện bubble lại đúng từ đầu.
+// Chỉ đụng các key tutorial V5 cũ, không đụng save game.
+localStorage.removeItem(
+    "mot-o-nha-day1-interactive-tutorial-v5"
+);
+
+localStorage.removeItem(
+    "mot-o-nha-day1-interactive-state-v5"
+);
+
+
+function day1TutorialActive() {
+    return (
+        game.day === 1 &&
+        (
+            game.phase === "making" ||
+            game.phase === "result" ||
+            game.phase === "waiting"
+        )
+    );
+}
+
+
+function day1TutorialOverlayOpen() {
+    return Boolean(
+        document.getElementById("pause-overlay") ||
+        document.getElementById("cute-popup-overlay")
+    );
+}
+
+
+function saveDay1TutorialState() {
+    if (!day1TutorialActive()) {
+        localStorage.removeItem(
+            DAY1_TUTORIAL_STATE_KEY
+        );
+        return;
+    }
+
+    localStorage.setItem(
+        DAY1_TUTORIAL_STATE_KEY,
+        JSON.stringify({
+            customerNumber:
+                Number(game.customerNumber) || 0,
+            step:
+                day1TutorialStep
+        })
+    );
+}
+
+
+function loadDay1TutorialState() {
+    if (!day1TutorialActive()) {
+        day1TutorialStep = null;
+        return;
+    }
+
+    try {
+        const saved =
+            JSON.parse(
+                localStorage.getItem(
+                    DAY1_TUTORIAL_STATE_KEY
+                ) || "{}"
+            );
+
+        if (
+            Number(saved.customerNumber) ===
+                Number(game.customerNumber) &&
+            typeof saved.step === "string"
+        ) {
+            day1TutorialStep =
+                saved.step;
+        }
+    } catch {}
+}
+
+
+function clearDay1TutorialUI() {
+    document
+        .querySelectorAll(
+            ".day1-tutorial-target, .day1-tutorial-recipe-focus"
+        )
+        .forEach(element => {
+            element.classList.remove(
+                "day1-tutorial-target",
+                "day1-tutorial-recipe-focus"
+            );
+        });
+
+    document
+        .getElementById(
+            "day1-tutorial-coach"
+        )
+        ?.remove();
+
+    document
+        .querySelector(
+            ".recipe-book-note"
+        )
+        ?.classList.remove(
+            "day1-tutorial-note"
+        );
+}
+
+
+function finishDay1Tutorial() {
+    localStorage.removeItem(
+        DAY1_TUTORIAL_STATE_KEY
+    );
+
+    day1TutorialStep = null;
+    clearDay1TutorialUI();
+}
+
+
+function setDay1TutorialStep(step) {
+    day1TutorialStep = step;
+    saveDay1TutorialState();
+
+    requestAnimationFrame(
+        updateDay1TutorialCoach
+    );
+}
+
+
+function getDay1TutorialInstruction() {
+    if (
+        !day1TutorialActive() ||
+        day1TutorialOverlayOpen()
+    ) {
+        return null;
+    }
+
+    const number =
+        Number(game.customerNumber) || 0;
+
+    if (number === 1) {
+        const map = {
+            bread: {
+                title: "Khách đầu tiên tới rồi! 👋",
+                text:
+                    "Đây là Bánh mì pâté. Trước tiên, nhấn vào ổ bánh mì ở bàn nguyên liệu.",
+                target:
+                    '.bread-station-item'
+            },
+            pate: {
+                title: "Thêm Pâté",
+                text:
+                    "Giờ nhấn vào Pâté để thêm nhân vào bánh.",
+                target:
+                    '[data-ingredient="Pâté"]'
+            },
+            rau: {
+                title: "Thêm Rau",
+                text:
+                    "Công thức Bánh mì pâté còn có Rau. Nhấn vào Rau nha!",
+                target:
+                    '[data-ingredient="Rau"]'
+            },
+            serve: {
+                title: "Xong rồi! ✨",
+                text:
+                    "Bánh đã đúng công thức. Nhấn Giao bánh để phục vụ khách.",
+                target:
+                    '#main-button'
+            }
+        };
+
+        return map[
+            day1TutorialStep
+        ] || map.bread;
+    }
+
+    if (number === 2) {
+        const map = {
+            recipe: {
+                title: "Món này nhiều nguyên liệu hơn 📖",
+                text:
+                    "Nhấn vào Sổ công thức cạnh lời thoại của khách để xem món này cần những gì nhé!",
+                target:
+                    '.recipe-book-fab'
+            },
+            "recipe-read": {
+                recipeMode: true
+            },
+            bread: {
+                title: "Bắt đầu làm nào 🥖",
+                text:
+                    "Trước tiên, lấy một ổ bánh mì.",
+                target:
+                    '.bread-station-item'
+            },
+            pate: {
+                title: "Pâté",
+                text:
+                    "Nhấn Pâté để thêm vào bánh.",
+                target:
+                    '[data-ingredient="Pâté"]'
+            },
+            egg: {
+                title: "Trứng",
+                text:
+                    "Tiếp theo là Trứng.",
+                target:
+                    '[data-ingredient="Trứng"]'
+            },
+            cucumber: {
+                title: "Dưa leo",
+                text:
+                    "Thêm Dưa leo theo công thức.",
+                target:
+                    '[data-ingredient="Dưa leo"]'
+            },
+            rau: {
+                title: "Rau",
+                text:
+                    "Thêm Rau nữa nha.",
+                target:
+                    '[data-ingredient="Rau"]'
+            },
+            ketchup: {
+                title: "Sốt phải nhấn giữ 🍅",
+                text:
+                    "Nhấn GIỮ chai Ketchup đủ 3 giây đến khi vòng tròn đầy. Thả sớm thì sốt chưa được thêm.",
+                target:
+                    '[data-ingredient="Ketchup"]'
+            },
+            serve: {
+                title: "Đúng công thức rồi!",
+                text:
+                    "Giờ nhấn Giao bánh để đưa món cho khách.",
+                target:
+                    '#main-button'
+            }
+        };
+
+        return map[
+            day1TutorialStep
+        ] || map.recipe;
+    }
+
+    if (number === 3) {
+        const map = {
+            bread: {
+                title: "Khách cuối của ngày đầu 👀",
+                text:
+                    "Khách này gọi Bánh mì không. Chỉ cần lấy một ổ bánh mì thôi.",
+                target:
+                    '.bread-station-item'
+            },
+            serve: {
+                title: "Không cần thêm gì hết!",
+                text:
+                    "Bánh mì không chỉ có bánh mì. Đừng thêm topping, giao luôn nha!",
+                target:
+                    '#main-button'
+            }
+        };
+
+        return map[
+            day1TutorialStep
+        ] || map.bread;
+    }
+
+    return null;
+}
+
+
+function ensureDay1TutorialCoach() {
+    let coach =
+        document.getElementById(
+            "day1-tutorial-coach"
+        );
+
+    if (coach) {
+        return coach;
+    }
+
+    coach =
+        document.createElement(
+            "aside"
+        );
+
+    coach.id =
+        "day1-tutorial-coach";
+
+    coach.setAttribute(
+        "aria-live",
+        "polite"
+    );
+
+    coach.innerHTML = `
+        <div class="day1-tutorial-coach-label">
+            💡 HƯỚNG DẪN
+        </div>
+        <strong
+            id="day1-tutorial-coach-title"
+        ></strong>
+        <p
+            id="day1-tutorial-coach-text"
+        ></p>
+    `;
+
+    document.body.appendChild(
+        coach
+    );
+
+    return coach;
+}
+
+
+function showDay1RecipeInstruction() {
+    clearDay1TutorialUI();
+
+    const note =
+        recipeModal.querySelector(
+            ".recipe-book-note"
+        );
+
+    if (note) {
+        note.classList.add(
+            "day1-tutorial-note"
+        );
+
+        note.textContent =
+            "💡 Xem công thức Bánh mì trứng bên dưới, rồi nhấn ✕ để đóng sổ và bắt đầu làm.";
+    }
+
+    const entries =
+        [
+            ...recipeModal.querySelectorAll(
+                ".recipe-entry"
+            )
+        ];
+
+    const eggEntry =
+        entries.find(
+            entry =>
+                entry
+                    .querySelector(
+                        ".recipe-entry-title strong"
+                    )
+                    ?.textContent
+                    .includes(
+                        "Bánh mì trứng"
+                    )
+        );
+
+    eggEntry?.classList.add(
+        "day1-tutorial-recipe-focus"
+    );
+
+    closeRecipeButton.classList.add(
+        "day1-tutorial-target"
+    );
+}
+
+
+function positionDay1TutorialCoach(
+    coach,
+    target
+) {
+    if (!coach || !target) {
+        return;
+    }
+
+    const gameRect =
+        document
+            .getElementById("game")
+            ?.getBoundingClientRect();
+
+    const minLeft =
+        Math.max(
+            8,
+            gameRect?.left ?? 8
+        );
+
+    const maxRight =
+        Math.min(
+            window.innerWidth - 8,
+            gameRect?.right ??
+                window.innerWidth - 8
+        );
+
+    const maxWidth =
+        Math.max(
+            250,
+            maxRight -
+                minLeft -
+                16
+        );
+
+    coach.style.width =
+        `${Math.min(
+            360,
+            maxWidth
+        )}px`;
+
+    const targetRect =
+        target.getBoundingClientRect();
+
+    const coachRect =
+        coach.getBoundingClientRect();
+
+    const gap = 12;
+
+    let top =
+        targetRect.top -
+        coachRect.height -
+        gap;
+
+    if (top < 70) {
+        top =
+            targetRect.bottom +
+            gap;
+    }
+
+    top =
+        Math.max(
+            70,
+            Math.min(
+                top,
+                window.innerHeight -
+                    coachRect.height -
+                    10
+            )
+        );
+
+    let left =
+        targetRect.left +
+        targetRect.width / 2 -
+        coachRect.width / 2;
+
+    left =
+        Math.max(
+            minLeft + 8,
+            Math.min(
+                left,
+                maxRight -
+                    coachRect.width -
+                    8
+            )
+        );
+
+    coach.style.left =
+        `${left}px`;
+
+    coach.style.top =
+        `${top}px`;
+}
+
+
+function updateDay1TutorialCoach() {
+    if (
+        !day1TutorialActive() ||
+        day1TutorialOverlayOpen()
+    ) {
+        clearDay1TutorialUI();
+        return;
+    }
+
+    const instruction =
+        getDay1TutorialInstruction();
+
+    if (!instruction) {
+        clearDay1TutorialUI();
+        return;
+    }
+
+    if (instruction.recipeMode) {
+        showDay1RecipeInstruction();
+        return;
+    }
+
+    clearDay1TutorialUI();
+
+    const coach =
+        ensureDay1TutorialCoach();
+
+    coach
+        .querySelector(
+            "#day1-tutorial-coach-title"
+        )
+        .textContent =
+            instruction.title;
+
+    coach
+        .querySelector(
+            "#day1-tutorial-coach-text"
+        )
+        .textContent =
+            instruction.text;
+
+    const target =
+        document.querySelector(
+            instruction.target
+        );
+
+    if (target) {
+        target.classList.add(
+            "day1-tutorial-target"
+        );
+
+        requestAnimationFrame(
+            () =>
+                positionDay1TutorialCoach(
+                    coach,
+                    target
+                )
+        );
+    }
+}
+
+
+function remindDay1Tutorial() {
+    updateDay1TutorialCoach();
+
+    const coach =
+        document.getElementById(
+            "day1-tutorial-coach"
+        );
+
+    if (!coach) {
+        return;
+    }
+
+    coach.classList.remove(
+        "day1-tutorial-nudge"
+    );
+
+    void coach.offsetWidth;
+
+    coach.classList.add(
+        "day1-tutorial-nudge"
+    );
+}
+
+
+// Slideshow cũ không tự bật ở lần đầu.
+// Vẫn giữ mục Hướng dẫn trong Settings.
+maybeShowTutorialOnFirstTime =
+    function () {};
+
+
+const day1OriginalGetCustomerPatienceMs =
+    getCustomerPatienceMs;
+
+getCustomerPatienceMs =
+    function () {
+        if (day1TutorialActive()) {
+            return 10 * 60 * 1000;
+        }
+
+        return day1OriginalGetCustomerPatienceMs();
+    };
+
+
+const day1OriginalScheduleAnotherCustomer =
+    scheduleAnotherCustomer;
+
+scheduleAnotherCustomer =
+    function () {
+        if (day1TutorialActive()) {
+            return;
+        }
+
+        return day1OriginalScheduleAnotherCustomer();
+    };
+
+
+const day1OriginalNextCustomer =
+    nextCustomer;
+
+nextCustomer =
+    function () {
+        if (!day1TutorialActive()) {
+            return day1OriginalNextCustomer();
+        }
+
+        clearDay1TutorialUI();
+
+        clearTimeout(
+            customerWaitTimer
+        );
+
+        clearTimeout(
+            nextArrivalTimer
+        );
+
+        customerWaitTimer = null;
+        nextArrivalTimer = null;
+
+        localStorage.removeItem(
+            CUSTOMER_WAIT_KEY
+        );
+
+        game.customersToday = 3;
+
+        // Sau khách thứ 3, flow gốc tự gọi nextCustomer().
+        // Ta đóng ngày luôn, KHÔNG bắt người chơi bấm "khách tiếp theo".
+        if (
+            Number(game.customerNumber) >=
+            DAY1_TUTORIAL_CUSTOMERS.length
+        ) {
+            finishDay1Tutorial();
+            return endDay();
+        }
+
+        const setup =
+            DAY1_TUTORIAL_CUSTOMERS[
+                Number(game.customerNumber) || 0
+            ];
+
+        const recipe =
+            recipes.find(
+                item =>
+                    item.name ===
+                    setup.recipeName
+            );
+
+        if (!recipe) {
+            return day1OriginalNextCustomer();
+        }
+
+        game.waitingCustomers = [];
+        game.activeTicketId = null;
+
+        game.currentCustomer =
+            setup.customer;
+
+        game.currentRecipe =
+            recipe;
+
+        game.currentOrder =
+            [...recipe.ingredients];
+
+        game.orderNote =
+            setup.note;
+
+        const patience =
+            getCustomerPatienceMs();
+
+        const ticket = {
+            id:
+                game.nextTicketId++,
+            customerNumber:
+                Number(game.customerNumber) + 1,
+            customer:
+                setup.customer,
+            recipeName:
+                recipe.name,
+            order:
+                [...recipe.ingredients],
+            note:
+                setup.note,
+            remainingMs:
+                patience,
+            totalPatienceMs:
+                patience
+        };
+
+        game.waitingCustomers.push(
+            ticket
+        );
+
+        game.customerNumber++;
+
+        setActiveTicket(
+            ticket
+        );
+
+        game.selectedIngredients = [];
+        game.breadSelected = false;
+
+        day1TutorialStep =
+            Number(game.customerNumber) === 2
+                ? "recipe"
+                : "bread";
+
+        saveDay1TutorialState();
+
+        renderMakingScreen();
+
+        mainButton.disabled = false;
+
+        saveGame();
+
+        requestAnimationFrame(
+            updateDay1TutorialCoach
+        );
+    };
+
+
+const day1OriginalRenderMakingScreen =
+    renderMakingScreen;
+
+renderMakingScreen =
+    function () {
+        day1OriginalRenderMakingScreen();
+
+        if (game.day === 1) {
+            game.customersToday = 3;
+
+            // Luôn dựng lại step hợp lệ nếu state bị mất / reset / đổi màn.
+            if (
+                !day1TutorialStep ||
+                (
+                    Number(game.customerNumber) === 2 &&
+                    ![
+                        "recipe",
+                        "recipe-read",
+                        "bread",
+                        "pate",
+                        "egg",
+                        "cucumber",
+                        "rau",
+                        "ketchup",
+                        "serve"
+                    ].includes(day1TutorialStep)
+                )
+            ) {
+                if (Number(game.customerNumber) === 2) {
+                    day1TutorialStep = "recipe";
+                } else if (
+                    Number(game.customerNumber) === 1 ||
+                    Number(game.customerNumber) === 3
+                ) {
+                    day1TutorialStep = "bread";
+                }
+
+                saveDay1TutorialState();
+            }
+
+            requestAnimationFrame(
+                () => {
+                    updateDay1TutorialCoach();
+
+                    // Một frame nữa để chắc target đã có trong DOM.
+                    requestAnimationFrame(
+                        updateDay1TutorialCoach
+                    );
+                }
+            );
+        }
+    };
+
+
+const day1OriginalHandleStationClick =
+    handleStationClick;
+
+handleStationClick =
+    function (
+        name,
+        mode
+    ) {
+        if (
+            !day1TutorialActive() ||
+            mode !== "making"
+        ) {
+            return day1OriginalHandleStationClick(
+                name,
+                mode
+            );
+        }
+
+        const number =
+            Number(game.customerNumber);
+
+        const allowedByStep = {
+            bread: "Bánh mì",
+            pate: "Pâté",
+            egg: "Trứng",
+            cucumber: "Dưa leo",
+            rau: "Rau"
+        };
+
+        const allowed =
+            allowedByStep[
+                day1TutorialStep
+            ];
+
+        if (
+            !allowed ||
+            name !== allowed
+        ) {
+            remindDay1Tutorial();
+            return;
+        }
+
+        day1OriginalHandleStationClick(
+            name,
+            mode
+        );
+
+        if (
+            allowed === "Bánh mì" &&
+            game.breadSelected
+        ) {
+            setDay1TutorialStep(
+                number === 3
+                    ? "serve"
+                    : "pate"
+            );
+            return;
+        }
+
+        if (
+            allowed === "Pâté" &&
+            game.selectedIngredients.includes(
+                "Pâté"
+            )
+        ) {
+            setDay1TutorialStep(
+                number === 1
+                    ? "rau"
+                    : "egg"
+            );
+            return;
+        }
+
+        if (
+            allowed === "Trứng" &&
+            game.selectedIngredients.includes(
+                "Trứng"
+            )
+        ) {
+            setDay1TutorialStep(
+                "cucumber"
+            );
+            return;
+        }
+
+        if (
+            allowed === "Dưa leo" &&
+            game.selectedIngredients.includes(
+                "Dưa leo"
+            )
+        ) {
+            setDay1TutorialStep(
+                "rau"
+            );
+            return;
+        }
+
+        if (
+            allowed === "Rau" &&
+            game.selectedIngredients.includes(
+                "Rau"
+            )
+        ) {
+            setDay1TutorialStep(
+                number === 1
+                    ? "serve"
+                    : "ketchup"
+            );
+        }
+    };
+
+
+const day1OriginalStartSauceHold =
+    startSauceHold;
+
+startSauceHold =
+    function (
+        button,
+        name,
+        pointerId
+    ) {
+        if (day1TutorialActive()) {
+            if (
+                Number(game.customerNumber) !== 2 ||
+                day1TutorialStep !== "ketchup" ||
+                name !== "Ketchup"
+            ) {
+                remindDay1Tutorial();
+                return;
+            }
+        }
+
+        return day1OriginalStartSauceHold(
+            button,
+            name,
+            pointerId
+        );
+    };
+
+
+const day1OriginalCompleteSauceHold =
+    completeSauceHold;
+
+completeSauceHold =
+    function (name) {
+        day1OriginalCompleteSauceHold(
+            name
+        );
+
+        if (
+            day1TutorialActive() &&
+            Number(game.customerNumber) === 2 &&
+            day1TutorialStep === "ketchup" &&
+            name === "Ketchup" &&
+            game.selectedIngredients.includes(
+                "Ketchup"
+            )
+        ) {
+            setDay1TutorialStep(
+                "serve"
+            );
+        }
+    };
+
+
+const day1OriginalCancelActiveSauceHold =
+    cancelActiveSauceHold;
+
+cancelActiveSauceHold =
+    function () {
+        const wasTutorialKetchup =
+            day1TutorialActive() &&
+            Number(game.customerNumber) === 2 &&
+            day1TutorialStep === "ketchup" &&
+            activeSauceHold?.name === "Ketchup" &&
+            !activeSauceHold?.completed;
+
+        day1OriginalCancelActiveSauceHold();
+
+        if (wasTutorialKetchup) {
+            const feedback =
+                document.getElementById(
+                    "ingredient-feedback"
+                );
+
+            if (feedback) {
+                feedback.textContent =
+                    "Chưa đủ đâu 😭 Giữ chai Ketchup đến khi vòng tròn đầy nhé!";
+            }
+
+            remindDay1Tutorial();
+        }
+    };
+
+
+const day1OriginalOpenRecipeBook =
+    openRecipeBook;
+
+openRecipeBook =
+    function () {
+        if (
+            day1TutorialActive() &&
+            (
+                Number(game.customerNumber) !== 2 ||
+                day1TutorialStep !== "recipe"
+            )
+        ) {
+            remindDay1Tutorial();
+            return;
+        }
+
+        day1OriginalOpenRecipeBook();
+
+        if (
+            day1TutorialActive() &&
+            Number(game.customerNumber) === 2
+        ) {
+            setDay1TutorialStep(
+                "recipe-read"
+            );
+        }
+    };
+
+
+// Nút đóng sổ đã bind hàm closeRecipeBook cũ từ trước,
+// nên chuyển tutorial step trực tiếp ở chính button.
+closeRecipeButton.addEventListener(
+    "click",
+    () => {
+        if (
+            day1TutorialActive() &&
+            Number(game.customerNumber) === 2 &&
+            day1TutorialStep === "recipe-read"
+        ) {
+            setDay1TutorialStep(
+                "bread"
+            );
+        }
+    }
+);
+
+
+// Click nền modal cũng đóng sổ.
+recipeModal.addEventListener(
+    "click",
+    event => {
+        if (
+            event.target === recipeModal &&
+            day1TutorialActive() &&
+            Number(game.customerNumber) === 2 &&
+            day1TutorialStep === "recipe-read"
+        ) {
+            setDay1TutorialStep(
+                "bread"
+            );
+        }
+    }
+);
+
+
+// Chỉ chặn Giao bánh trước khi tutorial tới bước serve.
+// Khi giao đúng, flow reaction gốc sẽ TỰ đưa khách kế tiếp tới.
+const day1OriginalServeBread =
+    serveBread;
+
+serveBread =
+    function () {
+        if (
+            day1TutorialActive() &&
+            day1TutorialStep !== "serve"
+        ) {
+            remindDay1Tutorial();
+            return;
+        }
+
+        return day1OriginalServeBread();
+    };
+
+
+// Chặn click nguyên liệu sai bước.
+document.addEventListener(
+    "click",
+    event => {
+        if (
+            !day1TutorialActive() ||
+            day1TutorialOverlayOpen() ||
+            game.phase !== "making"
+        ) {
+            return;
+        }
+
+        const stationButton =
+            event.target.closest(
+                ".station-item"
+            );
+
+        if (!stationButton) {
+            return;
+        }
+
+        const name =
+            stationButton.dataset
+                .ingredient;
+
+        const expected = {
+            bread: "Bánh mì",
+            pate: "Pâté",
+            egg: "Trứng",
+            cucumber: "Dưa leo",
+            rau: "Rau"
+        }[
+            day1TutorialStep
+        ];
+
+        if (
+            !expected ||
+            name !== expected
+        ) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            remindDay1Tutorial();
+        }
+    },
+    true
+);
+
+
+// Chặn giữ nhầm chai sốt.
+document.addEventListener(
+    "pointerdown",
+    event => {
+        if (
+            !day1TutorialActive() ||
+            day1TutorialOverlayOpen() ||
+            game.phase !== "making"
+        ) {
+            return;
+        }
+
+        const stationButton =
+            event.target.closest(
+                ".station-item"
+            );
+
+        if (!stationButton) {
+            return;
+        }
+
+        const name =
+            stationButton.dataset
+                .ingredient;
+
+        if (
+            sauceSlots.includes(name) &&
+            (
+                Number(game.customerNumber) !== 2 ||
+                day1TutorialStep !== "ketchup" ||
+                name !== "Ketchup"
+            )
+        ) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            remindDay1Tutorial();
+        }
+    },
+    true
+);
+
+
+// Pause / popup: bubble phải biến mất.
+// Chỉ phản ứng khi trạng thái overlay THẬT SỰ đổi.
+// Không phản ứng với việc chính tutorial coach được add/remove,
+// nếu không sẽ tạo vòng lặp remove -> add -> observer -> remove...
+let day1OverlayWasOpen =
+    day1TutorialOverlayOpen();
+
+const day1OverlayObserver =
+    new MutationObserver(
+        () => {
+            const isOpen =
+                day1TutorialOverlayOpen();
+
+            if (
+                isOpen ===
+                day1OverlayWasOpen
+            ) {
+                return;
+            }
+
+            day1OverlayWasOpen =
+                isOpen;
+
+            if (isOpen) {
+                clearDay1TutorialUI();
+                return;
+            }
+
+            if (day1TutorialActive()) {
+                requestAnimationFrame(
+                    updateDay1TutorialCoach
+                );
+            }
+        }
+    );
+
+day1OverlayObserver.observe(
+    document.body,
+    {
+        childList: true,
+        subtree: false
+    }
+);
+
+
+// Về sảnh cũng không để bubble treo.
+const day1OriginalShowHome =
+    showHome;
+
+showHome =
+    function () {
+        clearDay1TutorialUI();
+        return day1OriginalShowHome();
+    };
+
+
+// Bất cứ khi nào rời màn làm bánh về Prep / Day End,
+// không để bong bóng tutorial treo trên UI cũ.
+const day1OriginalShowPrep =
+    showPrep;
+
+showPrep =
+    function () {
+        clearDay1TutorialUI();
+        return day1OriginalShowPrep();
+    };
+
+
+const day1OriginalRenderDayEnd =
+    renderDayEnd;
+
+renderDayEnd =
+    function () {
+        clearDay1TutorialUI();
+        return day1OriginalRenderDayEnd();
+    };
+
+
+window.addEventListener(
+    "resize",
+    () => {
+        if (day1TutorialActive()) {
+            updateDay1TutorialCoach();
+        }
+    }
+);
+
+
+loadDay1TutorialState();
+
+if (game.day === 1) {
+    game.customersToday = 3;
+
+    if (
+        game.shopOpen &&
+        game.phase === "making" &&
+        !day1TutorialStep
+    ) {
+        day1TutorialStep =
+            Number(game.customerNumber) === 2
+                ? "recipe"
+                : "bread";
+
+        saveDay1TutorialState();
+    }
+
+    requestAnimationFrame(
+        updateDay1TutorialCoach
+    );
+}
+
+

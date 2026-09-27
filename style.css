@@ -6390,3 +6390,180 @@ body.tutorial-open {
 #start-screen.is-ready .start-content p {
     animation: startPulse 1.5s ease-in-out infinite;
 }
+
+/* ======================================================
+   DAY 1 INTERACTIVE TUTORIAL - V5
+   ====================================================== */
+
+#day1-tutorial-coach {
+    position: fixed;
+    z-index: 300000;
+
+    width:
+        min(
+            360px,
+            calc(100vw - 20px)
+        );
+
+    padding:
+        11px 14px 10px;
+
+    background:
+        rgba(255, 249, 237, 0.99);
+
+    color: #5c3a26;
+
+    border:
+        3px solid #e3a454;
+
+    border-radius: 17px;
+
+    box-shadow:
+        0 6px 0 #b9743d,
+        0 13px 26px
+        rgba(70, 39, 20, 0.22);
+
+    pointer-events: none;
+    text-align: center;
+}
+
+.day1-tutorial-coach-label {
+    margin-bottom: 3px;
+
+    color: #bb6547;
+
+    font-size: 9px;
+    font-weight: 900;
+
+    letter-spacing: 0.8px;
+}
+
+#day1-tutorial-coach strong {
+    display: block;
+
+    margin-bottom: 4px;
+
+    color: #613a23;
+
+    font-size: 15px;
+    line-height: 1.2;
+}
+
+#day1-tutorial-coach p {
+    margin: 0;
+
+    color: #79553b;
+
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+
+/*
+   Không đổi position của target.
+   station-item vốn position:absolute.
+*/
+.day1-tutorial-target {
+    z-index: 999 !important;
+
+    outline:
+        4px solid #ffd24d !important;
+
+    outline-offset:
+        4px !important;
+
+    border-radius:
+        14px !important;
+
+    filter:
+        drop-shadow(
+            0 0 8px
+            rgba(255, 199, 44, 0.95)
+        ) !important;
+
+    animation:
+        day1TutorialTargetPulse
+        0.8s
+        ease-in-out
+        infinite alternate !important;
+}
+
+@keyframes day1TutorialTargetPulse {
+    from {
+        outline-offset: 3px;
+    }
+
+    to {
+        outline-offset: 7px;
+    }
+}
+
+
+/* Trong recipe book dùng note thật, không thả bubble đè công thức. */
+.recipe-book-note.day1-tutorial-note {
+    background: #fff5bd !important;
+    border-left-color: #efa92f !important;
+    color: #704426 !important;
+    font-weight: 800;
+}
+
+.day1-tutorial-recipe-focus {
+    border:
+        3px solid #f0b53d !important;
+
+    background:
+        #fff7ce !important;
+
+    box-shadow:
+        0 0 0 4px
+        rgba(255, 211, 78, 0.28),
+        0 5px 0 #d8a040 !important;
+}
+
+.day1-tutorial-nudge {
+    animation:
+        day1TutorialNudge
+        0.28s
+        ease-out;
+}
+
+@keyframes day1TutorialNudge {
+    0% {
+        margin-left: 0;
+    }
+
+    33% {
+        margin-left: -7px;
+    }
+
+    66% {
+        margin-left: 7px;
+    }
+
+    100% {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 560px) {
+    #day1-tutorial-coach {
+        width:
+            min(
+                320px,
+                calc(100vw - 16px)
+            );
+
+        padding:
+            9px 11px 8px;
+    }
+
+    #day1-tutorial-coach strong {
+        font-size: 13px;
+    }
+
+    #day1-tutorial-coach p {
+        font-size: 10px;
+    }
+}
+
+
