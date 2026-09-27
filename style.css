@@ -6329,3 +6329,64 @@ body.tutorial-open {
     position: relative;
     top: -3px;
 }
+
+/* ======================================================
+   START SCREEN - VISUAL LOADING ONLY
+   Không preload / không cache asset.
+   ====================================================== */
+
+#start-screen.is-loading {
+    cursor: default;
+}
+
+#start-screen.is-loading .start-content p {
+    animation: none;
+    opacity: 0.82;
+}
+
+#start-screen.is-ready {
+    cursor: pointer;
+}
+
+#loading-progress-wrap {
+    width: min(240px, 68vw);
+    height: 11px;
+    margin: 14px auto 0;
+    overflow: hidden;
+
+    background: rgba(109, 74, 55, 0.16);
+    border: 2px solid rgba(139, 79, 50, 0.18);
+    border-radius: 999px;
+
+    box-shadow:
+        inset 0 1px 2px rgba(90, 50, 30, 0.10);
+}
+
+#loading-progress-bar {
+    width: 0%;
+    height: 100%;
+
+    background:
+        linear-gradient(
+            90deg,
+            #b96c48,
+            #8b4f32
+        );
+
+    border-radius: inherit;
+
+    transition: width 0.08s linear;
+}
+
+#start-screen.is-ready #loading-progress-wrap {
+    opacity: 0;
+    transform: translateY(3px);
+
+    transition:
+        opacity 0.25s ease,
+        transform 0.25s ease;
+}
+
+#start-screen.is-ready .start-content p {
+    animation: startPulse 1.5s ease-in-out infinite;
+}

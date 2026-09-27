@@ -11289,13 +11289,97 @@ bindTutorialEvents();
 const startScreen =
     document.getElementById("start-screen");
 
+const startScreenStatus =
+    document.getElementById("start-screen-status");
+
+const loadingProgressWrap =
+    document.getElementById("loading-progress-wrap");
+
+const loadingProgressBar =
+    document.getElementById("loading-progress-bar");
+
+const VISUAL_LOADING_MS = 1800;
+
+let startScreenReady = false;
 let startScreenEntered = false;
+
+
+function runVisualLoadingScreen() {
+
+    const startedAt =
+        performance.now();
+
+    function frame(now) {
+
+        const elapsed =
+            now - startedAt;
+
+        const progress =
+            Math.min(
+                1,
+                elapsed / VISUAL_LOADING_MS
+            );
+
+        const percent =
+            Math.round(
+                progress * 100
+            );
+
+        if (loadingProgressBar) {
+            loadingProgressBar.style.width =
+                `${percent}%`;
+        }
+
+        if (loadingProgressWrap) {
+            loadingProgressWrap.setAttribute(
+                "aria-valuenow",
+                String(percent)
+            );
+        }
+
+        if (startScreenStatus) {
+            startScreenStatus.textContent =
+                `Đang chuẩn bị tiệm... ${percent}%`;
+        }
+
+        if (progress < 1) {
+            requestAnimationFrame(frame);
+            return;
+        }
+
+        startScreenReady = true;
+
+        startScreen?.classList.remove(
+            "is-loading"
+        );
+
+        startScreen?.classList.add(
+            "is-ready"
+        );
+
+        startScreen?.setAttribute(
+            "aria-busy",
+            "false"
+        );
+
+        if (startScreenStatus) {
+            startScreenStatus.textContent =
+                "Nhấn để vào tiệm 🥖";
+        }
+    }
+
+    requestAnimationFrame(frame);
+}
+
 
 startScreen?.addEventListener(
     "click",
     () => {
 
-        if (startScreenEntered) {
+        if (
+            !startScreenReady ||
+            startScreenEntered
+        ) {
             return;
         }
 
@@ -11310,14 +11394,14 @@ startScreen?.addEventListener(
 
             maybeShowTutorialOnFirstTime();
         }, 800);
-    },
-    { once: true }
+    }
 );
 
 
-// Không preload asset.
-// Browser tự tải ảnh / audio đúng lúc game cần.
+// Browser vẫn tự tải ảnh / audio bình thường.
+// Loading này chỉ là hiệu ứng splash, không preload asset.
 showHome();
+runVisualLoadingScreen();
 
 // Dán cuối game.js, ngay sau showHome();
 customers.splice(0, customers.length, "A", "B", "C", "D", "E", "F");
