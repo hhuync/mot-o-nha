@@ -6794,3 +6794,70 @@ body.tutorial-open {
         scale(1.0) !important;
 }
 
+/* ======================================================
+   MOBILE FULL GESTURE LOCK
+   - Chặn text/image selection và blue highlight trong game
+   - Chặn iOS long-press image callout / save preview
+   - Chặn drag ảnh
+   - Sauce / ingredient không kích hoạt browser gesture khi giữ
+   ====================================================== */
+
+html,
+body,
+#game,
+#game *,
+#start-screen,
+#start-screen * {
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    -webkit-touch-callout: none !important;
+    -webkit-tap-highlight-color: transparent;
+}
+
+img,
+#game img,
+#start-screen img {
+    -webkit-user-drag: none !important;
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+}
+
+#game,
+#start-screen {
+    touch-action: manipulation;
+}
+
+/* Những asset không phải control không cần nhận pointer trực tiếp. */
+.customer-portrait img,
+.customer-face img,
+.home-hero-banhmi,
+.cutting-board,
+.ingredient-table-image,
+.bread-stock-sprite,
+.sandwich-layer,
+.bread-layer,
+.recipe-book-fab img,
+.tutorial-image-wrap img,
+.skin-preview img,
+.rating-history-avatar img {
+    pointer-events: none !important;
+}
+
+/* Khu nhấn giữ phải hoàn toàn thuộc quyền điều khiển của game. */
+.sauce-bottle,
+.sauce-bottle *,
+.station-item,
+.station-item *,
+.hold-label,
+.hold-label *,
+.hold-text,
+.hold-text * {
+    touch-action: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    -webkit-touch-callout: none !important;
+    -webkit-user-drag: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+}
+

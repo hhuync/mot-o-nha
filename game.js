@@ -184,6 +184,21 @@ preloadLowLatencySfx(
 
 // Cú chạm đầu tiên trên iOS/PWA sẽ unlock AudioContext.
 document.addEventListener(
+    "dragstart",
+    event => {
+        if (
+            event.target.closest("#game")
+        ) {
+            event.preventDefault();
+        }
+    },
+    {
+        capture: true
+    }
+);
+
+
+document.addEventListener(
     "pointerdown",
     unlockLowLatencyAudio,
     {
@@ -8233,6 +8248,27 @@ function bindSauceHoldButton(
                 cancelActiveSauceHold();
             }
         };
+
+
+    button.addEventListener(
+        "pointermove",
+        event => {
+            if (
+                activeSauceHold &&
+                activeSauceHold.button === button &&
+                (
+                    event.pointerId === undefined ||
+                    event.pointerId ===
+                        activeSauceHold.pointerId
+                )
+            ) {
+                event.preventDefault();
+            }
+        },
+        {
+            passive: false
+        }
+    );
 
 
     button.addEventListener(
