@@ -6154,7 +6154,7 @@ function recipeBookButton() {
 const LATEST_VERSION = "0.3.1";
 
 const LATEST_HIGHLIGHTS = [
-    "Thêm nhiệm vụ ngày, Hoa Anh Đào thường trực và sự kiện Đêm Rằm Trung Thu.",
+    "Thêm nhiệm vụ ngày, sự kiện Hoa Anh Đào thường trực và sự kiện Đêm Rằm Trung Thu.",
     "Tối ưu mạnh dung lượng hình ảnh, tốc độ tải game và hiệu năng trên điện thoại.",
     "Thêm cơ chế bóp sốt mới với nhấn giữ, thanh tiến trình, hiệu ứng và âm thanh riêng.",
     "Cập nhật hướng dẫn, cân bằng lượng khách.",
