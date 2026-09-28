@@ -1033,7 +1033,7 @@ const recipes = [
     {
         name: "Bánh mì thịt nướng",
         emoji: "🥩",
-        price: 22000,
+        price: 21000,
         weight: 16,
         ingredients: [
             "Pâté",
@@ -1048,7 +1048,7 @@ const recipes = [
     {
         name: "Bánh mì chả",
         emoji: "🍥",
-        price: 19000,
+        price: 18000,
         weight: 14,
         ingredients: [
             "Pâté",
@@ -1063,7 +1063,7 @@ const recipes = [
     {
         name: "Bánh mì thịt viên",
         emoji: "🧆",
-        price: 24000,
+        price: 23000,
         weight: 13,
         ingredients: [
             "Pâté",
@@ -1093,7 +1093,7 @@ const recipes = [
     {
         name: "Bánh mì thịt nướng cay",
         emoji: "🌶️",
-        price: 23000,
+        price: 22000,
         weight: 8,
         ingredients: [
             "Pâté",
@@ -1108,7 +1108,7 @@ const recipes = [
     {
         name: "Bánh mì đặc biệt",
         emoji: "👑",
-        price: 30000,
+        price: 29000,
         weight: 6,
         ingredients: [
             "Pâté",
@@ -5252,6 +5252,16 @@ const COLLECTION_ACHIEVEMENTS = [
             "Sở hữu trọn bộ sưu tập Đêm Rằm Trung Thu.",
         event: "trung-thu",
         emoji: "🌕"
+    },
+
+    {
+        id: "ngay-50",
+        name: "Khách Quen Của Tiệm",
+        description:
+            "Chơi đến ngày thứ 50.",
+        kind: "day",
+        target: 50,
+        emoji: "📅"
     }
 
 ];
@@ -5261,11 +5271,30 @@ function getCollectionAchievementProgress(
     achievement
 ) {
 
+    if (achievement.kind === "day") {
+        const target = Math.max(
+            1,
+            Number(achievement.target) || 1
+        );
+        const collected = Math.min(
+            target,
+            Math.max(0, Number(game.day) || 0)
+        );
+
+        return {
+            collected,
+            total: target,
+            complete: collected >= target
+        };
+    }
+
     const types = [
         "recipe",
         "background",
         "board",
         "ingredientTable",
+        "drinkTable",
+        "cupHolder",
         "counter"
     ];
 
@@ -6435,8 +6464,12 @@ if (
             game.orderNote =
                 "Cho mình một ổ như bình thường nha!";
 
+            // Chơi lại ngày luôn quay về briefing đầu ngày trước khi prep.
+            game.phase = "newDayIntro";
+            game.pausedPhase = "newDayIntro";
+
             saveGame();
-            showPrep();
+            renderNewDayIntro();
         }
     });
 }
@@ -6477,6 +6510,9 @@ function resetGameSave() {
             localStorage.removeItem(SAVE_KEY);
             localStorage.removeItem(DAY_START_KEY);
             localStorage.removeItem("mot-o-nha-drinks-v1");
+            localStorage.removeItem(
+                WRONG_ORDER_RECIPE_HINT_KEY
+            );
 
             // Reset game = tutorial Day 1 phải bắt đầu lại từ đầu.
             localStorage.removeItem(
@@ -7134,6 +7170,10 @@ function getPhaseStatusText() {
         return "Đã đóng cửa";
     }
 
+    if (game.phase === "newDayIntro") {
+        return "Sắp sang ngày mới";
+    }
+
     return "Sẵn sàng vào tiệm";
 }
 
@@ -7148,7 +7188,11 @@ function resumeGame() {
 
         game.hasStarted = true;
         game.shopOpen = false;
-        showPrep();
+
+        // Mỗi lần bắt đầu một ngày đều phải xem briefing trước.
+        game.phase = "newDayIntro";
+        game.pausedPhase = "newDayIntro";
+        renderNewDayIntro();
 
         return;
     }
@@ -7187,6 +7231,12 @@ function resumeGame() {
     ) {
 
         renderDayEnd();
+
+    } else if (
+        phase === "newDayIntro"
+    ) {
+
+        renderNewDayIntro();
 
     } else {
 
@@ -9509,6 +9559,96 @@ function updateSandwich() {
 
 
 // ======================================================
+// ONCE-PER-DAY WRONG ORDER RECIPE HINT
+// ======================================================
+
+const WRONG_ORDER_RECIPE_HINT_KEY =
+    "mot-o-nha-wrong-order-recipe-hint-v1";
+
+function clearWrongOrderRecipeHint() {
+    document
+        .getElementById("wrong-order-recipe-hint")
+        ?.remove();
+
+    document
+        .querySelectorAll(".wrong-order-recipe-target")
+        .forEach(element => {
+            element.classList.remove(
+                "wrong-order-recipe-target"
+            );
+        });
+}
+
+function showWrongOrderRecipeHint() {
+    // Tối đa 1 lần mỗi ngày chơi. Sang ngày mới có thể gợi ý lại.
+    if (
+        localStorage.getItem(
+            WRONG_ORDER_RECIPE_HINT_KEY
+        ) === String(game.day)
+    ) {
+        return;
+    }
+
+    const recipeButton =
+        document.querySelector(
+            ".customer-bubble .recipe-book-fab, .recipe-book-fab"
+        );
+
+    if (!recipeButton) return;
+
+    localStorage.setItem(
+        WRONG_ORDER_RECIPE_HINT_KEY,
+        String(game.day)
+    );
+
+    clearWrongOrderRecipeHint();
+    recipeButton.classList.add(
+        "wrong-order-recipe-target"
+    );
+
+    const hint = document.createElement("aside");
+    hint.id = "wrong-order-recipe-hint";
+    hint.setAttribute("aria-live", "polite");
+    hint.innerHTML = `
+        <div class="wrong-order-recipe-hint-label">💡 GỢI Ý</div>
+        <strong>Quên công thức rồi hả?</strong>
+        <p>Nhấn vào quyển sổ để xem lại công thức nha!</p>
+    `;
+
+    document.body.appendChild(hint);
+
+    // Neo bubble ngay dưới quyển công thức, giống coach bubble tutorial.
+    requestAnimationFrame(() => {
+        const targetRect = recipeButton.getBoundingClientRect();
+        const hintRect = hint.getBoundingClientRect();
+        const gameRect = document.getElementById("game")?.getBoundingClientRect();
+        const minLeft = Math.max(8, gameRect?.left ?? 8);
+        const maxRight = Math.min(window.innerWidth - 8, gameRect?.right ?? window.innerWidth - 8);
+
+        let left = targetRect.left + targetRect.width / 2 - hintRect.width / 2;
+        left = Math.max(minLeft + 8, Math.min(left, maxRight - hintRect.width - 8));
+
+        let top = targetRect.bottom + 12;
+        top = Math.min(top, window.innerHeight - hintRect.height - 10);
+
+        hint.style.left = `${left}px`;
+        hint.style.top = `${top}px`;
+    });
+
+    recipeButton.addEventListener(
+        "click",
+        clearWrongOrderRecipeHint,
+        { once: true }
+    );
+
+    // Chỉ là gợi ý nhanh, không pause và không force click.
+    setTimeout(
+        clearWrongOrderRecipeHint,
+        3000
+    );
+}
+
+// ======================================================
 // CHECK ORDER
 // ======================================================
 
@@ -9588,7 +9728,16 @@ function serveBread() {
                 "Bánh chưa đúng với món khách gọi hoặc yêu cầu riêng của khách. Mở sổ công thức nếu cần kiểm tra nha!",
 
             confirmText:
-                "Sửa bánh ✨"
+                "Sửa bánh ✨",
+
+            onConfirm: () => {
+                // Sau lần làm sai đầu tiên, hiện một bubble ngắn
+                // chỉ vào sổ công thức để người chơi biết chỗ tra cứu.
+                setTimeout(
+                    showWrongOrderRecipeHint,
+                    80
+                );
+            }
         });
 
         return;
@@ -10035,8 +10184,97 @@ function renderDayEnd() {
 
 
     mainButton.textContent =
-        `Chuẩn bị ngày ${game.day + 1} →`;
+        "Sang ngày mới →";
 
+
+    saveGame();
+}
+
+// ======================================================
+// NEW DAY INTRO / FORECAST
+// ======================================================
+
+const DAY_WEATHER_OPTIONS = [
+    { icon: "☀️", label: "Trời đẹp" },
+    { icon: "🌧️", label: "Trời Mưa" },
+    { icon: "⛈️", label: "Trời Giông" },
+    { icon: "🥵", label: "Trời Nắng Nóng" },
+    { icon: "🌤️", label: "Trời Quang" },
+    { icon: "🌪️", label: "Trời bão to" }
+];
+
+function getCustomerForecastRange(day = game.day) {
+    const currentDay = Math.max(1, Number(day) || 1);
+    let minCustomers;
+    let maxCustomers;
+
+    if (currentDay <= 5) {
+        minCustomers = 7;
+        maxCustomers = 9;
+    } else if (currentDay <= 15) {
+        minCustomers = 8;
+        maxCustomers = 11;
+    } else if (currentDay <= 29) {
+        minCustomers = 9;
+        maxCustomers = 13;
+    } else {
+        minCustomers = 13;
+        maxCustomers = 18;
+    }
+
+    const level = getUpgradeLevel("advertising");
+    const bonusByLevel = [0, 0.08, 0.16, 0.25];
+    const bonus = bonusByLevel[level] || 0;
+
+    return {
+        min: Math.max(minCustomers, Math.round(minCustomers * (1 + bonus))),
+        max: Math.max(maxCustomers, Math.round(maxCustomers * (1 + bonus)))
+    };
+}
+
+function getTodayWeatherForecast() {
+    // Cosmetic forecast for now. Deterministic per day/customer count so
+    // reloading this screen does not reroll the weather text.
+    const index = Math.abs(
+        (Number(game.day) || 1) * 7 +
+        (Number(game.customersToday) || 0) * 3
+    ) % DAY_WEATHER_OPTIONS.length;
+
+    return DAY_WEATHER_OPTIONS[index];
+}
+
+function renderNewDayIntro() {
+    game.phase = "newDayIntro";
+    game.pausedPhase = "newDayIntro";
+    game.shopOpen = false;
+
+    const forecast = getCustomerForecastRange(game.day);
+    const weather = getTodayWeatherForecast();
+
+    updateHeader(
+        `Ngày ${game.day}`,
+        "Chào ngày mới"
+    );
+
+    screen.innerHTML = `
+        <div class="new-day-intro-screen">
+            <div class="new-day-shop-icon">🏪</div>
+            <h1>Một Ổ Nha!</h1>
+            <div class="new-day-divider"></div>
+
+            <p class="new-day-forecast-label">
+                Lượng khách dự kiến hôm nay:
+            </p>
+
+            <div class="new-day-forecast-card">
+                <strong>👥 ${forecast.min}–${forecast.max} khách</strong>
+                <span>${weather.icon} ${weather.label}</span>
+            </div>
+        </div>
+    `;
+
+    mainButton.textContent =
+        "Chuẩn bị nguyên liệu →";
 
     saveGame();
 }
@@ -10045,7 +10283,7 @@ function renderDayEnd() {
 // NEW DAY
 // ======================================================
 
-function newDay() {
+function newDay({ goHome = false } = {}) {
 
     game.day++;
 
@@ -10092,9 +10330,18 @@ function newDay() {
     // Restart ngày sẽ quay chính xác về đây.
     saveDayStartCheckpoint();
 
+    game.phase = "newDayIntro";
+    game.pausedPhase = "newDayIntro";
+
     saveGame();
 
-    showPrep();
+    // Sau hóa đơn: chuẩn bị state của ngày mới rồi quay về màn hình chính.
+    // Khi người chơi bấm Tiếp tục/Bắt đầu, briefing ngày mới mới xuất hiện.
+    if (goHome) {
+        showHome();
+    } else {
+        renderNewDayIntro();
+    }
 }
 
 
@@ -10107,6 +10354,24 @@ function newDay() {
 // KHÔNG còn hình recipe.png thừa
 // bên trong modal.
 // ======================================================
+
+const RECIPE_IMAGE_BY_NAME = {
+    "Bánh mì bơ trứng": "images/BANH-MI/banh-mi-bo-trung.png",
+    "Bánh mì chả": "images/BANH-MI/banh-mi-cha.png",
+    "Bánh mì chay": "images/BANH-MI/banh-mi-chay.png",
+    "Bánh mì đặc biệt": "images/BANH-MI/banh-mi-dac-biet.png",
+    "Bánh mì jambon phô mai": "images/BANH-MI/banh-mi-jambon-pho-mai.png",
+    "Bánh mì không": "images/BANH-MI/banh-mi-khong.png",
+    "Bánh mì pâté": "images/BANH-MI/banh-mi-pate.png",
+    "Bánh mì thịt nướng": "images/BANH-MI/banh-mi-thit-nuong.png",
+    "Bánh mì thịt nướng cay": "images/BANH-MI/banh-mi-thit-nuong-cay.png",
+    "Bánh mì thịt viên": "images/BANH-MI/banh-mi-thit-vien.png",
+    "Bánh mì trứng": "images/BANH-MI/banh-mi-trung.png"
+};
+
+function recipeImagePath(recipe) {
+    return RECIPE_IMAGE_BY_NAME[recipe.name] || "images/banh-mi.png";
+}
 
 function openRecipeBook() {
 
@@ -10260,6 +10525,18 @@ function openRecipeBook() {
                                 </div>
 
 
+                                <div class="recipe-entry-body">
+                                    <div class="recipe-image-box">
+                                        <img
+                                            src="${recipeImagePath(recipe)}"
+                                            alt="${recipe.name}"
+                                            loading="lazy"
+                                            draggable="false"
+                                        >
+                                    </div>
+
+                                    <div class="recipe-entry-info">
+
                                 <div
                                     class="
                                         recipe-ingredients
@@ -10309,6 +10586,9 @@ function openRecipeBook() {
                                             </div>
                                         `
                                 }
+
+                                    </div>
+                                </div>
 
                             </div>
                         `;
@@ -11863,7 +12143,14 @@ mainButton.addEventListener(
             game.phase === "dayEnd"
         ) {
 
-            newDay();
+            newDay({ goHome: true });
+        }
+
+        else if (
+            game.phase === "newDayIntro"
+        ) {
+
+            showPrep();
         }
     }
 );
@@ -12212,8 +12499,16 @@ reaction.textContent =
 
         customerReactionFadeTimer = setTimeout(() => {
             if (game.phase === "result") {
+                const shouldShowRecipeHint = !correct;
                 mainButton.disabled = false;
                 nextCustomer();
+
+                // Sau khi reaction của khách sai món kết thúc và khách tiếp theo
+                // đã xuất hiện, gợi ý nhẹ quyển công thức tối đa 1 lần trong ngày.
+                // Không mở sổ, không pause và không ép người chơi làm gì.
+                if (shouldShowRecipeHint) {
+                    setTimeout(showWrongOrderRecipeHint, 180);
+                }
             }
         }, 450);
     }, 1250);
@@ -15164,7 +15459,7 @@ const drinkIngredients = {
         salePrice: 0,
         stock: 12,
         restock: 6,
-        restockPrice: 3000,
+        restockPrice: 4000,
         type: "cup"
     },
 
@@ -15177,7 +15472,7 @@ const drinkIngredients = {
         salePrice: 0,
         stock: 18,
         restock: 10,
-        restockPrice: 2000,
+        restockPrice: 3000,
         type: "ice"
     },
 
@@ -15213,7 +15508,7 @@ const drinkIngredients = {
         image: "images/drinks/thach-ca.png",
         unlocked: true,
         unlockPrice: 0,
-        salePrice: 3000,
+        salePrice: 2000,
         stock: 8,
         restock: 5,
         restockPrice: 5000,
@@ -15252,7 +15547,7 @@ const drinkIngredients = {
         image: "images/drinks/tc-den.png",
         unlocked: false,
         unlockPrice: 45000,
-        salePrice: 3500,
+        salePrice: 4000,
         stock: 0,
         restock: 5,
         restockPrice: 5000,

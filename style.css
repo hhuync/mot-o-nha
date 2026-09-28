@@ -7779,3 +7779,195 @@ img,
         transform: translate(-50%, -56.6%);
     }
 }
+
+/* =========================================================
+   NEW DAY INTRO / FORECAST
+   ========================================================= */
+.new-day-intro-screen {
+    min-height: 100%;
+    padding: 46px 24px 34px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: linear-gradient(180deg, #fff3d8 0%, #ffe2ad 100%);
+    color: #5b3825;
+}
+
+.new-day-shop-icon {
+    font-size: 72px;
+    line-height: 1;
+    animation: newDayShopPop 0.45s cubic-bezier(.2, 1.35, .45, 1) both;
+}
+
+.new-day-intro-screen h1 {
+    margin: 12px 0 8px;
+    font-family: "Rush Hour", "Freude", sans-serif;
+    font-size: clamp(38px, 10vw, 58px);
+    font-weight: normal;
+    color: #8b4f32;
+}
+
+.new-day-divider {
+    width: 74px;
+    margin: 8px auto 24px;
+    border-top: 3px dashed rgba(139, 79, 50, 0.35);
+}
+
+.new-day-forecast-label {
+    margin: 0 0 12px;
+    color: #7a563f;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.new-day-forecast-card {
+    width: min(360px, 100%);
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: rgba(255, 253, 246, 0.86);
+    border: 2px solid #e7bf7d;
+    border-radius: 20px;
+    box-shadow: 0 5px 0 rgba(171, 112, 57, 0.18);
+}
+
+.new-day-forecast-card strong {
+    color: #553522;
+    font-size: 21px;
+}
+
+.new-day-forecast-card span {
+    color: #77523a;
+    font-size: 17px;
+    font-weight: 800;
+}
+
+@keyframes newDayShopPop {
+    from { opacity: 0; transform: translateY(12px) scale(.84); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* =========================================================
+   ONE-TIME WRONG ORDER RECIPE HINT
+   Visual + placement giống coach bubble tutorial
+   ========================================================= */
+#wrong-order-recipe-hint {
+    position: fixed;
+    z-index: 300000;
+    width: min(360px, calc(100vw - 20px));
+    padding: 11px 14px 10px;
+    background: rgba(255, 249, 237, 0.99);
+    color: #5c3a26;
+    border: 3px solid #e3a454;
+    border-radius: 17px;
+    box-shadow: 0 6px 0 #b9743d, 0 13px 26px rgba(70, 39, 20, 0.22);
+    pointer-events: none;
+    text-align: center;
+    animation: wrongOrderHintIn .22s ease-out both;
+}
+
+.wrong-order-recipe-hint-label {
+    margin-bottom: 3px;
+    color: #bb6547;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .8px;
+}
+
+#wrong-order-recipe-hint strong {
+    display: block;
+    margin-bottom: 4px;
+    color: #613a23;
+    font-size: 15px;
+    line-height: 1.2;
+}
+
+#wrong-order-recipe-hint p {
+    margin: 0;
+    color: #79553b;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.recipe-book-fab.wrong-order-recipe-target {
+    z-index: 300010 !important;
+    outline: 4px solid #ffd24d !important;
+    outline-offset: 3px;
+    border-radius: 16px;
+    animation: wrongOrderRecipePulse .72s ease-in-out infinite alternate !important;
+    filter: drop-shadow(0 0 7px #fff4a3) drop-shadow(0 0 12px #f1a84d);
+}
+
+@keyframes wrongOrderHintIn {
+    from { opacity: 0; transform: translateY(10px) scale(.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes wrongOrderRecipePulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.08) rotate(-2deg); }
+}
+
+/* =========================================================
+   RECIPE BOOK - BÁNH MÌ IMAGE CARDS
+   ========================================================= */
+.recipe-entry-body {
+    display: grid;
+    grid-template-columns: 118px minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+}
+
+.recipe-image-box {
+    width: 118px;
+    height: 92px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 7px;
+    background: #fff4dc;
+    border: 1px solid #ead2aa;
+    border-radius: 12px;
+    box-shadow: inset 0 -2px 0 rgba(170, 112, 55, 0.08);
+}
+
+.recipe-image-box img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+    user-select: none;
+    filter: drop-shadow(0 4px 3px rgba(91, 52, 26, 0.14));
+}
+
+.recipe-entry-info {
+    min-width: 0;
+}
+
+.recipe-entry.recipe-locked .recipe-image-box img {
+    filter: grayscale(0.55) brightness(0.78);
+    opacity: 0.72;
+}
+
+.recipe-entry-info .recipe-price,
+.recipe-entry-info .recipe-missing {
+    margin-top: 9px;
+}
+
+@media (max-width: 420px) {
+    .recipe-entry-body {
+        grid-template-columns: 96px minmax(0, 1fr);
+        gap: 9px;
+    }
+
+    .recipe-image-box {
+        width: 96px;
+        height: 78px;
+        padding: 5px;
+    }
+}

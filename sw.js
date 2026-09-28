@@ -1,4 +1,4 @@
-const CACHE_NAME = "mot-o-nha-v6";
+const CACHE_NAME = "mot-o-nha-v7";
 const ROOT = self.registration.scope;
 
 const url = (path) => new URL(path, ROOT).href;
@@ -34,6 +34,7 @@ const ingredients = [
 // Ảnh, font và âm thanh.
 // File nào chưa có sẽ được bỏ qua, không làm fail toàn bộ SW.
 const extraFiles = [
+    // App icons + UI cơ bản
     "images/icon.png",
     "images/icon-192.png",
     "images/icon-512.png",
@@ -41,8 +42,13 @@ const extraFiles = [
     "images/banh-mi.png",
     "images/board.png",
     "images/ingredient-table.png",
+    "images/bread.png",
+    "images/grab.png",
+
+    // Ly nước + nguyên liệu đồ uống
     "images/drinks/coc-back.png",
     "images/drinks/coc-front.png",
+    "images/drinks/coc.png",
     "images/drinks/da.png",
     "images/drinks/tra-chanh.png",
     "images/drinks/tra-tac.png",
@@ -50,23 +56,87 @@ const extraFiles = [
     "images/drinks/thach-dua.png",
     "images/drinks/tc-trang.png",
     "images/drinks/tc-den.png",
-    "images/bread.png",
-    "images/grab.png",
+
+    // Layer bánh mì
     "images/ingredients/bread-bottom.png",
     "images/ingredients/bread-top.png",
-
     ...ingredients.map((name) => `images/${name}.png`),
     ...ingredients.map((name) => `images/ingredients/${name}.png`),
 
+    // Ảnh món trong Sổ công thức
+    "images/BANH-MI/banh-mi-bo-trung.png",
+    "images/BANH-MI/banh-mi-cha.png",
+    "images/BANH-MI/banh-mi-chay.png",
+    "images/BANH-MI/banh-mi-dac-biet.png",
+    "images/BANH-MI/banh-mi-jambon-pho-mai.png",
+    "images/BANH-MI/banh-mi-khong.png",
+    "images/BANH-MI/banh-mi-pate.png",
+    "images/BANH-MI/banh-mi-thit-nuong.png",
+    "images/BANH-MI/banh-mi-thit-nuong-cay.png",
+    "images/BANH-MI/banh-mi-thit-vien.png",
+    "images/BANH-MI/banh-mi-trung.png",
+
+    // Ảnh hướng dẫn
+    ...[1, 2, 3, 4, 5, 6, 7].map((id) =>
+        `images/guide/g${id}.png`
+    ),
+
+    // Khách thường
     ...["A", "B", "C", "D", "E", "F"].flatMap((id) =>
         [1, 2, 3].map((mood) =>
             `images/customer/${id}/${id}${mood}.png`
         )
     ),
 
+    // Khách sự kiện Trung Thu
+    ...["A", "B", "C"].flatMap((id) =>
+        [1, 2, 3].map((mood) =>
+            `images/customer/special/trung-thu/${id}/${id}${mood}.png`
+        )
+    ),
+
+    // Skin nền khách
+    "images/skins/background/troi-xanh.jpg",
+    "images/skins/background/thanh-thi.jpg",
+    "images/skins/background/sakura.jpg",
+    "images/skins/background/trung-thu.jpg",
+    "images/skins/background/halloween.jpg",
+
+    // Skin thớt
+    "images/skins/board/mac-dinh.png",
+    "images/skins/board/sakura.png",
+    "images/skins/board/trung-thu.png",
+    "images/skins/board/halloween.png",
+
+    // Skin kệ nguyên liệu
+    "images/skins/ingredient-table/mac-dinh.png",
+    "images/skins/ingredient-table/sakura.png",
+    "images/skins/ingredient-table/trung-thu.png",
+    "images/skins/ingredient-table/halloween.png",
+
+    // Skin bàn nước
+    "images/skins/drink-table/mac-dinh.png",
+    "images/skins/drink-table/sakura.png",
+    "images/skins/drink-table/trung-thu.png",
+    "images/skins/drink-table/halloween.png",
+
+    // Skin khay cốc
+    "images/skins/cup-holder/mac-dinh.png",
+    "images/skins/cup-holder/sakura.png",
+    "images/skins/cup-holder/trung-thu.png",
+    "images/skins/cup-holder/halloween.png",
+
+    // Skin sổ công thức
+    "images/skins/recipe-skin/mac-dinh.png",
+    "images/skins/recipe-skin/sakura.png",
+    "images/skins/recipe-skin/trung-thu.png",
+    "images/skins/recipe-skin/halloween.png",
+
+    // Font
     "fonts/SVN-Freude.otf",
     "fonts/SVN-Rush-Hour.otf",
 
+    // Âm thanh
     "audio/ingredient.mp3",
     "audio/click.mp3",
     "audio/lobby.mp3",
@@ -74,7 +144,9 @@ const extraFiles = [
     "audio/kitchen2.mp3",
     "audio/openstore.mp3",
     "audio/correct.mp3",
-    "audio/wrong.mp3"
+    "audio/wrong.mp3",
+    "audio/pour.mp3",
+    "audio/squirt.mp3"
 ];
 
 async function fetchFresh(path) {
