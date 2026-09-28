@@ -6861,3 +6861,910 @@ img,
     -webkit-tap-highlight-color: transparent !important;
 }
 
+
+/* =========================================================
+   DRINK STATION / SIDE-BY-SIDE COUNTER SLIDER
+   ========================================================= */
+
+.work-slider-shell {
+    width: 100%;
+    overflow: hidden;
+    background: #fff9ed;
+}
+
+.work-slider-track {
+    width: 200%;
+    display: flex;
+    align-items: stretch;
+    transform: translateX(0);
+    transition:
+        transform 0.48s
+        cubic-bezier(.22, .78, .24, 1);
+    will-change: transform;
+}
+
+.work-slider-track.no-transition {
+    transition: none !important;
+}
+
+.work-slider-shell.show-drinks
+.work-slider-track {
+    transform: translateX(-50%);
+}
+
+.work-slider-side {
+    width: 50%;
+    min-width: 0;
+    flex: 0 0 50%;
+}
+
+.work-slider-side
+.banhmi-workspace,
+.work-slider-side
+.ingredient-station {
+    width: 100%;
+}
+
+.station-side-toggle {
+    position: absolute;
+    z-index: 40;
+
+    min-width: 68px;
+    height: 38px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+
+    padding: 0 9px;
+
+    border: 2px solid
+        rgba(255, 247, 229, 0.96);
+    border-radius: 999px;
+
+    background:
+        rgba(87, 55, 35, 0.84);
+    color: #fff9ed;
+
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 800;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 3px 0
+        rgba(74, 42, 23, 0.28);
+
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+
+    touch-action: manipulation;
+}
+
+.station-side-toggle strong {
+    font-size: 22px;
+    line-height: 1;
+}
+
+.station-side-toggle-next {
+    right: 7px;
+    top: 43%;
+}
+
+.station-side-toggle-prev {
+    left: 7px;
+    top: 43%;
+}
+
+.station-side-toggle:active {
+    transform: translateY(2px);
+    box-shadow:
+        0 1px 0
+        rgba(74, 42, 23, 0.28);
+}
+
+
+/* =========================================================
+   DRINK WORKSPACE / CUP HOLDER
+   ========================================================= */
+
+.drink-workspace {
+    position: relative;
+}
+
+.drink-counter-stage {
+    position: relative;
+
+    width: 520px;
+    min-width: 520px;
+    height: 280px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    transform-origin: center center;
+}
+
+.cup-holder-image {
+    position: absolute;
+
+    left: 50%;
+    top: 50%;
+
+    width: 130%;
+    height: auto;
+
+    transform: translate(-50%, -50%);
+
+    object-fit: contain;
+
+    pointer-events: none;
+    user-select: none;
+
+    filter:
+        drop-shadow(
+            0 8px 7px
+            rgba(80, 43, 20, 0.18)
+        );
+}
+
+.drink-cup-stage {
+    position: relative;
+
+    width: 170px;
+    height: 230px;
+
+    z-index: 4;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    transform: translateY(-18px);
+}
+
+.drink-cup-layer {
+
+    position: absolute;
+
+    left: 50%;
+    top: 50%;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: contain;
+
+    transform:
+        translate(-50%, -50%);
+
+    pointer-events: none;
+    user-select: none;
+}
+
+.drink-cup-back,
+.drink-cup-front {
+    width: 100%;
+    height: 100%;
+
+    transform:
+        translate(-50%, -50%);
+}
+
+.drink-cup-back {
+    z-index: 0;
+
+    transform:
+        translate(-50%, -52%);
+}
+
+.drink-ice-layer {
+    z-index: 1;
+
+    width: 75%;
+    height: 78%;
+
+    transform:
+        translate(-50%, -43%)
+        scale(0.9);
+}
+
+.drink-tea-layer {
+    opacity: 0.8;
+    z-index: 2;
+
+    width: 84%;
+    height: 100%;
+
+    transform:
+        translate(-50%, -47%)
+        scale(0.91);
+}
+
+.drink-topping-layer {
+    z-index: 3;
+
+    width: 70%;
+    height: 250%;
+
+    transform:
+        translate(-50%, -38%)
+        scale(0.64);
+}
+
+.drink-topping-thach-ca {
+    transform:
+        translate(-50%, -65%)
+        scale(0.9);
+}
+
+.drink-cup-front {
+    z-index: 5;
+}
+
+
+/* =========================================================
+   DRINK INGREDIENT TABLE
+   Căn theo 1 hệ tọa độ cố định giống quầy bánh mì
+   ========================================================= */
+
+.drink-table-wrap {
+    position: relative;
+    width: 100%;
+    margin: 0;
+    overflow: hidden;
+    user-select: none;
+}
+
+.drink-table-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    pointer-events: none;
+    user-select: none;
+}
+
+#drink-station-items {
+    position: absolute;
+    inset: 0;
+}
+
+/* Base button/item giống logic quầy bánh mì */
+.drink-station-item {
+    position: absolute;
+    z-index: 5;
+
+    margin: 0;
+    padding: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+
+    cursor: pointer;
+    border-radius: 12px;
+
+    display: block;
+
+    transition:
+        transform 0.12s ease,
+        filter 0.12s ease,
+        opacity 0.12s ease;
+}
+
+.drink-station-item img {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+
+    width: 86%;
+    height: 86%;
+
+    object-fit: contain;
+    transform: translate(-50%, -50%);
+
+    pointer-events: none;
+    user-select: none;
+
+    filter:
+        drop-shadow(
+            0 3px 2px rgba(60, 30, 10, 0.18)
+        );
+}
+
+/* 4 topping bins, top row */
+.drink-r1c1,
+.drink-r1c2,
+.drink-r1c3,
+.drink-r1c4 {
+    top: 7.9%;
+    width: 16.5%;
+    height: 34%;
+}
+
+.drink-r1c1 {
+    left: 9%;
+}
+
+.drink-r1c2 {
+    left: 30%;
+}
+
+.drink-r1c3 {
+    left: 52.0%;
+}
+
+.drink-r1c4 {
+    left: 72.6%;
+}
+
+/* Long tray: 2 tea pitchers */
+.drink-tea-1,
+.drink-tea-2 {
+    position: absolute;
+    top: 40.5%;
+    width: 25%;
+    height: 33.2%;
+}
+
+.drink-tea-1 {
+    left: 6.5%;
+}
+
+.drink-tea-2 {
+    left: 24.5%;
+}
+
+
+/* Ice bin */
+.drink-ice {
+    left: 54.4%;
+    top: 42.5%;
+
+    width: 18.5%;
+    height: 31.5%;
+}
+
+/* Cup basket */
+.drink-cups {
+    left: 74.4%;
+    top: 37%;
+
+    width: 17.5%;
+    height: 30.0%;
+}
+
+.drink-ice img {
+    width: 90%;
+    height: 96%;
+}
+
+.drink-cups img {
+    width: 82%;
+    height: 94%;
+}
+
+.drink-tea-1 img,
+.drink-tea-2 img {
+    width: 82%;
+    height: 92%;
+}
+
+.drink-feedback {
+    margin: 0;
+}
+
+
+/* Keep the whole drink counter aligned exactly like the board. */
+.drink-workspace
+.drink-counter-stage {
+    flex: 0 0 520px;
+}
+
+
+/* =========================================================
+   MOBILE DRINK STATION
+   ========================================================= */
+
+@media (max-width: 560px) {
+
+    .station-side-toggle {
+        min-width: 62px;
+        height: 34px;
+
+        padding: 0 8px;
+
+        font-size: 9px;
+    }
+
+    .station-side-toggle strong {
+        font-size: 20px;
+    }
+
+    .drink-cup-stage {
+        width: 165px;
+        height: 205px;
+    }
+}
+
+@media (
+    max-height: 760px
+) and (
+    max-width: 560px
+) {
+
+    .station-side-toggle {
+        top: 40%;
+
+        min-width: 58px;
+        height: 31px;
+
+        font-size: 8px;
+    }
+
+    .drink-cup-stage {
+        width: 145px;
+        height: 178px;
+    }
+}
+
+
+/* =========================================================
+   DRINK STOCK BADGE - LUÔN NẰM TRÊN SPRITE
+   ========================================================= */
+
+.drink-station-item {
+    isolation: isolate;
+}
+
+.drink-station-item img {
+    position: relative;
+    z-index: 1;
+}
+
+.drink-station-item .stock-badge {
+    z-index: 60 !important;
+}
+
+
+/* =========================================================
+   RECIPE BOOK TABS + DRINK INGREDIENT GUIDE
+   ========================================================= */
+
+.recipe-book-tabs {
+    position: sticky;
+    top: 62px;
+    z-index: 9;
+
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+
+    margin: 0 0 13px;
+    padding: 7px;
+
+    background: #f8dfb4;
+    border-radius: 12px;
+}
+
+.recipe-book-tab {
+    min-height: 38px;
+
+    border: 1px solid #dfbd8d;
+    border-radius: 10px;
+
+    background: #fff5df;
+    color: #765039;
+
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 900;
+
+    cursor: pointer;
+}
+
+.recipe-book-tab.active {
+    background: #e95f7a;
+    color: #fff;
+    border-color: #e95f7a;
+    box-shadow: 0 3px 0 #b9445b;
+}
+
+.recipe-book-tab-panel.hidden {
+    display: none;
+}
+
+.drink-guide-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 10px;
+}
+
+.drink-guide-card {
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    gap: 6px;
+
+    min-height: 132px;
+    padding: 10px;
+
+    background: #fffdf5;
+    border: 1px solid #e9d8b8;
+    border-radius: 14px;
+
+    box-shadow: 0 3px 0 #dfc9a4;
+}
+
+.drink-guide-card img {
+    width: 86px;
+    height: 82px;
+
+    object-fit: contain;
+
+    pointer-events: none;
+    user-select: none;
+}
+
+.drink-guide-card strong {
+    color: #603d2b;
+
+    font-size: 12px;
+    text-align: center;
+}
+
+
+@media (max-width: 560px) {
+    .recipe-book-tabs {
+        top: 57px;
+    }
+
+    .drink-guide-card {
+        min-height: 116px;
+    }
+
+    .drink-guide-card img {
+        width: 72px;
+        height: 70px;
+    }
+}
+
+/* Stock badge của 2 bình trà, kéo sát vào bình hơn */
+.drink-tea-1 .stock-badge,
+.drink-tea-2 .stock-badge {
+    right: 10%;
+    bottom: 2px;
+}
+
+
+/* =========================================================
+   DRINK TEA PRESS & HOLD
+   Giữ 2 giây để rót, nước reveal từ dưới lên.
+   ========================================================= */
+
+.drink-station-item {
+    --drink-hold-angle: 0deg;
+}
+
+.drink-station-item[data-drink-ingredient="Trà chanh"],
+.drink-station-item[data-drink-ingredient="Trà tắc"] {
+    touch-action: none;
+    -webkit-touch-callout: none;
+}
+
+.drink-station-item.is-holding-drink {
+    z-index: 70 !important;
+    transform: scale(1.04);
+    filter:
+        drop-shadow(
+            0 0 5px rgba(255, 247, 168, 0.95)
+        )
+        drop-shadow(
+            0 0 10px rgba(239, 158, 67, 0.50)
+        );
+}
+
+.drink-hold-ring {
+    position: absolute;
+
+    left: 50%;
+    top: 48%;
+
+    width: 45px;
+    height: 45px;
+
+    z-index: 80;
+
+    display: grid;
+    place-items: center;
+
+    transform:
+        translate(-50%, -50%)
+        scale(0.82);
+
+    border-radius: 50%;
+
+    background:
+        conic-gradient(
+            #ef9e43
+                0deg
+                var(--drink-hold-angle),
+            rgba(255, 248, 231, 0.80)
+                var(--drink-hold-angle)
+                360deg
+        );
+
+    opacity: 0;
+    pointer-events: none;
+
+    box-shadow:
+        0 2px 5px
+        rgba(80, 42, 25, 0.20);
+
+    transition:
+        opacity 0.12s ease,
+        transform 0.12s ease;
+}
+
+.drink-station-item.is-holding-drink
+.drink-hold-ring {
+    opacity: 1;
+
+    transform:
+        translate(-50%, -50%)
+        scale(1);
+}
+
+.drink-hold-ring::before {
+    content: "";
+
+    position: absolute;
+    inset: 5px;
+
+    border-radius: 50%;
+
+    background:
+        rgba(255, 249, 237, 0.96);
+}
+
+.drink-hold-ring-inner {
+    position: relative;
+    z-index: 1;
+
+    color: #7c4a32;
+
+    font-size: 7px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.drink-pour-live-reveal {
+    will-change: clip-path;
+
+    clip-path:
+        inset(100% 0 0 0);
+
+    transition: none !important;
+}
+
+
+/* Hướng dẫn chơi chỉ được thoát bằng "Bắt đầu chơi" ở trang cuối. */
+#tutorial-close,
+.tutorial-close {
+    display: none !important;
+}
+
+
+@media (max-width: 430px) {
+    .drink-hold-ring {
+        width: 41px;
+        height: 41px;
+    }
+
+    .drink-hold-ring::before {
+        inset: 4px;
+    }
+
+    .drink-hold-ring-inner {
+        font-size: 6.5px;
+    }
+}
+
+
+/* =========================================================
+   DRINK UNLOCK + PRICE GUIDE
+   ========================================================= */
+
+.drink-station-item.locked img {
+    filter:
+        grayscale(0.58)
+        brightness(0.68) !important;
+    opacity: 0.66;
+}
+
+.drink-station-item.locked .lock-overlay {
+    z-index: 999 !important;
+}
+
+.drink-guide-image-wrap {
+    position: relative;
+
+    width: 100%;
+    height: 82px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.drink-guide-image-wrap img {
+    width: 86px;
+    height: 82px;
+
+    object-fit: contain;
+
+    pointer-events: none;
+    user-select: none;
+}
+
+.drink-guide-card.is-locked
+.drink-guide-image-wrap img {
+    filter:
+        grayscale(0.55)
+        brightness(0.76);
+
+    opacity: 0.66;
+}
+
+.drink-guide-lock {
+    position: absolute;
+
+    left: 50%;
+    top: 50%;
+
+    width: 38px;
+    height: 38px;
+
+    display: grid;
+    place-items: center;
+
+    transform:
+        translate(-50%, -50%);
+
+    border-radius: 50%;
+
+    background:
+        rgba(70, 48, 36, 0.76);
+
+    color: #fff;
+
+    font-size: 18px;
+
+    pointer-events: none;
+}
+
+.drink-guide-price {
+    display: block;
+
+    margin-top: 2px;
+
+    color: #36845c;
+
+    font-size: 10px;
+    font-weight: 900;
+
+    text-align: center;
+}
+
+.drink-guide-unlock,
+.drink-guide-owned {
+    display: block;
+
+    margin-top: 3px;
+
+    font-size: 9px;
+    font-weight: 800;
+
+    text-align: center;
+}
+
+.drink-guide-unlock {
+    color: #a15e42;
+}
+
+.drink-guide-owned {
+    color: #7b9b68;
+}
+
+.drink-guide-card.is-locked {
+    background: #f7f2ea;
+    border-color: #d6c7b4;
+    box-shadow: none;
+}
+
+
+@media (max-width: 560px) {
+    .drink-guide-image-wrap {
+        height: 70px;
+    }
+
+    .drink-guide-image-wrap img {
+        width: 72px;
+        height: 70px;
+    }
+}
+
+/* =========================================================
+   DRINK SKIN PREVIEWS
+   Chỉ ảnh hưởng menu Trang trí, không đổi vị trí gameplay.
+   ========================================================= */
+
+.skin-preview.drink-table-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.skin-preview.cup-holder-preview img {
+    width: 92%;
+    height: 82%;
+    object-fit: contain;
+}
+
+.hold-tap-hint {
+    position: absolute;
+
+    left: 50%;
+    top: -4px;
+
+    z-index: 999;
+
+    transform:
+        translate(-50%, -100%);
+
+    padding: 5px 9px;
+
+    border-radius: 999px;
+
+    background: #5b3b2a;
+    color: #ffffff;
+
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 1;
+
+    pointer-events: none;
+
+    animation:
+        holdTapHintIn
+        0.18s
+        ease-out;
+}
+
+
+@keyframes holdTapHintIn {
+
+    from {
+        opacity: 0;
+
+        transform:
+            translate(-50%, -80%)
+            scale(0.8);
+    }
+
+    to {
+        opacity: 1;
+
+        transform:
+            translate(-50%, -100%)
+            scale(1);
+    }
+}

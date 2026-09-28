@@ -428,7 +428,7 @@ function setLanguage(language) {
 ========================= */
 
 const TUTORIAL_SEEN_KEY = "mot-o-nha-tutorial-version";
-const TUTORIAL_VERSION = "0.3.0";
+const TUTORIAL_VERSION = "0.3.2";
 
 const tutorialSlides = [
     {
@@ -463,6 +463,12 @@ const tutorialSlides = [
     },
     {
         image: "images/guide/g6.png",
+        title: "Pha thêm đồ uống 🥤",
+        caption:
+            "Trượt sang quầy đồ uống để lấy cốc, nhấn giữ bình trà 2 giây để rót, thêm đá và tối đa 1 topping.\nKhách có thể gọi bánh mì kèm nước, nên nhớ đọc đủ cả đơn nhé!"
+    },
+    {
+        image: "images/guide/g7.png",
         title: "Phục vụ thật nhanh!",
         caption:
             "Khách càng chờ lâu càng mất kiên nhẫn và đánh giá thấp hơn.\nPhục vụ chính xác, kiếm tiền và phát triển tiệm qua từng ngày!"
@@ -470,6 +476,7 @@ const tutorialSlides = [
 ];
 
 let tutorialIndex = 0;
+let tutorialForcedRead = false;
 
 function getTutorialRefs() {
     return {
@@ -504,11 +511,24 @@ function renderTutorialSlide() {
         tutorialIndex === tutorialSlides.length - 1
             ? "Bắt đầu chơi"
             : "Tiếp →";
+
+    const atLastSlide =
+        tutorialIndex === tutorialSlides.length - 1;
+
+    // Hướng dẫn chơi không có nút X.
+    // Chỉ thoát bằng "Bắt đầu chơi" ở trang 7.
+    refs.close.hidden = true;
+    refs.close.disabled = true;
 }
 
-function openTutorial(startIndex = 0) {
+function openTutorial(
+    startIndex = 0,
+    forcedRead = false
+) {
     const refs = getTutorialRefs();
     if (!refs.modal) return;
+
+    tutorialForcedRead = true;
 
     tutorialIndex = Math.max(
         0,
@@ -525,15 +545,24 @@ function closeTutorial(markSeen = true) {
     const refs = getTutorialRefs();
     if (!refs.modal) return;
 
+    if (
+        tutorialIndex <
+            tutorialSlides.length - 1
+    ) {
+        return;
+    }
+
     refs.modal.classList.add("hidden");
     document.body.classList.remove("tutorial-open");
 
     if (markSeen) {
-    localStorage.setItem(
-        TUTORIAL_SEEN_KEY,
-        TUTORIAL_VERSION
-    );
-}
+        localStorage.setItem(
+            TUTORIAL_SEEN_KEY,
+            TUTORIAL_VERSION
+        );
+    }
+
+    tutorialForcedRead = false;
 }
 
 function nextTutorialSlide() {
@@ -558,7 +587,10 @@ function maybeShowTutorialOnFirstTime() {
         localStorage.getItem(TUTORIAL_SEEN_KEY);
 
     if (seenVersion !== TUTORIAL_VERSION) {
-        openTutorial(0);
+        openTutorial(
+            0,
+            true
+        );
     }
 }
 
@@ -582,7 +614,7 @@ function bindTutorialEvents() {
         if (refs.modal.classList.contains("hidden")) return;
 
         if (event.key === "Escape") {
-            closeTutorial(true);
+            event.preventDefault();
         } else if (event.key === "ArrowRight") {
             nextTutorialSlide();
         } else if (event.key === "ArrowLeft") {
@@ -926,11 +958,11 @@ const sauceSlots = [
 
 // ======================================================
 // SAUCE HOLD INTERACTION
-// Giữ chai sốt đủ 3 giây để bóp sốt.
+// Giữ chai sốt đủ 2.5 giây để bóp sốt.
 // Trong lúc giữ, sprite sốt được reveal từ trái sang phải.
 // ======================================================
 
-const SAUCE_HOLD_MS = 3000;
+const SAUCE_HOLD_MS = 2500;
 
 let activeSauceHold = null;
 
@@ -1202,6 +1234,8 @@ const game = {
     background: ["troi-xanh"],
     board: ["mac-dinh"],
     ingredientTable: ["mac-dinh"],
+    drinkTable: ["mac-dinh"],
+    cupHolder: ["mac-dinh"],
     counter: ["mac-dinh"]
 },
     currentRecipe: null,
@@ -2141,7 +2175,10 @@ function createFreshRealDailyData() {
 
             // Generic ingredient tracking.
             // Key = đúng tên nguyên liệu trong ingredients.
-            ingredientSold: {}
+            ingredientSold: {},
+
+            drinksSold: 0,
+            drinkIngredientSold: {}
         },
 
         claimed: []
@@ -2214,6 +2251,17 @@ function loadRealDailyData() {
         delete data.stats.pateSold;
 
         saveRealDailyData(data);
+    }
+
+    if (!Number.isFinite(data.stats.drinksSold)) {
+        data.stats.drinksSold = 0;
+    }
+
+    if (
+        !data.stats.drinkIngredientSold ||
+        typeof data.stats.drinkIngredientSold !== "object"
+    ) {
+        data.stats.drinkIngredientSold = {};
     }
 
 
@@ -2295,6 +2343,32 @@ const DAILY_MISSION_POOL = [
         ingredient: "Dưa leo",
         target: 12,
         reward: 17000
+    },
+
+    {
+        id: "drinks-8",
+        name: "Bán đúng 8 ly nước",
+        type: "drinks",
+        target: 8,
+        reward: 17000
+    },
+
+    {
+        id: "drink-tra-chanh-5",
+        name: "Bán 5 ly có Trà chanh",
+        type: "drinkIngredient",
+        ingredient: "Trà chanh",
+        target: 5,
+        reward: 16000
+    },
+
+    {
+        id: "drink-thach-ca-4",
+        name: "Bán 4 ly có Thạch cá",
+        type: "drinkIngredient",
+        ingredient: "Thạch cá",
+        target: 4,
+        reward: 16000
     },
 
     {
@@ -2418,6 +2492,29 @@ function getDailyMissionProgress(
         return (
             realDaily.stats
                 .ingredientSold?.[
+                    mission.ingredient
+                ] ||
+            0
+        );
+    }
+
+
+    if (
+        mission.type === "drinks"
+    ) {
+        return (
+            realDaily.stats.drinksSold ||
+            0
+        );
+    }
+
+
+    if (
+        mission.type === "drinkIngredient"
+    ) {
+        return (
+            realDaily.stats
+                .drinkIngredientSold?.[
                     mission.ingredient
                 ] ||
             0
@@ -3950,6 +4047,80 @@ const SKIN_CATALOG = {
     ],
 
 
+    drinkTable: [
+
+        {
+            id: "mac-dinh",
+            name: "Mặc định",
+            image: "images/skins/drink-table/mac-dinh.png",
+            price: 0
+        },
+
+        {
+            id: "sakura",
+            name: "Hoa Anh Đào",
+            image: "images/skins/drink-table/sakura.png",
+            price: 180000,
+            event: "sakura"
+        },
+
+        {
+            id: "trung-thu",
+            name: "Đêm Rằm Trung Thu",
+            image: "images/skins/drink-table/trung-thu.png",
+            price: 180000,
+            event: "trung-thu"
+        },
+
+        {
+            id: "halloween",
+            name: "Halloween",
+            image: "images/skins/drink-table/halloween.png",
+            price: 180000,
+            event: "halloween",
+            unavailable: true
+        }
+
+    ],
+
+
+    cupHolder: [
+
+        {
+            id: "mac-dinh",
+            name: "Mặc định",
+            image: "images/skins/cup-holder/mac-dinh.png",
+            price: 0
+        },
+
+        {
+            id: "sakura",
+            name: "Hoa Anh Đào",
+            image: "images/skins/cup-holder/sakura.png",
+            price: 120000,
+            event: "sakura"
+        },
+
+        {
+            id: "trung-thu",
+            name: "Đêm Rằm Trung Thu",
+            image: "images/skins/cup-holder/trung-thu.png",
+            price: 120000,
+            event: "trung-thu"
+        },
+
+        {
+            id: "halloween",
+            name: "Halloween",
+            image: "images/skins/cup-holder/halloween.png",
+            price: 120000,
+            event: "halloween",
+            unavailable: true
+        }
+
+    ],
+
+
     counter: [
 
     {
@@ -3994,6 +4165,8 @@ const DEFAULT_SKINS = {
     background: "troi-xanh",
     board: "mac-dinh",
     ingredientTable: "mac-dinh",
+    drinkTable: "mac-dinh",
+    cupHolder: "mac-dinh",
     counter: "mac-dinh"
 };
 
@@ -4209,6 +4382,16 @@ function buySkin(
                 skin.price;
 
             if (
+                !Array.isArray(
+                    game.skinOwned[type]
+                )
+            ) {
+                game.skinOwned[type] = [
+                    DEFAULT_SKINS[type]
+                ];
+            }
+
+            if (
                 !game.skinOwned[type]
                     .includes(id)
             ) {
@@ -4292,6 +4475,18 @@ function applySelectedSkins() {
             selectedSkins.ingredientTable
         );
 
+    const drinkTable =
+        skinById(
+            "drinkTable",
+            selectedSkins.drinkTable
+        );
+
+    const cupHolder =
+        skinById(
+            "cupHolder",
+            selectedSkins.cupHolder
+        );
+
 document
     .querySelectorAll(
         ".banhmi-workspace"
@@ -4352,6 +4547,30 @@ document
 
             image.src =
                 ingredientTable.image;
+
+        });
+
+
+    document
+        .querySelectorAll(
+            ".drink-table-image"
+        )
+        .forEach(image => {
+
+            image.src =
+                drinkTable.image;
+
+        });
+
+
+    document
+        .querySelectorAll(
+            ".cup-holder-image"
+        )
+        .forEach(image => {
+
+            image.src =
+                cupHolder.image;
 
         });
 
@@ -4486,6 +4705,16 @@ function renderSkinCards(type) {
                 ? "ingredient-table-preview"
                 : ""
         }
+        ${
+            type === "drinkTable"
+                ? "drink-table-preview"
+                : ""
+        }
+        ${
+            type === "cupHolder"
+                ? "cup-holder-preview"
+                : ""
+        }
     "
 >
 
@@ -4599,6 +4828,27 @@ function renderDecorationPanel() {
         <div class="skin-grid">
             ${renderSkinCards("ingredientTable")}
         </div>
+
+
+        <h3 class="shop-section-title">
+            🍹 Khay đặt cốc
+        </h3>
+
+        <div class="skin-grid">
+            ${renderSkinCards("cupHolder")}
+        </div>
+
+
+        <h3 class="shop-section-title">
+            🥤 Quầy đồ uống
+        </h3>
+
+        <div class="skin-grid">
+            ${renderSkinCards("drinkTable")}
+        </div>
+
+
+    
 
 
         <h3 class="shop-section-title">
@@ -5507,6 +5757,12 @@ skinOwned: {
     ingredientTable: [
         ...game.skinOwned.ingredientTable
     ],
+    drinkTable: [
+        ...game.skinOwned.drinkTable
+    ],
+    cupHolder: [
+        ...game.skinOwned.cupHolder
+    ],
     counter: [
         ...game.skinOwned.counter
     ]
@@ -5687,6 +5943,20 @@ game.skinOwned = {
             ? saved.skinOwned.ingredientTable
             : ["mac-dinh"],
 
+    drinkTable:
+        Array.isArray(
+            saved.skinOwned?.drinkTable
+        )
+            ? saved.skinOwned.drinkTable
+            : ["mac-dinh"],
+
+    cupHolder:
+        Array.isArray(
+            saved.skinOwned?.cupHolder
+        )
+            ? saved.skinOwned.cupHolder
+            : ["mac-dinh"],
+
     counter:
         Array.isArray(
             saved.skinOwned?.counter
@@ -5838,6 +6108,12 @@ skinOwned: {
     ingredientTable: [
         ...game.skinOwned.ingredientTable
     ],
+    drinkTable: [
+        ...game.skinOwned.drinkTable
+    ],
+    cupHolder: [
+        ...game.skinOwned.cupHolder
+    ],
     counter: [
         ...game.skinOwned.counter
     ]
@@ -5947,6 +6223,14 @@ game.skinOwned = {
 
     ingredientTable:
         snapshot.skinOwned?.ingredientTable ||
+        ["mac-dinh"],
+
+    drinkTable:
+        snapshot.skinOwned?.drinkTable ||
+        ["mac-dinh"],
+
+    cupHolder:
+        snapshot.skinOwned?.cupHolder ||
         ["mac-dinh"],
 
     counter:
@@ -6192,6 +6476,7 @@ function resetGameSave() {
 
             localStorage.removeItem(SAVE_KEY);
             localStorage.removeItem(DAY_START_KEY);
+            localStorage.removeItem("mot-o-nha-drinks-v1");
 
             // Reset game = tutorial Day 1 phải bắt đầu lại từ đầu.
             localStorage.removeItem(
@@ -6266,6 +6551,8 @@ game.skinOwned = {
     background: ["troi-xanh"],
     board: ["mac-dinh"],
     ingredientTable: ["mac-dinh"],
+    drinkTable: ["mac-dinh"],
+    cupHolder: ["mac-dinh"],
     counter: ["mac-dinh"]
 };
 
@@ -6419,16 +6706,12 @@ function recipeBookButton() {
     `;
 }
 
-const LATEST_VERSION = "0.3.1";
+const LATEST_VERSION = "0.4.1";
 
 const LATEST_HIGHLIGHTS = [
-    "Thêm nhiệm vụ ngày, sự kiện Hoa Anh Đào thường trực và sự kiện Đêm Rằm Trung Thu.",
-    "Tối ưu mạnh dung lượng hình ảnh, tốc độ tải game và hiệu năng trên điện thoại.",
-    "Thêm cơ chế bóp sốt mới với nhấn giữ, thanh tiến trình, hiệu ứng và âm thanh riêng.",
-    "Cập nhật hướng dẫn, cân bằng lượng khách.",
-    "Cải thiện cân bằng lượng khách, hiệu năng và nhiều chi tiết giao diện.",
-    "Thêm menu trang trí và hệ thống skin.",
-    "Thêm menu nâng cấp và cải thiện giao diện khu chuẩn bị."
+    "Nguyên liệu đồ uống giờ được mở khóa dần khi phát triển tiệm.",
+    "Thêm skin cho Quầy đồ uống và Khay đặt cốc.",
+    "Mở rộng bộ Hoa Anh Đào và Trung Thu với trang trí dành cho khu pha nước."
 ];
 
 // ======================================================
@@ -8150,6 +8433,52 @@ function createBreadStationButton(mode) {
 // HOLD SAUCE
 // ======================================================
 
+function showHoldTapHint(button) {
+
+    if (!button) return;
+
+
+    button
+        .querySelector(
+            ".hold-tap-hint"
+        )
+        ?.remove();
+
+
+    const hint =
+        document.createElement(
+            "span"
+        );
+
+
+    hint.className =
+        "hold-tap-hint";
+
+
+    hint.textContent =
+        "Giữ";
+
+
+    hint.setAttribute(
+        "aria-hidden",
+        "true"
+    );
+
+
+    button.appendChild(
+        hint
+    );
+
+
+    setTimeout(
+        () => {
+            hint.remove();
+        },
+        850
+    );
+}
+
+
 function bindSauceHoldButton(
     button,
     name
@@ -8218,7 +8547,10 @@ function bindSauceHoldButton(
 
 
     const stopHold =
-        event => {
+        (
+            event,
+            allowTapHint = false
+        ) => {
 
             if (
                 activeSauceHold &&
@@ -8230,24 +8562,53 @@ function bindSauceHoldButton(
                 )
             ) {
 
+                const elapsed =
+                    performance.now() -
+                    activeSauceHold.startedAt;
+
+
+                const quickTap =
+                    allowTapHint &&
+                    elapsed < 350;
+
+
                 cancelActiveSauceHold();
+
+
+                if (quickTap) {
+                    showHoldTapHint(
+                        button
+                    );
+                }
             }
         };
 
 
     button.addEventListener(
         "pointerup",
-        stopHold
+        event =>
+            stopHold(
+                event,
+                true
+            )
     );
 
     button.addEventListener(
         "pointercancel",
-        stopHold
+        event =>
+            stopHold(
+                event,
+                false
+            )
     );
 
     button.addEventListener(
         "lostpointercapture",
-        stopHold
+        event =>
+            stopHold(
+                event,
+                false
+            )
     );
 }
 
@@ -10517,7 +10878,7 @@ function openSettings() {
                 >
                     <span>🎁 ${t("version")}</span>
                     <span class="settings-value">
-                        v0.3.0 ›
+                        v0.4.0 ›
                     </span>
                 </button>
 
@@ -10701,15 +11062,19 @@ creditButton.addEventListener("click", () => {
 }
 
 function openUpdateHistory() {
+
     document
         .getElementById("update-history-overlay")
         ?.remove();
 
+
     const overlay =
         document.createElement("div");
 
+
     overlay.id =
         "update-history-overlay";
+
 
     overlay.innerHTML = `
         <div class="update-history-panel">
@@ -10719,6 +11084,98 @@ function openUpdateHistory() {
             </h2>
 
             <div class="update-history-list">
+
+
+                <!-- =========================
+                     VERSION 0.4.1
+                     ========================= -->
+
+                <div class="update-entry">
+
+                    <div class="update-entry-header">
+
+                        <strong>
+                            Phiên bản 0.4.1
+                        </strong>
+
+                        <div class="update-entry-meta">
+
+                            <span class="current-version-badge">
+                                Hiện tại
+                            </span>
+
+                            <span class="update-date">
+                                28/09/2026
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                    <ul>
+
+                        <li>
+                            Nguyên liệu đồ uống giờ được mở khóa dần
+                            khi phát triển tiệm.
+                        </li>
+
+                        <li>
+                            Thêm hệ thống skin cho Quầy đồ uống
+                            và Khay đặt cốc.
+                        </li>
+
+                        <li>
+                            Mở rộng bộ Hoa Anh Đào và Trung Thu
+                            với trang trí dành cho khu pha nước.
+                        </li>
+
+                    </ul>
+
+                </div>
+
+
+                <!-- =========================
+                     VERSION 0.4.0
+                     ========================= -->
+
+                <div class="update-entry">
+
+                    <div class="update-entry-header">
+
+                        <strong>
+                            Phiên bản 0.4.0
+                        </strong>
+
+                        <div class="update-entry-meta">
+
+                            <span class="update-date">
+                                27/09/2026
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                    <ul>
+
+                        <li>
+                            Ra mắt hệ thống bán đồ uống
+                            với quầy pha nước riêng.
+                        </li>
+
+                        <li>
+                            Khách có thể gọi Trà chanh hoặc Trà tắc
+                            kèm đá và topping.
+                        </li>
+
+                        <li>
+                            Mở rộng sổ công thức, nhiệm vụ
+                            và hướng dẫn chơi cho hệ thống đồ uống.
+                        </li>
+
+                    </ul>
+
+                </div>
 
 
                 <!-- =========================
@@ -10735,10 +11192,6 @@ function openUpdateHistory() {
 
                         <div class="update-entry-meta">
 
-                            <span class="current-version-badge">
-                                Hiện tại
-                            </span>
-
                             <span class="update-date">
                                 27/09/2026
                             </span>
@@ -10750,111 +11203,22 @@ function openUpdateHistory() {
                     <ul>
 
                         <li>
-                            Thêm màn hình tải game với thanh tiến trình,
-                            giúp chuẩn bị trước các tài nguyên quan trọng
-                            trước khi người chơi vào tiệm.
+                            Thêm màn hình tải game và tối ưu việc chuẩn bị
+                            tài nguyên trước khi vào tiệm.
                         </li>
 
                         <li>
-                            Tối ưu hệ thống tải tài nguyên để ưu tiên
-                            nguyên liệu, khách hàng, âm thanh và bộ trang trí
-                            đang sử dụng, giúp giảm tình trạng giật khi
-                            tài nguyên xuất hiện lần đầu.
+                            Thêm cơ chế nhấn giữ để sử dụng
+                            Ketchup, Sriracha và Mayonnaise.
                         </li>
 
                         <li>
-                            Tối ưu dung lượng hình ảnh trên toàn bộ game,
-                            giúp giảm đáng kể kích thước tài nguyên và
-                            cải thiện thời gian tải trên thiết bị di động.
+                            Mở rộng Hướng dẫn chơi cho thao tác sử dụng sốt.
                         </li>
 
                         <li>
-                            Thêm cơ chế bóp sốt mới:
-                            Ketchup, Sriracha và Mayonnaise giờ cần được
-                            nhấn giữ để thêm vào bánh.
-                        </li>
-
-                        <li>
-                            Trong lúc bóp sốt, vòng tiến trình sẽ hiển thị
-                            trực tiếp trên chai và lớp sốt dần xuất hiện
-                            trên ổ bánh.
-                        </li>
-
-                        <li>
-                            Nếu thả tay quá sớm khi bóp sốt,
-                            thao tác sẽ bị hủy và phần sốt chưa hoàn thành
-                            sẽ biến mất.
-                        </li>
-
-                        <li>
-                            Thêm âm thanh riêng cho thao tác bóp sốt,
-                            phát liên tục trong thời gian giữ chai và
-                            dừng ngay khi hoàn thành hoặc hủy thao tác.
-                        </li>
-
-                        <li>
-                            Thời gian bóp sốt được điều chỉnh còn 3 giây
-                            để thao tác có cảm giác rõ ràng nhưng
-                            không làm chậm nhịp phục vụ khách.
-                        </li>
-
-                        <li>
-                            Hướng dẫn chơi được mở rộng từ 5 lên 6 trang,
-                            bổ sung một trang riêng giải thích cách
-                            nhấn giữ để sử dụng các loại sốt.
-                        </li>
-
-                        <li>
-                            Cập nhật hệ thống trang trí để thớt,
-                            sổ công thức, khung cảnh và quầy nguyên liệu
-                            sử dụng chính xác skin mà người chơi đang chọn.
-                        </li>
-
-                        <li>
-                            Chuẩn bị thêm bộ trang trí Halloween với
-                            thớt, sổ công thức, khung cảnh và các tài nguyên
-                            theo chủ đề Halloween.
-                        </li>
-
-                        <li>
-                            Cải thiện hệ thống khách mỗi ngày:
-                            số lượng khách tăng dần theo tiến độ ngày chơi
-                            thay vì dao động quá thấp ở những ngày sau.
-                        </li>
-
-                        <li>
-                            Điều chỉnh nhịp khách đến để tiệm bớt khoảng
-                            trống quá lâu nhưng vẫn giữ thời gian đủ để
-                            người chơi chuẩn bị giữa các lượt phục vụ.
-                        </li>
-
-                        <li>
-                            Cải thiện cách tải sprite khách hàng để
-                            giảm hiện tượng khách xuất hiện chậm hoặc
-                            hình bị tải muộn trong lúc chơi.
-                        </li>
-
-                        <li>
-                            Cải thiện hệ thống level của tiệm,
-                            tiếp tục tích EXP khi phục vụ đúng và
-                            hiển thị danh hiệu theo từng cột mốc level.
-                        </li>
-
-                        <li>
-                            Cải thiện tính ổn định của hệ thống đánh giá,
-                            tiến trình ngày và dữ liệu khi chơi lại ngày.
-                        </li>
-
-                        <li>
-                            Sửa một số trường hợp dữ liệu cũ có thể
-                            giữ số khách không còn phù hợp với hệ thống
-                            cân bằng mới.
-                        </li>
-
-                        <li>
-                            Cải thiện hiệu năng tổng thể trên điện thoại,
-                            đặc biệt khi chuyển giữa màn chuẩn bị,
-                            chờ khách và làm bánh.
+                            Chuẩn bị bộ trang trí Halloween
+                            cho thớt, sổ công thức và khung cảnh.
                         </li>
 
                     </ul>
@@ -10888,78 +11252,25 @@ function openUpdateHistory() {
 
                         <li>
                             Thêm hệ thống quản lý tiệm với
-                            Nhiệm vụ, Nâng cấp, Trang trí
-                            và theo dõi Doanh thu.
+                            Nhiệm vụ, Nâng cấp, Trang trí và Doanh thu.
                         </li>
 
                         <li>
-                            Thêm nhiệm vụ ngày với các mục tiêu
-                            thay đổi theo ngày thật và phần thưởng
-                            tiền khi hoàn thành.
+                            Thêm nhiệm vụ ngày và nhiệm vụ sự kiện
+                            với phần thưởng, cùng các bộ trang trí giới hạn.
                         </li>
 
                         <li>
-                            Thêm nhiệm vụ sự kiện Mùa Hoa Anh Đào,
-                            hoàn thành 20 ngày để mở quyền mua
-                            bộ Hoa Anh Đào.
+                            Thêm level, EXP, danh hiệu và hệ thống nâng cấp tiệm.
                         </li>
 
                         <li>
-                            Thêm sự kiện giới hạn Đêm Rằm Trung Thu
-                            với Chị Hằng, Chú Cuội và Thỏ Ngọc.
+                            Thêm nhiều skin cho quầy, thớt,
+                            sổ công thức và khung cảnh.
                         </li>
 
                         <li>
-                            Phục vụ đủ các vị khách Trung Thu
-                            để mở quyền mua bộ trang trí
-                            Đêm Rằm Trung Thu.
-                        </li>
-
-                        <li>
-                            Thêm hệ thống nâng cấp tiệm gồm
-                            Quảng bá, Chỗ ngồi và Làm mát,
-                            giúp tăng lượng khách, thời gian kiên nhẫn
-                            và khả năng nhận đánh giá cao.
-                        </li>
-
-                        <li>
-                            Thêm hệ thống level cho tiệm,
-                            nhận EXP khi phục vụ đúng và
-                            mở các danh hiệu mới khi tăng level.
-                        </li>
-
-                        <li>
-                            Thêm hệ thống trang trí với skin cho
-                            sổ công thức, khung cảnh, thớt,
-                            quầy nguyên liệu và bàn bếp.
-                        </li>
-
-                        <li>
-                            Thêm các bộ Hoa Anh Đào và Trung Thu,
-                            cùng khung cảnh Thành thị mới.
-                        </li>
-
-                        <li>
-                            Thêm trang Thành tựu trong phần Quản lý
-                            để theo dõi tiến độ hoàn thành
-                            các bộ sưu tập trang trí.
-                        </li>
-
-                        <li>
-                            Khách hàng giờ có cách xưng hô riêng
-                            phù hợp với từng nhân vật thay vì
-                            tất cả đều xưng “mình”.
-                        </li>
-
-                        <li>
-                            Cải thiện hệ thống lưu tiến trình để lưu
-                            các nâng cấp, level, skin đã sở hữu
-                            và trang trí đang sử dụng.
-                        </li>
-
-                        <li>
-                            Cải thiện khả năng cài Một Ổ Nha!
-                            lên màn hình chính như một ứng dụng web.
+                            Thêm trang Thành tựu để theo dõi tiến độ bộ sưu tập.
                         </li>
 
                     </ul>
@@ -10992,24 +11303,12 @@ function openUpdateHistory() {
                     <ul>
 
                         <li>
-                            Thêm hướng dẫn chơi gồm 5 trang minh họa
-                            cho người chơi mới.
+                            Thêm Hướng dẫn chơi minh họa cho người chơi mới,
+                            có thể mở lại từ phần Cài đặt.
                         </li>
 
                         <li>
-                            Có thể mở lại hướng dẫn bất cứ lúc nào
-                            trong phần Cài đặt.
-                        </li>
-
-                        <li>
-                            Phóng to và điều chỉnh vị trí sổ công thức
-                            để dễ nhìn và dễ bấm hơn.
-                        </li>
-
-                        <li>
-                            Làm rõ một số yêu cầu của khách như
-                            “không cho rau”, “không cho ớt”
-                            và “không cho sốt”.
+                            Làm rõ các yêu cầu đặc biệt của khách trong đơn hàng.
                         </li>
 
                     </ul>
@@ -11042,26 +11341,13 @@ function openUpdateHistory() {
                     <ul>
 
                         <li>
-                            Thêm hiệu ứng đóng cửa tiệm trước khi
-                            hiện tổng kết cuối ngày.
+                            Thêm nhịp mở cửa, khoảng thời gian vắng khách
+                            và hiệu ứng đóng cửa cuối ngày.
                         </li>
 
                         <li>
-                            Tiệm có khoảng thời gian vắng khách
-                            sau khi mở cửa và sau khi
-                            phục vụ hết hàng chờ.
-                        </li>
-
-                        <li>
-                            Điều chỉnh số khách mỗi ngày:
-                            có ngày vắng, ngày vừa và
-                            thỉnh thoảng có ngày rất đông.
-                        </li>
-
-                        <li>
-                            Điều chỉnh giá nhập một số nguyên liệu
-                            để cân bằng tốc độ kiếm tiền
-                            khi lượng khách tăng.
+                            Mỗi ngày có lượng khách khác nhau,
+                            từ ngày vắng đến những ngày rất đông.
                         </li>
 
                     </ul>
@@ -11094,58 +11380,20 @@ function openUpdateHistory() {
                     <ul>
 
                         <li>
-                            Thêm hàng chờ 2 đến 3 khách cùng lúc,
-                            có thể chọn khách để xem và làm đơn.
+                            Thêm hàng chờ 2–3 khách và khả năng chọn khách để làm đơn.
                         </li>
 
                         <li>
-                            Thêm thanh kiên nhẫn trong lời thoại
-                            và hàng chờ.
+                            Thêm hệ thống kiên nhẫn:
+                            khách có thể khó chịu hoặc rời tiệm nếu chờ quá lâu.
                         </li>
 
                         <li>
-                            Khách đổi sang biểu cảm khó chịu
-                            khi sắp hết kiên nhẫn và có thể
-                            rời tiệm nếu đợi quá lâu.
+                            Thêm đánh giá sao cho từng đơn và điểm đánh giá của tiệm.
                         </li>
 
                         <li>
-                            Thêm đánh giá sao sau mỗi đơn,
-                            điểm đánh giá của tiệm trên thanh trạng thái
-                            và thống kê đánh giá cuối ngày.
-                        </li>
-
-                        <li>
-                            Thêm bánh mì pâté cùng nhiều biến thể
-                            theo yêu cầu của khách.
-                        </li>
-
-                        <li>
-                            Khách có thể yêu cầu thêm sốt,
-                            không cho rau, không cho ớt,
-                            không cho sốt hoặc kết hợp
-                            nhiều yêu cầu trong một đơn.
-                        </li>
-
-                        <li>
-                            Sửa lỗi nhạc nền bị mất sau khi
-                            rời ứng dụng rồi quay lại
-                            hoặc khi chơi lại ngày.
-                        </li>
-
-                        <li>
-                            Cải thiện chuyển nhạc giữa các màn
-                            và âm thanh khi chọn nguyên liệu.
-                        </li>
-
-                        <li>
-                            Làm mới giao diện sổ công thức,
-                            hàng chờ và thanh trạng thái.
-                        </li>
-
-                        <li>
-                            Điều chỉnh kích thước nút điều khiển
-                            và độ trong suốt của các loại sốt.
+                            Thêm Bánh mì pâté cùng nhiều biến thể yêu cầu của khách.
                         </li>
 
                     </ul>
@@ -11178,32 +11426,16 @@ function openUpdateHistory() {
                     <ul>
 
                         <li>
-                            Khách hàng xuất hiện trực tiếp tại quầy,
-                            với biểu cảm thay đổi theo món
-                            được phục vụ.
+                            Khách hàng xuất hiện trực tiếp tại quầy
+                            với biểu cảm và hiệu ứng khi đến, rời tiệm.
                         </li>
 
                         <li>
-                            Thêm khách hàng mới cùng hiệu ứng
-                            khi khách đến và rời tiệm.
+                            Thêm Anh giao hàng trong màn chuẩn bị nguyên liệu.
                         </li>
 
                         <li>
-                            Anh giao hàng xuất hiện khi chuẩn bị
-                            nguyên liệu và thông báo sau khi giao hàng.
-                        </li>
-
-                        <li>
-                            Thêm hiệu ứng mở cửa tiệm.
-                        </li>
-
-                        <li>
-                            Điều chỉnh thời gian chờ giữa các khách.
-                        </li>
-
-                        <li>
-                            Thêm âm thanh tương tác và cải thiện
-                            nhạc nền, giao diện trên điện thoại.
+                            Thêm hiệu ứng mở cửa và nhịp khách đến tiệm.
                         </li>
 
                     </ul>
@@ -11236,13 +11468,8 @@ function openUpdateHistory() {
                     <ul>
 
                         <li>
-                            Ra mắt phiên bản đầu tiên của
-                            Một Ổ Nha!
-                        </li>
-
-                        <li>
-                            Thêm hệ thống khách hàng và
-                            làm bánh theo yêu cầu.
+                            Ra mắt Một Ổ Nha! với vòng chơi
+                            nhận đơn, làm bánh và phục vụ khách.
                         </li>
 
                         <li>
@@ -11251,22 +11478,12 @@ function openUpdateHistory() {
                         </li>
 
                         <li>
-                            Thêm sổ công thức.
+                            Thêm sổ công thức và hệ thống ngày,
+                            doanh thu, chi phí và tiền thuê mặt bằng.
                         </li>
 
                         <li>
-                            Thêm hệ thống ngày, doanh thu,
-                            chi phí và tiền thuê mặt bằng.
-                        </li>
-
-                        <li>
-                            Thêm lưu tiến trình
-                            và chơi lại ngày hiện tại.
-                        </li>
-
-                        <li>
-                            Thêm nhạc nền cho tiệm
-                            và khu vực bếp.
+                            Thêm lưu tiến trình và chơi lại ngày hiện tại.
                         </li>
 
                     </ul>
@@ -12296,7 +12513,7 @@ queueSkinApply();
 // HÀNG CHỜ KHÁCH, KIÊN NHẪN VÀ ĐÁNH GIÁ
 // ======================================================
 
-const CUSTOMER_PATIENCE_MS = 70000;
+const CUSTOMER_PATIENCE_MS = 90000;
 
 function getCustomerPatienceMs() {
 
@@ -13537,6 +13754,17 @@ const DAY1_TUTORIAL_CUSTOMERS = [
         note: "Cho anh một ổ bánh mì trứng như bình thường nha!"
     },
     {
+        customer: "F",
+        recipeName: "Bánh mì pâté",
+        note: "Cho em một ổ bánh mì pâté, với một ly trà chanh đá với thạch cá nữa nha!",
+        drinkOrder: {
+            tea: "Trà chanh",
+            ice: true,
+            topping: "Thạch cá",
+            price: 9000
+        }
+    },
+    {
         customer: "E",
         recipeName: "Bánh mì không",
         note: "Cho em một ổ bánh mì không thôi nha, không cần nhân!"
@@ -13770,7 +13998,7 @@ function getDay1TutorialInstruction() {
             ketchup: {
                 title: "Sốt phải nhấn giữ 🍅",
                 text:
-                    "Nhấn GIỮ chai Ketchup đủ 3 giây đến khi vòng tròn đầy. Thả sớm thì sốt chưa được thêm.",
+                    "Nhấn GIỮ chai Ketchup đủ 2.5 giây đến khi vòng tròn đầy. Thả sớm thì sốt chưa được thêm.",
                 target:
                     '[data-ingredient="Ketchup"]'
             },
@@ -13789,6 +14017,78 @@ function getDay1TutorialInstruction() {
     }
 
     if (number === 3) {
+        const map = {
+            bread: {
+                title: "Khách gọi thêm nước rồi! 🥤",
+                text:
+                    "Làm phần bánh mì pâté trước nhé. Bắt đầu bằng một ổ bánh mì.",
+                target:
+                    '.bread-station-item'
+            },
+            pate: {
+                title: "Thêm Pâté",
+                text:
+                    "Thêm Pâté vào bánh như lúc nãy.",
+                target:
+                    '[data-ingredient="Pâté"]'
+            },
+            rau: {
+                title: "Thêm Rau",
+                text:
+                    "Thêm Rau để hoàn thành phần bánh mì.",
+                target:
+                    '[data-ingredient="Rau"]'
+            },
+            "switch-drink": {
+                title: "Sang quầy nước 🥤",
+                text:
+                    "Đơn này còn một ly Trà chanh đá với Thạch cá. Nhấn Đồ uống để trượt sang quầy bên cạnh.",
+                target:
+                    '.station-side-toggle-next'
+            },
+            cup: {
+                title: "Lấy cốc trước",
+                text:
+                    "Nhấn vào chồng cốc để lấy một chiếc cốc.",
+                target:
+                    '[data-drink-ingredient="Cốc"]'
+            },
+            ice: {
+                title: "Cho đá vào trước 🧊",
+                text:
+                    "Trước khi rót trà, nhấn vào Đá để cho đá vào cốc trước nhé.",
+                target:
+                    '[data-drink-ingredient="Đá"]'
+            },
+            tea: {
+                title: "Giờ mới rót trà 🫗",
+                text:
+                    "Nhấn GIỮ bình Trà chanh đủ 2 giây. Nước sẽ dâng từ dưới lên, thả tay sớm thì trà chưa được thêm.",
+                target:
+                    '[data-drink-ingredient="Trà chanh"]'
+            },
+            topping: {
+                title: "Một topping thôi!",
+                text:
+                    "Mỗi ly chỉ có tối đa 1 topping. Ly này cần Thạch cá.",
+                target:
+                    '[data-drink-ingredient="Thạch cá"]'
+            },
+            serve: {
+                title: "Combo hoàn thành! ✨",
+                text:
+                    "Bánh và nước đều đúng rồi. Nhấn Giao đơn để phục vụ khách.",
+                target:
+                    '#main-button'
+            }
+        };
+
+        return map[
+            day1TutorialStep
+        ] || map.bread;
+    }
+
+    if (number === 4) {
         const map = {
             bread: {
                 title: "Khách cuối của ngày đầu 👀",
@@ -14085,10 +14385,8 @@ function remindDay1Tutorial() {
 }
 
 
-// Slideshow cũ không tự bật ở lần đầu.
-// Vẫn giữ mục Hướng dẫn trong Settings.
-maybeShowTutorialOnFirstTime =
-    function () {};
+// Hướng dẫn tĩnh được bật lại khi version tutorial thay đổi.
+// Bản 0.3.2 bắt buộc đọc tới trang cuối một lần.
 
 
 const day1OriginalGetCustomerPatienceMs =
@@ -14143,7 +14441,7 @@ nextCustomer =
             CUSTOMER_WAIT_KEY
         );
 
-        game.customersToday = 3;
+        game.customersToday = 4;
 
         // Sau khách thứ 3, flow gốc tự gọi nextCustomer().
         // Ta đóng ngày luôn, KHÔNG bắt người chơi bấm "khách tiếp theo".
@@ -14187,7 +14485,12 @@ nextCustomer =
             setup.note;
 
         const patience =
-            getCustomerPatienceMs();
+            getCustomerPatienceMs() +
+            (
+                setup.drinkOrder
+                    ? 10000
+                    : 0
+            );
 
         const ticket = {
             id:
@@ -14205,7 +14508,17 @@ nextCustomer =
             remainingMs:
                 patience,
             totalPatienceMs:
-                patience
+                patience,
+
+            drinkOrder:
+                setup.drinkOrder
+                    ? {
+                        ...setup.drinkOrder
+                    }
+                    : null,
+
+            drinkPatienceBonusApplied:
+                Boolean(setup.drinkOrder)
         };
 
         game.waitingCustomers.push(
@@ -14248,7 +14561,7 @@ renderMakingScreen =
         day1OriginalRenderMakingScreen();
 
         if (game.day === 1) {
-            game.customersToday = 3;
+            game.customersToday = 4;
 
             // Luôn dựng lại step hợp lệ nếu state bị mất / reset / đổi màn.
             if (
@@ -14272,7 +14585,8 @@ renderMakingScreen =
                     day1TutorialStep = "recipe";
                 } else if (
                     Number(game.customerNumber) === 1 ||
-                    Number(game.customerNumber) === 3
+                    Number(game.customerNumber) === 3 ||
+                    Number(game.customerNumber) === 4
                 ) {
                     day1TutorialStep = "bread";
                 }
@@ -14346,7 +14660,7 @@ handleStationClick =
             game.breadSelected
         ) {
             setDay1TutorialStep(
-                number === 3
+                number === 4
                     ? "serve"
                     : "pate"
             );
@@ -14360,9 +14674,9 @@ handleStationClick =
             )
         ) {
             setDay1TutorialStep(
-                number === 1
-                    ? "rau"
-                    : "egg"
+                number === 2
+                    ? "egg"
+                    : "rau"
             );
             return;
         }
@@ -14400,7 +14714,9 @@ handleStationClick =
             setDay1TutorialStep(
                 number === 1
                     ? "serve"
-                    : "ketchup"
+                    : number === 3
+                        ? "switch-drink"
+                        : "ketchup"
             );
         }
     };
@@ -14594,11 +14910,15 @@ document.addEventListener(
             return;
         }
 
-        const name =
+        const breadName =
             stationButton.dataset
                 .ingredient;
 
-        const expected = {
+        const drinkName =
+            stationButton.dataset
+                .drinkIngredient;
+
+        const expectedBread = {
             bread: "Bánh mì",
             pate: "Pâté",
             egg: "Trứng",
@@ -14608,10 +14928,26 @@ document.addEventListener(
             day1TutorialStep
         ];
 
-        if (
-            !expected ||
-            name !== expected
-        ) {
+        const expectedDrink = {
+            cup: "Cốc",
+            tea: "Trà tắc",
+            ice: "Đá",
+            topping: "Thạch cá"
+        }[
+            day1TutorialStep
+        ];
+
+        const correctTarget =
+            (
+                expectedBread &&
+                breadName === expectedBread
+            ) ||
+            (
+                expectedDrink &&
+                drinkName === expectedDrink
+            );
+
+        if (!correctTarget) {
             event.preventDefault();
             event.stopImmediatePropagation();
             remindDay1Tutorial();
@@ -14646,13 +14982,36 @@ document.addEventListener(
             stationButton.dataset
                 .ingredient;
 
-        if (
+        const drinkName =
+            stationButton.dataset
+                .drinkIngredient;
+
+        const drinkData =
+            drinkName
+                ? drinkIngredients?.[
+                    drinkName
+                ]
+                : null;
+
+        const wrongSauceHold =
             sauceSlots.includes(name) &&
             (
                 Number(game.customerNumber) !== 2 ||
                 day1TutorialStep !== "ketchup" ||
                 name !== "Ketchup"
-            )
+            );
+
+        const wrongTeaHold =
+            drinkData?.type === "tea" &&
+            (
+                Number(game.customerNumber) !== 3 ||
+                day1TutorialStep !== "tea" ||
+                drinkName !== "Trà chanh"
+            );
+
+        if (
+            wrongSauceHold ||
+            wrongTeaHold
         ) {
             event.preventDefault();
             event.stopImmediatePropagation();
@@ -14754,7 +15113,7 @@ window.addEventListener(
 loadDay1TutorialState();
 
 if (game.day === 1) {
-    game.customersToday = 3;
+    game.customersToday = 4;
 
     if (
         game.shopOpen &&
@@ -14774,4 +15133,2767 @@ if (game.day === 1) {
     );
 }
 
+
+// ======================================================
+// DRINK STATION / BÁN NƯỚC
+// Added 2026-09-27
+//
+// Mỗi customer ticket có thể gồm:
+// - bánh mì hiện tại
+// - 1 ly trà chanh hoặc trà tắc
+// - luôn có đá
+// - tối đa 1 topping
+//
+// Day 1 giữ nguyên tutorial bánh mì, bắt đầu có order nước từ Day 2.
+// Toàn bộ counter + workspace + quầy nguyên liệu trượt ngang cùng nhau.
+// ======================================================
+
+const DRINK_FEATURE_SAVE_KEY =
+    "mot-o-nha-drinks-v1";
+
+const DRINK_ORDER_CHANCE = 0.58;
+const DRINK_TOPPING_CHANCE = 0.72;
+
+const drinkIngredients = {
+    "Cốc": {
+        key: "coc",
+        tableImage: "images/coc.png",
+        image: "images/drinks/coc.png",
+        unlocked: true,
+        unlockPrice: 0,
+        salePrice: 0,
+        stock: 12,
+        restock: 6,
+        restockPrice: 4000,
+        type: "cup"
+    },
+
+    "Đá": {
+        key: "da",
+        tableImage: "images/da.png",
+        image: "images/drinks/da.png",
+        unlocked: true,
+        unlockPrice: 0,
+        salePrice: 0,
+        stock: 18,
+        restock: 10,
+        restockPrice: 3000,
+        type: "ice"
+    },
+
+    "Trà chanh": {
+        key: "tra-chanh",
+        tableImage: "images/tra-chanh.png",
+        image: "images/drinks/tra-chanh.png",
+        unlocked: true,
+        unlockPrice: 0,
+        salePrice: 5000,
+        stock: 10,
+        restock: 5,
+        restockPrice: 5000,
+        type: "tea"
+    },
+
+    "Trà tắc": {
+        key: "tra-tac",
+        tableImage: "images/tra-tac.png",
+        image: "images/drinks/tra-tac.png",
+        unlocked: false,
+        unlockPrice: 30000,
+        salePrice: 6000,
+        stock: 0,
+        restock: 5,
+        restockPrice: 5000,
+        type: "tea"
+    },
+
+    "Thạch cá": {
+        key: "thach-ca",
+        tableImage: "images/thach-ca.png",
+        image: "images/drinks/thach-ca.png",
+        unlocked: true,
+        unlockPrice: 0,
+        salePrice: 2000,
+        stock: 8,
+        restock: 5,
+        restockPrice: 5000,
+        type: "topping"
+    },
+
+    "Thạch dừa": {
+        key: "thach-dua",
+        tableImage: "images/thach-dua.png",
+        image: "images/drinks/thach-dua.png",
+        unlocked: false,
+        unlockPrice: 20000,
+        salePrice: 2000,
+        stock: 0,
+        restock: 5,
+        restockPrice: 4500,
+        type: "topping"
+    },
+
+    "Trân châu trắng": {
+        key: "tc-trang",
+        tableImage: "images/tc-trang.png",
+        image: "images/drinks/tc-trang.png",
+        unlocked: false,
+        unlockPrice: 35000,
+        salePrice: 2500,
+        stock: 0,
+        restock: 5,
+        restockPrice: 5000,
+        type: "topping"
+    },
+
+    "Trân châu đen": {
+        key: "tc-den",
+        tableImage: "images/tc-den.png",
+        image: "images/drinks/tc-den.png",
+        unlocked: false,
+        unlockPrice: 45000,
+        salePrice: 3000,
+        stock: 0,
+        restock: 5,
+        restockPrice: 5000,
+        type: "topping"
+    }
+};
+
+const drinkTeaNames = [
+    "Trà chanh",
+    "Trà tắc"
+];
+
+const drinkToppingNames = [
+    "Thạch cá",
+    "Thạch dừa",
+    "Trân châu trắng",
+    "Trân châu đen"
+];
+
+const drinkStationLayout = [
+    ["Thạch cá", "drink-r1c1"],
+    ["Thạch dừa", "drink-r1c2"],
+    ["Trân châu trắng", "drink-r1c3"],
+    ["Trân châu đen", "drink-r1c4"],
+    ["Trà tắc", "drink-tea-1"],
+    ["Trà chanh", "drink-tea-2"],
+    ["Đá", "drink-ice"],
+    ["Cốc", "drink-cups"]
+];
+
+let drinkBuild = {
+    cup: false,
+    tea: null,
+    ice: false,
+    topping: null
+};
+
+let drinkStationView =
+    "bread";
+
+
+const DRINK_TEA_HOLD_MS = 2000;
+
+const pourSound =
+    new Audio(
+        "audio/pour.mp3"
+    );
+
+pourSound.volume = 0.48;
+pourSound.loop = true;
+pourSound.preload = "auto";
+
+try {
+    pourSound.load();
+} catch {}
+
+
+let activeDrinkTeaHold = null;
+
+
+function startPourSound() {
+    try {
+        pourSound.pause();
+        pourSound.currentTime = 0;
+    } catch {}
+
+    pourSound
+        .play()
+        .catch(() => {});
+}
+
+
+function stopPourSound() {
+    try {
+        pourSound.pause();
+        pourSound.currentTime = 0;
+    } catch {}
+}
+
+
+function resetDrinkBuild() {
+    drinkBuild = {
+        cup: false,
+        tea: null,
+        ice: false,
+        topping: null
+    };
+}
+
+
+function loadDrinkFeatureState() {
+    try {
+        const saved =
+            JSON.parse(
+                localStorage.getItem(
+                    DRINK_FEATURE_SAVE_KEY
+                ) || "{}"
+            );
+
+        if (
+            saved.stock &&
+            typeof saved.stock === "object"
+        ) {
+            Object.entries(
+                drinkIngredients
+            ).forEach(
+                ([name, data]) => {
+                    const amount =
+                        Number(
+                            saved.stock[name]
+                        );
+
+                    if (
+                        Number.isFinite(amount) &&
+                        amount >= 0
+                    ) {
+                        data.stock =
+                            Math.floor(amount);
+                    }
+                }
+            );
+        }
+
+        if (
+            saved.unlocked &&
+            typeof saved.unlocked === "object"
+        ) {
+            Object.entries(
+                drinkIngredients
+            ).forEach(
+                ([name, data]) => {
+                    if (
+                        name === "Cốc" ||
+                        name === "Đá" ||
+                        name === "Trà chanh" ||
+                        name === "Thạch cá"
+                    ) {
+                        data.unlocked = true;
+                        return;
+                    }
+
+                    if (
+                        typeof saved.unlocked[name] ===
+                            "boolean"
+                    ) {
+                        data.unlocked =
+                            saved.unlocked[name];
+                    }
+                }
+            );
+        }
+
+        if (
+            saved.build &&
+            typeof saved.build === "object"
+        ) {
+            drinkBuild = {
+                cup:
+                    saved.build.cup === true,
+
+                tea:
+                    drinkTeaNames.includes(
+                        saved.build.tea
+                    )
+                        ? saved.build.tea
+                        : null,
+
+                ice:
+                    saved.build.ice === true,
+
+                topping:
+                    drinkToppingNames.includes(
+                        saved.build.topping
+                    )
+                        ? saved.build.topping
+                        : null
+            };
+        }
+
+    } catch (error) {
+        console.warn(
+            "Không đọc được save quầy nước:",
+            error
+        );
+    }
+}
+
+
+function saveDrinkFeatureState() {
+    try {
+        const stock = {};
+        const unlocked = {};
+
+        Object.entries(
+            drinkIngredients
+        ).forEach(
+            ([name, data]) => {
+                stock[name] =
+                    Math.max(
+                        0,
+                        Number(data.stock) || 0
+                    );
+
+                unlocked[name] =
+                    data.unlocked !== false;
+            }
+        );
+
+        localStorage.setItem(
+            DRINK_FEATURE_SAVE_KEY,
+            JSON.stringify({
+                stock,
+                unlocked,
+                build: {
+                    ...drinkBuild
+                }
+            })
+        );
+
+    } catch (error) {
+        console.warn(
+            "Không lưu được quầy nước:",
+            error
+        );
+    }
+}
+
+
+loadDrinkFeatureState();
+
+const drinkFeatureOriginalSaveGame =
+    saveGame;
+
+saveGame = function () {
+    drinkFeatureOriginalSaveGame();
+    saveDrinkFeatureState();
+};
+
+window.addEventListener(
+    "beforeunload",
+    saveDrinkFeatureState
+);
+
+
+function drinkDisplayName(order) {
+    if (!order) return "";
+
+    return (
+        `${order.tea}${order.ice ? " đá" : ""}` +
+        (
+            order.topping
+                ? ` với ${order.topping}`
+                : ""
+        )
+    );
+}
+
+
+function drinkRequiredItems(order) {
+    if (!order) return [];
+
+    const list = [
+        "Cốc",
+        "Đá",
+        order.tea
+    ];
+
+    if (order.topping) {
+        list.push(order.topping);
+    }
+
+    return list;
+}
+
+
+function drinkOrderPrice(order) {
+    if (!order) return 0;
+
+    const teaPrice =
+        Math.max(
+            0,
+            Number(
+                drinkIngredients[
+                    order.tea
+                ]?.salePrice
+            ) || 0
+        );
+
+    const toppingPrice =
+        order.topping
+            ? Math.max(
+                0,
+                Number(
+                    drinkIngredients[
+                        order.topping
+                    ]?.salePrice
+                ) || 0
+            )
+            : 0;
+
+    return (
+        teaPrice +
+        toppingPrice
+    );
+}
+
+
+function reservedDrinkStock(
+    ignoreTicketId = null
+) {
+    const reserved = {};
+
+    for (
+        const ticket of
+        game.waitingCustomers || []
+    ) {
+        if (
+            ignoreTicketId &&
+            ticket.id === ignoreTicketId
+        ) {
+            continue;
+        }
+
+        for (
+            const name of
+            drinkRequiredItems(
+                ticket.drinkOrder
+            )
+        ) {
+            reserved[name] =
+                (
+                    reserved[name] || 0
+                ) + 1;
+        }
+    }
+
+    return reserved;
+}
+
+
+function canReserveDrinkOrder(
+    order,
+    ignoreTicketId = null
+) {
+    const reserved =
+        reservedDrinkStock(
+            ignoreTicketId
+        );
+
+    return drinkRequiredItems(order)
+        .every(name => {
+            const data =
+                drinkIngredients[name];
+
+            if (
+                !data ||
+                data.unlocked === false
+            ) {
+                return false;
+            }
+
+            return (
+                data.stock -
+                (
+                    reserved[name] || 0
+                )
+            ) > 0;
+        });
+}
+
+
+function createRandomDrinkOrder(
+    ignoreTicketId = null
+) {
+    if (
+        game.day <= 1 ||
+        Math.random() >
+            DRINK_ORDER_CHANCE
+    ) {
+        return null;
+    }
+
+    const availableTeas =
+        drinkTeaNames.filter(
+            tea =>
+                canReserveDrinkOrder(
+                    {
+                        tea,
+                        ice: true,
+                        topping: null
+                    },
+                    ignoreTicketId
+                )
+        );
+
+    if (!availableTeas.length) {
+        return null;
+    }
+
+    const tea =
+        randomItem(
+            availableTeas
+        );
+
+    let topping = null;
+
+    if (
+        Math.random() <
+            DRINK_TOPPING_CHANCE
+    ) {
+        const possibleToppings =
+            drinkToppingNames.filter(
+                name =>
+                    canReserveDrinkOrder(
+                        {
+                            tea,
+                            ice: true,
+                            topping: name
+                        },
+                        ignoreTicketId
+                    )
+            );
+
+        if (possibleToppings.length) {
+            topping =
+                randomItem(
+                    possibleToppings
+                );
+        }
+    }
+
+    const order = {
+        tea,
+        ice: true,
+        topping
+    };
+
+    order.price =
+        drinkOrderPrice(order);
+
+    return (
+        canReserveDrinkOrder(
+            order,
+            ignoreTicketId
+        )
+            ? order
+            : null
+    );
+}
+
+
+function appendDrinkToTicketNote(
+    ticket
+) {
+    if (!ticket?.drinkOrder) {
+        return;
+    }
+
+    const speech =
+        CUSTOMER_SPEECH[
+            ticket.customer
+        ] || {
+            self: "mình",
+            you: ""
+        };
+
+    const self =
+        speech.self || "mình";
+
+    const drinkText =
+        drinkDisplayName(
+            ticket.drinkOrder
+        );
+
+    ticket.note =
+        `${ticket.note} Với lại cho ${self} một ly ${drinkText.toLowerCase()} nữa nha!`;
+}
+
+
+function syncDrinkOrderFromTicket(
+    ticket
+) {
+    if (!ticket) return;
+
+    game.currentDrinkOrder =
+        ticket.drinkOrder || null;
+}
+
+
+const drinkFeatureOriginalCreateWaitingTicket =
+    createWaitingTicket;
+
+createWaitingTicket =
+    function () {
+        const ticket =
+            drinkFeatureOriginalCreateWaitingTicket();
+
+        if (!ticket) {
+            return ticket;
+        }
+
+        if (
+            !ticket.drinkOrder
+        ) {
+            ticket.drinkOrder =
+                createRandomDrinkOrder(
+                    ticket.id
+                );
+
+            if (ticket.drinkOrder) {
+                appendDrinkToTicketNote(
+                    ticket
+                );
+
+                ensureDrinkPatienceBonus(
+                    ticket
+                );
+            }
+        }
+
+        if (
+            ticket.id ===
+            game.activeTicketId
+        ) {
+            game.orderNote =
+                ticket.note;
+
+            syncDrinkOrderFromTicket(
+                ticket
+            );
+        }
+
+        saveGame();
+
+        return ticket;
+    };
+
+
+const drinkFeatureOriginalSetActiveTicket =
+    setActiveTicket;
+
+setActiveTicket =
+    function (ticket) {
+        drinkFeatureOriginalSetActiveTicket(
+            ticket
+        );
+
+        ensureDrinkPatienceBonus(
+            ticket
+        );
+
+        syncDrinkOrderFromTicket(
+            ticket
+        );
+    };
+
+
+function currentDrinkOrder() {
+    return (
+        activeTicket()
+            ?.drinkOrder ||
+        game.currentDrinkOrder ||
+        null
+    );
+}
+
+
+function ensureDrinkPatienceBonus(
+    ticket
+) {
+    if (
+        !ticket?.drinkOrder ||
+        ticket.drinkPatienceBonusApplied
+    ) {
+        return;
+    }
+
+    const currentTotal =
+        Math.max(
+            1,
+            Number(ticket.totalPatienceMs) ||
+                getCustomerPatienceMs()
+        );
+
+    const currentRemaining =
+        Math.max(
+            0,
+            Number(ticket.remainingMs) ||
+                currentTotal
+        );
+
+    ticket.totalPatienceMs =
+        currentTotal + 10000;
+
+    ticket.remainingMs =
+        Math.min(
+            ticket.totalPatienceMs,
+            currentRemaining + 10000
+        );
+
+    ticket.drinkPatienceBonusApplied =
+        true;
+}
+
+
+function drinkOrderIsCorrect(
+    order
+) {
+    if (!order) return true;
+
+    return (
+        drinkBuild.cup === true &&
+        drinkBuild.tea ===
+            order.tea &&
+        drinkBuild.ice ===
+            Boolean(order.ice) &&
+        drinkBuild.topping ===
+            (order.topping || null)
+    );
+}
+
+
+function showDrinkFeedback(
+    message
+) {
+    const element =
+        document.getElementById(
+            "drink-feedback"
+        );
+
+    if (element) {
+        element.textContent =
+            message;
+    }
+}
+
+
+function renderDrinkCup() {
+    const stage =
+        document.getElementById(
+            "drink-cup-stage"
+        );
+
+    if (!stage) return;
+
+    if (!drinkBuild.cup) {
+        stage.innerHTML = "";
+        return;
+    }
+
+    const teaLayer =
+        drinkBuild.tea
+            ? `
+                <img
+                    class="drink-cup-layer drink-tea-layer"
+                    src="${
+                        drinkIngredients[
+                            drinkBuild.tea
+                        ].image
+                    }"
+                    draggable="false"
+                    alt=""
+                >
+            `
+            : "";
+
+    const iceLayer =
+        drinkBuild.ice
+            ? `
+                <img
+                    class="drink-cup-layer drink-ice-layer"
+                    src="${
+                        drinkIngredients[
+                            "Đá"
+                        ].image
+                    }"
+                    draggable="false"
+                    alt=""
+                >
+            `
+            : "";
+
+    const toppingLayer =
+        drinkBuild.topping
+            ? `
+                <img
+                    class="
+                        drink-cup-layer
+                        drink-topping-layer
+                        drink-topping-${drinkIngredients[drinkBuild.topping].key}
+                    "
+                    src="${
+                        drinkIngredients[
+                            drinkBuild.topping
+                        ].image
+                    }"
+                    draggable="false"
+                    alt=""
+                >
+            `
+            : "";
+
+    stage.innerHTML = `
+        <img
+            class="drink-cup-layer drink-cup-back"
+            src="images/drinks/coc-back.png"
+            draggable="false"
+            alt=""
+        >
+
+        ${iceLayer}
+        ${teaLayer}
+        ${toppingLayer}
+
+        <img
+            class="drink-cup-layer drink-cup-front"
+            src="images/drinks/coc-front.png"
+            draggable="false"
+            alt="Cốc nước"
+        >
+    `;
+}
+
+
+function drinkStationButtonHTML(
+    name,
+    positionClass,
+    mode
+) {
+    const data =
+        drinkIngredients[name];
+
+    const selected =
+        (
+            name === "Cốc" &&
+            drinkBuild.cup
+        ) ||
+        (
+            name === "Đá" &&
+            drinkBuild.ice
+        ) ||
+        (
+            data.type === "tea" &&
+            drinkBuild.tea === name
+        ) ||
+        (
+            data.type === "topping" &&
+            drinkBuild.topping === name
+        );
+
+    const locked =
+        data.unlocked === false;
+
+    const outOfStock =
+        !locked &&
+        data.stock <= 0;
+
+    const disabled =
+        mode === "making" &&
+        (
+            locked ||
+            outOfStock
+        );
+
+    return `
+        <button
+            class="
+                station-item
+                drink-station-item
+                ${positionClass}
+                ${selected ? "selected" : ""}
+                ${locked ? "locked" : ""}
+                ${outOfStock ? "out-of-stock" : ""}
+                ${disabled ? "station-disabled" : ""}
+            "
+            type="button"
+            data-drink-ingredient="${name}"
+            ${disabled ? "disabled" : ""}
+            title="${
+                mode === "prep"
+                    ? locked
+                        ? `${name} • Mở khóa ${formatMoney(data.unlockPrice)}`
+                        : `${name} • Còn ${data.stock} • Nhập +${data.restock}`
+                    : locked
+                        ? `${name} • Chưa mở khóa`
+                        : `${name} • Còn ${data.stock}`
+            }"
+        >
+            <img
+                src="${data.tableImage}"
+                draggable="false"
+                alt="${name}"
+            >
+
+            ${
+                locked
+                    ? `
+                        <span class="lock-overlay">
+                            🔒
+                            <small>
+                                ${formatMoney(data.unlockPrice)}
+                            </small>
+                        </span>
+                    `
+                    : stockBadgeHTML(
+                        data.stock
+                    )
+            }
+
+            ${
+                data.type === "tea"
+                    ? `
+                        <span class="drink-hold-ring">
+                            <span class="drink-hold-ring-inner">
+                                GIỮ
+                            </span>
+                        </span>
+                    `
+                    : ""
+            }
+
+            ${
+                outOfStock
+                    ? `
+                        <span class="sold-out-overlay">
+                            HẾT
+                        </span>
+                    `
+                    : ""
+            }
+        </button>
+    `;
+}
+
+
+function createDrinkPourPreview(
+    name
+) {
+    const stage =
+        document.getElementById(
+            "drink-cup-stage"
+        );
+
+    const data =
+        drinkIngredients[name];
+
+    if (
+        !stage ||
+        !data
+    ) {
+        return null;
+    }
+
+    const preview =
+        document.createElement(
+            "img"
+        );
+
+    preview.className =
+        "drink-cup-layer drink-tea-layer drink-pour-live-reveal";
+
+    preview.src =
+        data.image;
+
+    preview.alt = "";
+    preview.draggable = false;
+
+    preview.style.clipPath =
+        "inset(100% 0 0 0)";
+
+    stage.appendChild(
+        preview
+    );
+
+    return preview;
+}
+
+
+function updateDrinkPourPreview(
+    preview,
+    progress
+) {
+    if (!preview) return;
+
+    const hiddenFromTop =
+        Math.max(
+            0,
+            Math.min(
+                100,
+                (1 - progress) * 100
+            )
+        );
+
+    preview.style.clipPath =
+        `inset(${hiddenFromTop}% 0 0 0)`;
+}
+
+
+function cancelActiveDrinkTeaHold() {
+    if (!activeDrinkTeaHold) {
+        stopPourSound();
+        return;
+    }
+
+    if (
+        activeDrinkTeaHold.frameId
+    ) {
+        cancelAnimationFrame(
+            activeDrinkTeaHold.frameId
+        );
+    }
+
+    activeDrinkTeaHold
+        .previewLayer
+        ?.remove();
+
+    const button =
+        activeDrinkTeaHold.button;
+
+    button?.classList.remove(
+        "is-holding-drink"
+    );
+
+    button?.style.setProperty(
+        "--drink-hold-angle",
+        "0deg"
+    );
+
+    stopPourSound();
+
+    activeDrinkTeaHold = null;
+}
+
+
+function completeDrinkTeaHold(
+    name
+) {
+    if (
+        !activeDrinkTeaHold ||
+        activeDrinkTeaHold.completed
+    ) {
+        return;
+    }
+
+    const hold =
+        activeDrinkTeaHold;
+
+    hold.completed = true;
+
+    if (hold.frameId) {
+        cancelAnimationFrame(
+            hold.frameId
+        );
+    }
+
+    stopPourSound();
+
+    hold.previewLayer?.remove();
+
+    hold.button.classList.remove(
+        "is-holding-drink"
+    );
+
+    hold.button.style.setProperty(
+        "--drink-hold-angle",
+        "360deg"
+    );
+
+    activeDrinkTeaHold = null;
+
+    drinkBuild.tea =
+        name;
+
+    renderDrinkCup();
+
+    renderDrinkStationItems(
+        "making"
+    );
+
+    showDrinkFeedback(
+        `✓ Đã rót ${name}`
+    );
+
+    if (
+        day1TutorialActive() &&
+        Number(game.customerNumber) === 3 &&
+        day1TutorialStep === "tea" &&
+        name === "Trà chanh"
+    ) {
+        setDay1TutorialStep(
+            "topping"
+        );
+    }
+
+    saveGame();
+}
+
+
+function startDrinkTeaHold(
+    button,
+    name,
+    pointerId
+) {
+    const data =
+        drinkIngredients[name];
+
+    if (
+        !data ||
+        data.unlocked === false ||
+        data.type !== "tea" ||
+        data.stock <= 0
+    ) {
+        return;
+    }
+
+    if (!drinkBuild.cup) {
+        showCutePopup({
+            icon: "🥤",
+            title: "Lấy cốc trước nha!",
+            message:
+                "Phải lấy một chiếc cốc rồi mới rót trà được.",
+            confirmText: "Okii"
+        });
+
+        return;
+    }
+
+    if (
+        drinkBuild.tea === name
+    ) {
+        showDrinkFeedback(
+            `✓ Trong cốc đã có ${name}`
+        );
+        return;
+    }
+
+    cancelActiveDrinkTeaHold();
+
+    try {
+        button.setPointerCapture(
+            pointerId
+        );
+    } catch {}
+
+    button.classList.add(
+        "is-holding-drink"
+    );
+
+    button.style.setProperty(
+        "--drink-hold-angle",
+        "0deg"
+    );
+
+    const previewLayer =
+        createDrinkPourPreview(
+            name
+        );
+
+    const startedAt =
+        performance.now();
+
+    activeDrinkTeaHold = {
+        button,
+        name,
+        pointerId,
+        previewLayer,
+        startedAt,
+        frameId: null,
+        completed: false
+    };
+
+    startPourSound();
+
+    showDrinkFeedback(
+        `Giữ ${name} đủ 2 giây để rót...`
+    );
+
+    const animate =
+        now => {
+            if (
+                !activeDrinkTeaHold ||
+                activeDrinkTeaHold.button !==
+                    button ||
+                activeDrinkTeaHold.completed
+            ) {
+                return;
+            }
+
+            const progress =
+                Math.max(
+                    0,
+                    Math.min(
+                        1,
+                        (
+                            now -
+                            startedAt
+                        ) /
+                        DRINK_TEA_HOLD_MS
+                    )
+                );
+
+            button.style.setProperty(
+                "--drink-hold-angle",
+                `${progress * 360}deg`
+            );
+
+            updateDrinkPourPreview(
+                previewLayer,
+                progress
+            );
+
+            if (progress >= 1) {
+                completeDrinkTeaHold(
+                    name
+                );
+                return;
+            }
+
+            activeDrinkTeaHold.frameId =
+                requestAnimationFrame(
+                    animate
+                );
+        };
+
+    activeDrinkTeaHold.frameId =
+        requestAnimationFrame(
+            animate
+        );
+}
+
+
+function bindDrinkTeaHold(
+    button,
+    name
+) {
+    button.addEventListener(
+        "contextmenu",
+        event =>
+            event.preventDefault()
+    );
+
+    button.addEventListener(
+        "pointerdown",
+        event => {
+            if (
+                event.pointerType ===
+                    "mouse" &&
+                event.button !== 0
+            ) {
+                return;
+            }
+
+            event.preventDefault();
+
+            startDrinkTeaHold(
+                button,
+                name,
+                event.pointerId
+            );
+        }
+    );
+
+    const stopHold =
+        (
+            event,
+            allowTapHint = false
+        ) => {
+            if (
+                activeDrinkTeaHold &&
+                activeDrinkTeaHold.button ===
+                    button &&
+                (
+                    event.pointerId ===
+                        undefined ||
+                    event.pointerId ===
+                        activeDrinkTeaHold
+                            .pointerId
+                )
+            ) {
+
+                const elapsed =
+                    performance.now() -
+                    activeDrinkTeaHold
+                        .startedAt;
+
+
+                const quickTap =
+                    allowTapHint &&
+                    elapsed < 350;
+
+
+                cancelActiveDrinkTeaHold();
+
+
+                if (quickTap) {
+                    showHoldTapHint(
+                        button
+                    );
+                }
+            }
+        };
+
+    button.addEventListener(
+        "pointerup",
+        event =>
+            stopHold(
+                event,
+                true
+            )
+    );
+
+    button.addEventListener(
+        "pointercancel",
+        event =>
+            stopHold(
+                event,
+                false
+            )
+    );
+
+    button.addEventListener(
+        "lostpointercapture",
+        event =>
+            stopHold(
+                event,
+                false
+            )
+    );
+}
+
+
+function renderDrinkStationItems(
+    mode
+) {
+    const station =
+        document.getElementById(
+            "drink-station-items"
+        );
+
+    if (!station) return;
+
+    station.innerHTML =
+        drinkStationLayout
+            .map(
+                ([name, position]) =>
+                    drinkStationButtonHTML(
+                        name,
+                        position,
+                        mode
+                    )
+            )
+            .join("");
+
+    station
+        .querySelectorAll(
+            ".drink-station-item"
+        )
+        .forEach(button => {
+            // Giữ số lượng stock luôn nằm trên sprite,
+            // kể cả sprite bình trà có vùng ảnh lớn/transparent.
+            const badge =
+                button.querySelector(
+                    ".stock-badge"
+                );
+
+            const sprite =
+                button.querySelector(
+                    "img"
+                );
+
+            if (sprite) {
+                sprite.style.position =
+                    "relative";
+                sprite.style.zIndex =
+                    "1";
+            }
+
+            if (badge) {
+                badge.style.position =
+                    "absolute";
+                badge.style.zIndex =
+                    "999";
+                badge.style.pointerEvents =
+                    "none";
+            }
+
+            const name =
+                button.dataset
+                    .drinkIngredient;
+
+            const data =
+                drinkIngredients[name];
+
+            if (
+                mode === "making" &&
+                data?.type === "tea" &&
+                !button.disabled
+            ) {
+                bindDrinkTeaHold(
+                    button,
+                    name
+                );
+            } else {
+                button.addEventListener(
+                    "pointerdown",
+                    () => {
+                        if (
+                            mode === "making" &&
+                            !button.disabled
+                        ) {
+                            primeIngredientSound(
+                                `drink:${name}`
+                            );
+                        }
+                    },
+                    {
+                        passive: true
+                    }
+                );
+            }
+
+            button.addEventListener(
+                "click",
+                event => {
+                    if (mode === "prep") {
+                        buyDrinkStock(name);
+                        return;
+                    }
+
+                    // Trà chỉ được thêm bằng thao tác nhấn giữ 2 giây.
+                    if (
+                        data?.type === "tea"
+                    ) {
+                        event.preventDefault();
+                        return;
+                    }
+
+                    handleDrinkStationClick(
+                        name
+                    );
+                }
+            );
+        });
+}
+
+
+function buyDrinkIngredient(
+    name
+) {
+    const data =
+        drinkIngredients[name];
+
+    if (
+        !data ||
+        data.unlocked !== false
+    ) {
+        return;
+    }
+
+    if (
+        game.money <
+        data.unlockPrice
+    ) {
+        showCutePopup({
+            icon: "🔒",
+            title:
+                "Chưa đủ tiền rồi!",
+            message:
+                `Bạn cần ${formatMoney(data.unlockPrice)} để mở khóa ${name}.`,
+            confirmText:
+                "Okii"
+        });
+
+        return;
+    }
+
+    showCutePopup({
+        icon: "🥤",
+        title:
+            `Mở khóa ${name}?`,
+        message:
+            `Mở nguyên liệu đồ uống mới với giá ${formatMoney(data.unlockPrice)}? Bạn sẽ nhận sẵn ${data.restock} phần để bắt đầu.`,
+        confirmText:
+            "Mở khóa ✨",
+        cancelText:
+            "Để sau",
+
+        onConfirm: () => {
+            game.money -=
+                data.unlockPrice;
+
+            game.dailyIngredientSpend +=
+                data.unlockPrice;
+
+            data.unlocked = true;
+            data.stock =
+                data.restock;
+
+            moneyDisplay.textContent =
+                formatMoney(
+                    game.money
+                );
+
+            renderDrinkStationItems(
+                "prep"
+            );
+
+            showPrepDeliveryMessage(
+                `Anh đã mở khóa ${name} và giao ${data.restock} phần rồi!`
+            );
+
+            playOrderResultSound(
+                true
+            );
+
+            saveGame();
+        }
+    });
+}
+
+
+function buyDrinkStock(name) {
+    const data =
+        drinkIngredients[name];
+
+    if (!data) return;
+
+    if (data.unlocked === false) {
+        buyDrinkIngredient(
+            name
+        );
+        return;
+    }
+
+    if (
+        game.money <
+        data.restockPrice
+    ) {
+        showCutePopup({
+            icon: "🥤",
+            title:
+                "Chưa đủ tiền rồi!",
+            message:
+                `Bạn cần ${formatMoney(data.restockPrice)} để nhập thêm ${name}.`,
+            confirmText:
+                "Okii"
+        });
+
+        return;
+    }
+
+    showCutePopup({
+        icon: "🥤",
+        title:
+            `Nhập thêm ${name}?`,
+        message:
+            `Hiện còn ${data.stock}. Nhập thêm ${data.restock} với giá ${formatMoney(data.restockPrice)}?`,
+        confirmText:
+            `Nhập +${data.restock}`,
+        cancelText:
+            "Để sau",
+
+        onConfirm: () => {
+            game.money -=
+                data.restockPrice;
+
+            game.dailyIngredientSpend +=
+                data.restockPrice;
+
+            data.stock +=
+                data.restock;
+
+            moneyDisplay.textContent =
+                formatMoney(
+                    game.money
+                );
+
+            renderDrinkStationItems(
+                "prep"
+            );
+
+            showPrepDeliveryMessage(
+                `Anh đã giao thêm ${data.restock} ${name}. Trong kho giờ có ${data.stock}!`
+            );
+
+            playOrderResultSound(
+                true
+            );
+
+            saveGame();
+        }
+    });
+}
+
+
+function handleDrinkStationClick(
+    name
+) {
+    const order =
+        currentDrinkOrder();
+
+    const data =
+        drinkIngredients[name];
+
+    if (
+        !data ||
+        data.unlocked === false ||
+        data.stock <= 0
+    ) {
+        return;
+    }
+
+    if (name === "Cốc") {
+        const wasSelected =
+            drinkBuild.cup;
+
+        if (wasSelected) {
+            resetDrinkBuild();
+
+            showDrinkFeedback(
+                "↩ Đã đặt cốc lại"
+            );
+        } else {
+            drinkBuild.cup = true;
+
+            playIngredientSound(
+                `drink:${name}`
+            );
+
+            showDrinkFeedback(
+                "🥤 Đã lấy một cốc"
+            );
+        }
+
+        renderDrinkCup();
+        renderDrinkStationItems(
+            "making"
+        );
+        saveGame();
+
+        if (
+            day1TutorialActive() &&
+            Number(game.customerNumber) === 3 &&
+            day1TutorialStep === "cup" &&
+            drinkBuild.cup
+        ) {
+            setDay1TutorialStep(
+                "ice"
+            );
+        }
+
+        return;
+    }
+
+    if (!drinkBuild.cup) {
+        showCutePopup({
+            icon: "🥤",
+            title: "Lấy cốc trước nha!",
+            message:
+                "Phải lấy một chiếc cốc rồi mới thêm trà, đá và topping được.",
+            confirmText: "Okii"
+        });
+
+        return;
+    }
+
+    if (
+        data.type === "tea"
+    ) {
+        // Trà được xử lý riêng bằng press-and-hold 2 giây.
+        return;
+
+    } else if (
+        data.type === "ice"
+    ) {
+        drinkBuild.ice =
+            !drinkBuild.ice;
+
+        if (drinkBuild.ice) {
+            playIngredientSound(
+                `drink:${name}`
+            );
+        }
+
+        showDrinkFeedback(
+            drinkBuild.ice
+                ? "🧊 Đã thêm đá"
+                : "↩ Đã bỏ đá"
+        );
+
+    } else if (
+        data.type === "topping"
+    ) {
+        const removing =
+            drinkBuild.topping === name;
+
+        drinkBuild.topping =
+            removing
+                ? null
+                : name;
+
+        if (!removing) {
+            playIngredientSound(
+                `drink:${name}`
+            );
+        }
+
+        showDrinkFeedback(
+            removing
+                ? `↩ Đã bỏ ${name}`
+                : `✓ Đã thêm ${name}`
+        );
+    }
+
+    renderDrinkCup();
+
+    renderDrinkStationItems(
+        "making"
+    );
+
+    if (
+        day1TutorialActive() &&
+        Number(game.customerNumber) === 3
+    ) {
+        if (
+            day1TutorialStep === "ice" &&
+            name === "Đá" &&
+            drinkBuild.ice
+        ) {
+            setDay1TutorialStep(
+                "tea"
+            );
+
+        } else if (
+            day1TutorialStep === "topping" &&
+            name === "Thạch cá" &&
+            drinkBuild.topping === "Thạch cá"
+        ) {
+            setDay1TutorialStep(
+                "serve"
+            );
+        }
+    }
+
+    saveGame();
+}
+
+
+function setDrinkStationView(
+    target,
+    {
+        animate = true
+    } = {}
+) {
+    const shell =
+        document.querySelector(
+            ".work-slider-shell"
+        );
+
+    const track =
+        shell?.querySelector(
+            ".work-slider-track"
+        );
+
+    if (!shell || !track) {
+        return;
+    }
+
+    drinkStationView =
+        target === "drink"
+            ? "drink"
+            : "bread";
+
+    shell.classList.toggle(
+        "show-drinks",
+        drinkStationView ===
+            "drink"
+    );
+
+    if (!animate) {
+        track.classList.add(
+            "no-transition"
+        );
+
+        requestAnimationFrame(
+            () => {
+                requestAnimationFrame(
+                    () => {
+                        track.classList
+                            .remove(
+                                "no-transition"
+                            );
+                    }
+                );
+            }
+        );
+    }
+}
+
+
+function enhanceWorkAreaWithDrinks(
+    mode
+) {
+    const makingScreen =
+        document.querySelector(
+            ".making-screen"
+        );
+
+    if (
+        !makingScreen ||
+        makingScreen.querySelector(
+            ".work-slider-shell"
+        )
+    ) {
+        return;
+    }
+
+    const workspace =
+        makingScreen.querySelector(
+            ".banhmi-workspace"
+        );
+
+    const station =
+        makingScreen.querySelector(
+            ".ingredient-station"
+        );
+
+    if (
+        !workspace ||
+        !station
+    ) {
+        return;
+    }
+
+    const shell =
+        document.createElement(
+            "div"
+        );
+
+    shell.className =
+        "work-slider-shell";
+
+    const track =
+        document.createElement(
+            "div"
+        );
+
+    track.className =
+        "work-slider-track";
+
+    const breadSide =
+        document.createElement(
+            "section"
+        );
+
+    breadSide.className =
+        "work-slider-side work-slider-bread";
+
+    const drinkSide =
+        document.createElement(
+            "section"
+        );
+
+    drinkSide.className =
+        "work-slider-side work-slider-drink";
+
+    workspace.parentNode.insertBefore(
+        shell,
+        workspace
+    );
+
+    shell.appendChild(track);
+    track.append(
+        breadSide,
+        drinkSide
+    );
+
+    breadSide.append(
+        workspace,
+        station
+    );
+
+    const breadTableWrap =
+        station.querySelector(
+            ".ingredient-table-wrap"
+        );
+
+    if (breadTableWrap) {
+        const nextButton =
+            document.createElement(
+                "button"
+            );
+
+        nextButton.type =
+            "button";
+
+        nextButton.className =
+            "station-side-toggle station-side-toggle-next";
+
+        nextButton.innerHTML =
+            `<span>Đồ uống</span><strong>›</strong>`;
+
+        nextButton.setAttribute(
+            "aria-label",
+            "Sang quầy đồ uống"
+        );
+
+        const lockDrinkSwitchForEarlyTutorial =
+            mode === "making" &&
+            typeof day1TutorialActive ===
+                "function" &&
+            day1TutorialActive() &&
+            Number(game.customerNumber) < 3;
+
+        if (
+            lockDrinkSwitchForEarlyTutorial
+        ) {
+            nextButton.classList.add(
+                "tutorial-blocked"
+            );
+
+            nextButton.setAttribute(
+                "aria-disabled",
+                "true"
+            );
+        }
+
+        nextButton.addEventListener(
+            "click",
+            () => {
+                if (
+                    lockDrinkSwitchForEarlyTutorial
+                ) {
+                    if (
+                        typeof remindDay1Tutorial ===
+                            "function"
+                    ) {
+                        remindDay1Tutorial();
+                    }
+
+                    return;
+                }
+
+                setDrinkStationView(
+                    "drink"
+                );
+
+                if (
+                    typeof day1TutorialActive ===
+                        "function" &&
+                    day1TutorialActive() &&
+                    Number(game.customerNumber) === 3 &&
+                    day1TutorialStep ===
+                        "switch-drink"
+                ) {
+                    setDay1TutorialStep(
+                        "cup"
+                    );
+                }
+            }
+        );
+
+        breadTableWrap.appendChild(
+            nextButton
+        );
+    }
+
+    drinkSide.innerHTML = `
+        <div class="banhmi-workspace drink-workspace">
+            <div class="drink-counter-stage">
+
+                <img
+                    class="cup-holder-image"
+                    src="${skinById("cupHolder", selectedSkins.cupHolder).image}"
+                    draggable="false"
+                    alt="Khay đặt cốc"
+                    onerror="this.style.display='none'"
+                >
+
+                <div
+                    id="drink-cup-stage"
+                    class="drink-cup-stage"
+                ></div>
+
+            </div>
+        </div>
+
+        <div class="ingredient-station drink-ingredient-station">
+
+            <div class="drink-table-wrap">
+
+                <img
+                    class="drink-table-image"
+                    src="${skinById("drinkTable", selectedSkins.drinkTable).image}"
+                    draggable="false"
+                    alt="Quầy nước"
+                >
+
+                <div
+                    id="drink-station-items"
+                ></div>
+
+                <button
+                    class="station-side-toggle station-side-toggle-prev"
+                    type="button"
+                    aria-label="Quay lại quầy bánh mì"
+                >
+                    <strong>‹</strong>
+                    <span>Bánh mì</span>
+                </button>
+
+            </div>
+
+            <div
+                id="drink-feedback"
+                class="ingredient-feedback drink-feedback"
+            >
+                ${
+                    mode === "prep"
+                        ? "Nhấn nguyên liệu nước để nhập hàng 🥤"
+                        : currentDrinkOrder()
+                            ? "Lấy cốc trước rồi pha đúng nước khách gọi 👆"
+                            : "Có thể pha sẵn nước trong lúc chờ khách 🥤"
+                }
+            </div>
+
+        </div>
+    `;
+
+    drinkSide
+        .querySelector(
+            ".station-side-toggle-prev"
+        )
+        ?.addEventListener(
+            "click",
+            () =>
+                setDrinkStationView(
+                    "bread"
+                )
+        );
+
+    renderDrinkStationItems(
+        mode
+    );
+
+    renderDrinkCup();
+
+    setDrinkStationView(
+        drinkStationView,
+        {
+            animate: false
+        }
+    );
+
+    queueBoardFit();
+}
+
+
+function refreshOrderBubbleForDrink() {
+    const order =
+        currentDrinkOrder();
+
+    const panel =
+        document.getElementById(
+            "customer-panel"
+        );
+
+    if (!panel || !order) {
+        return;
+    }
+
+    const title =
+        panel.querySelector(
+            ".customer-bubble strong"
+        );
+
+    if (title) {
+        title.textContent =
+            `${game.currentRecipe.name} + ${drinkDisplayName(order)}`;
+    }
+
+    const note =
+        document.getElementById(
+            "customer-order-note"
+        );
+
+    const ticket =
+        activeTicket();
+
+    if (
+        note &&
+        ticket?.note
+    ) {
+        note.textContent =
+            `“${ticket.note}”`;
+    }
+}
+
+
+function refreshMainServeButtonForDrink() {
+    if (
+        game.phase !== "making"
+    ) {
+        return;
+    }
+
+    mainButton.textContent =
+        currentDrinkOrder()
+            ? "Giao đơn 🥖🥤"
+            : "Giao bánh 🥖";
+}
+
+
+const drinkFeatureOriginalRenderMakingScreen =
+    renderMakingScreen;
+
+renderMakingScreen =
+    function () {
+        drinkFeatureOriginalRenderMakingScreen();
+
+        refreshOrderBubbleForDrink();
+
+        enhanceWorkAreaWithDrinks(
+            "making"
+        );
+
+        refreshMainServeButtonForDrink();
+    };
+
+
+const drinkFeatureOriginalShowPrep =
+    showPrep;
+
+showPrep =
+    function () {
+        drinkStationView =
+            "bread";
+
+        resetDrinkBuild();
+
+        drinkFeatureOriginalShowPrep();
+
+        enhanceWorkAreaWithDrinks(
+            "prep"
+        );
+
+        saveDrinkFeatureState();
+    };
+
+
+const drinkFeatureOriginalRenderWaitingScreen =
+    renderWaitingScreen;
+
+renderWaitingScreen =
+    function () {
+        drinkFeatureOriginalRenderWaitingScreen();
+
+        enhanceWorkAreaWithDrinks(
+            "making"
+        );
+
+        saveDrinkFeatureState();
+    };
+
+
+const drinkFeatureOriginalOpenShop =
+    openShop;
+
+openShop =
+    function () {
+        resetDrinkBuild();
+
+        // Riêng ngày 1, lúc bắt đầu ngày phải luôn vào quầy bánh mì
+        // dù người chơi vừa đứng ở quầy nước trong màn nhập hàng.
+        if (game.day === 1) {
+            drinkStationView =
+                "bread";
+        }
+
+        saveDrinkFeatureState();
+
+        return drinkFeatureOriginalOpenShop();
+    };
+
+
+function consumeDrinkBuildStock() {
+    if (!drinkBuild.cup) {
+        return;
+    }
+
+    const used = [
+        "Cốc"
+    ];
+
+    if (drinkBuild.tea) {
+        used.push(
+            drinkBuild.tea
+        );
+    }
+
+    if (drinkBuild.ice) {
+        used.push(
+            "Đá"
+        );
+    }
+
+    if (drinkBuild.topping) {
+        used.push(
+            drinkBuild.topping
+        );
+    }
+
+    used.forEach(name => {
+        const data =
+            drinkIngredients[name];
+
+        if (!data) return;
+
+        data.stock =
+            Math.max(
+                0,
+                data.stock - 1
+            );
+    });
+}
+
+
+const drinkFeatureOriginalCompleteCustomerOrder =
+    completeCustomerOrder;
+
+completeCustomerOrder =
+    function (correct) {
+        const ticket =
+            activeTicket();
+
+        const drinkOrder =
+            ticket?.drinkOrder || null;
+
+        const totalPrice =
+            game.currentRecipe
+                ? game.currentRecipe.price +
+                    (
+                        drinkOrder
+                            ? drinkOrder.price || 0
+                            : 0
+                    )
+                : 0;
+
+        if (drinkOrder) {
+            consumeDrinkBuildStock();
+        }
+
+        drinkFeatureOriginalCompleteCustomerOrder(
+            correct
+        );
+
+        if (
+            correct &&
+            drinkOrder
+        ) {
+            const drinkRevenue =
+                drinkOrder.price || 0;
+
+            game.money +=
+                drinkRevenue;
+
+            game.dailyRevenue +=
+                drinkRevenue;
+
+            realDaily =
+                loadRealDailyData();
+
+            realDaily.stats.revenue +=
+                drinkRevenue;
+
+            realDaily.stats.drinksSold =
+                (
+                    Number(
+                        realDaily.stats
+                            .drinksSold
+                    ) || 0
+                ) + 1;
+
+            if (
+                !realDaily.stats
+                    .drinkIngredientSold ||
+                typeof realDaily.stats
+                    .drinkIngredientSold !==
+                        "object"
+            ) {
+                realDaily.stats
+                    .drinkIngredientSold = {};
+            }
+
+            [
+                drinkOrder.tea,
+                drinkOrder.topping
+            ]
+                .filter(Boolean)
+                .forEach(name => {
+                    realDaily.stats
+                        .drinkIngredientSold[
+                            name
+                        ] =
+                        (
+                            realDaily.stats
+                                .drinkIngredientSold[
+                                    name
+                                ] || 0
+                        ) + 1;
+                });
+
+            saveRealDailyData(
+                realDaily
+            );
+
+            const reaction =
+                document.getElementById(
+                    "customer-reaction"
+                );
+
+            if (reaction) {
+                const speech =
+                    getCustomerSpeech();
+
+                reaction.textContent =
+                    speech.you
+                        ? `Cảm ơn ${speech.you} nha! +${formatMoney(totalPrice)} ✨`
+                        : `Cảm ơn nha! +${formatMoney(totalPrice)} ✨`;
+
+                const stars =
+                    Number(
+                        game.lastOrderStars
+                    ) || 0;
+
+                if (stars) {
+                    reaction.textContent +=
+                        ` ${"★".repeat(stars)}${"☆".repeat(5 - stars)}`;
+                }
+            }
+        }
+
+        if (drinkOrder) {
+            resetDrinkBuild();
+        }
+
+        saveGame();
+    };
+
+
+const drinkFeatureOriginalServeBread =
+    serveBread;
+
+serveBread =
+    function () {
+        const order =
+            currentDrinkOrder();
+
+        if (!order) {
+            return drinkFeatureOriginalServeBread();
+        }
+
+        if (!game.breadSelected) {
+            return drinkFeatureOriginalServeBread();
+        }
+
+        if (!drinkBuild.cup) {
+            showCutePopup({
+                icon: "🥤",
+                title:
+                    "Thiếu nước rồi!",
+                message:
+                    `Khách còn gọi ${drinkDisplayName(order)} nữa. Sang quầy đồ uống và lấy cốc trước nha!`,
+                confirmText:
+                    "Pha nước"
+            });
+
+            setDrinkStationView(
+                "drink"
+            );
+
+            return;
+        }
+
+        const correct =
+            orderIsCorrect() &&
+            drinkOrderIsCorrect(
+                order
+            );
+
+        return completeCustomerOrder(
+            correct
+        );
+    };
+
+
+const drinkFeatureOriginalNextCustomer =
+    nextCustomer;
+
+nextCustomer =
+    function () {
+        game.currentDrinkOrder = null;
+        saveDrinkFeatureState();
+
+        const result =
+            drinkFeatureOriginalNextCustomer();
+
+        // Riêng tutorial ngày 1:
+        // khách #3 kết thúc ở quầy nước,
+        // nên khi khách #4 vừa xuất hiện thì trượt về quầy bánh mì.
+        // Ngoài đúng transition này, vẫn giữ nguyên lựa chọn quầy của người chơi.
+        if (
+            game.day === 1 &&
+            Number(game.customerNumber) === 4 &&
+            typeof day1TutorialActive ===
+                "function" &&
+            day1TutorialActive()
+        ) {
+            requestAnimationFrame(
+                () => {
+                    setDrinkStationView(
+                        "bread"
+                    );
+                }
+            );
+        }
+
+        return result;
+    };
+
+
+const drinkFeatureOriginalRestartCurrentDay =
+    restartCurrentDay;
+
+restartCurrentDay =
+    function () {
+        resetDrinkBuild();
+        saveDrinkFeatureState();
+
+        return drinkFeatureOriginalRestartCurrentDay();
+    };
+
+
+const drinkFeatureOriginalResetGameSave =
+    resetGameSave;
+
+resetGameSave =
+    function () {
+        resetDrinkBuild();
+
+        Object.assign(
+            drinkIngredients["Cốc"],
+            { stock: 12 }
+        );
+
+        Object.assign(
+            drinkIngredients["Đá"],
+            { stock: 18 }
+        );
+
+        Object.assign(
+            drinkIngredients["Trà chanh"],
+            { stock: 10 }
+        );
+
+        Object.assign(
+            drinkIngredients["Trà tắc"],
+            { stock: 10 }
+        );
+
+        drinkToppingNames.forEach(
+            name => {
+                drinkIngredients[name]
+                    .stock = 8;
+            }
+        );
+
+        saveDrinkFeatureState();
+
+        return drinkFeatureOriginalResetGameSave();
+    };
+
+
+// Nếu đang resume một ticket có order nước,
+// đồng bộ lại sau khi module được khởi tạo.
+if (activeTicket()) {
+    syncDrinkOrderFromTicket(
+        activeTicket()
+    );
+}
+
+
+// Đảm bảo ticket cũ đang chờ vẫn hợp lệ.
+// Chỉ ticket mới từ Day 2 trở đi mới được roll order nước.
+(game.waitingCustomers || [])
+    .forEach(ticket => {
+        if (
+            ticket.drinkOrder &&
+            !drinkTeaNames.includes(
+                ticket.drinkOrder.tea
+            )
+        ) {
+            ticket.drinkOrder = null;
+        }
+    });
+
+saveDrinkFeatureState();
+
+
+// Scale khay đặt cốc giống hệt cách thớt được fit vào workspace.
+function fitDrinkCounterToWorkspace() {
+    document
+        .querySelectorAll(
+            ".drink-workspace"
+        )
+        .forEach(workspace => {
+            const stage =
+                workspace.querySelector(
+                    ".drink-counter-stage"
+                );
+
+            if (!stage) return;
+
+            const scale =
+                Math.min(
+                    1,
+                    (
+                        workspace.clientWidth -
+                        12
+                    ) / 520,
+                    (
+                        workspace.clientHeight -
+                        12
+                    ) / 280
+                );
+
+            stage.style.transform =
+                `scale(${Math.max(0, scale)})`;
+        });
+}
+
+new MutationObserver(
+    () =>
+        requestAnimationFrame(
+            fitDrinkCounterToWorkspace
+        )
+).observe(
+    screen,
+    {
+        childList: true,
+        subtree: true
+    }
+);
+
+window.addEventListener(
+    "resize",
+    fitDrinkCounterToWorkspace
+);
+
+requestAnimationFrame(
+    fitDrinkCounterToWorkspace
+);
+
+
+// ======================================================
+// RECIPE BOOK - TAB ĐỒ UỐNG
+// ======================================================
+
+function enhanceRecipeBookWithDrinkTab() {
+    if (
+        recipeModal.classList.contains(
+            "hidden"
+        ) ||
+        recipeList.querySelector(
+            ".recipe-book-tabs"
+        )
+    ) {
+        return;
+    }
+
+    const originalContent =
+        recipeList.innerHTML;
+
+    const drinkCards =
+        Object.entries(
+            drinkIngredients
+        )
+            .map(
+                ([name, data]) => {
+                    const locked =
+                        data.unlocked === false;
+
+                    const priceText =
+                        data.type === "tea"
+                            ? `Giá bán: ${formatMoney(data.salePrice)} / ly`
+                            : data.type === "topping"
+                                ? `Cộng thêm: +${formatMoney(data.salePrice)}`
+                                : "Không tính thêm vào giá ly";
+
+                    return `
+                        <article
+                            class="
+                                drink-guide-card
+                                ${locked ? "is-locked" : ""}
+                            "
+                        >
+                            <div class="drink-guide-image-wrap">
+                                <img
+                                    src="${data.tableImage}"
+                                    alt="${name}"
+                                    draggable="false"
+                                >
+
+                                ${
+                                    locked
+                                        ? `
+                                            <span class="drink-guide-lock">
+                                                🔒
+                                            </span>
+                                        `
+                                        : ""
+                                }
+                            </div>
+
+                            <strong>${name}</strong>
+
+                            <span class="drink-guide-price">
+                                ${priceText}
+                            </span>
+
+                            ${
+                                locked
+                                    ? `
+                                        <span class="drink-guide-unlock">
+                                            Mở khóa ${formatMoney(data.unlockPrice)}
+                                        </span>
+                                    `
+                                    : `
+                                        <span class="drink-guide-owned">
+                                            ✓ Đã mở khóa
+                                        </span>
+                                    `
+                            }
+                        </article>
+                    `;
+                }
+            )
+            .join("");
+
+    recipeList.innerHTML = `
+        <div class="recipe-book-tabs">
+            <button
+                class="recipe-book-tab active"
+                type="button"
+                data-recipe-tab="bread"
+            >
+                🥖 Bánh mì
+            </button>
+
+            <button
+                class="recipe-book-tab"
+                type="button"
+                data-recipe-tab="drinks"
+            >
+                🥤 Đồ uống
+            </button>
+        </div>
+
+        <div
+            class="recipe-book-tab-panel"
+            data-recipe-panel="bread"
+        >
+            ${originalContent}
+        </div>
+
+        <div
+            class="recipe-book-tab-panel hidden"
+            data-recipe-panel="drinks"
+        >
+            <div class="recipe-book-note">
+                Giá một ly = giá trà + giá topping.
+                Cốc và đá không tính thêm vào giá bán.
+                Nguyên liệu đồ uống mới có thể mở khóa dần trong màn nhập hàng.
+            </div>
+
+            <div class="drink-guide-grid">
+                ${drinkCards}
+            </div>
+        </div>
+    `;
+
+    const tabs =
+        recipeList.querySelectorAll(
+            "[data-recipe-tab]"
+        );
+
+    tabs.forEach(button => {
+        button.addEventListener(
+            "click",
+            () => {
+                const target =
+                    button.dataset.recipeTab;
+
+                tabs.forEach(tab =>
+                    tab.classList.toggle(
+                        "active",
+                        tab === button
+                    )
+                );
+
+                recipeList
+                    .querySelectorAll(
+                        "[data-recipe-panel]"
+                    )
+                    .forEach(panel => {
+                        panel.classList.toggle(
+                            "hidden",
+                            panel.dataset
+                                .recipePanel !==
+                                target
+                        );
+                    });
+            }
+        );
+    });
+}
+
+
+const drinkGuideOriginalOpenRecipeBook =
+    openRecipeBook;
+
+openRecipeBook =
+    function () {
+        drinkGuideOriginalOpenRecipeBook();
+
+        if (
+            !recipeModal.classList.contains(
+                "hidden"
+            )
+        ) {
+            enhanceRecipeBookWithDrinkTab();
+        }
+    };
 
