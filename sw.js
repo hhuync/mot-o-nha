@@ -1,4 +1,4 @@
-const CACHE_NAME = "mot-o-nha-v5";
+const CACHE_NAME = "mot-o-nha-v6";
 const ROOT = self.registration.scope;
 
 const url = (path) => new URL(path, ROOT).href;
@@ -41,6 +41,15 @@ const extraFiles = [
     "images/banh-mi.png",
     "images/board.png",
     "images/ingredient-table.png",
+    "images/drinks/coc-back.png",
+    "images/drinks/coc-front.png",
+    "images/drinks/da.png",
+    "images/drinks/tra-chanh.png",
+    "images/drinks/tra-tac.png",
+    "images/drinks/thach-ca.png",
+    "images/drinks/thach-dua.png",
+    "images/drinks/tc-trang.png",
+    "images/drinks/tc-den.png",
     "images/bread.png",
     "images/grab.png",
     "images/ingredients/bread-bottom.png",
