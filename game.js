@@ -981,7 +981,7 @@ const recipes = [
     {
         name: "Bánh mì trứng",
         emoji: "🍳",
-        price: 12000,
+        price: 13000,
         weight: 18,
         ingredients: [
             "Pâté",
@@ -995,7 +995,7 @@ const recipes = [
     {
         name: "Bánh mì pâté",
         emoji: "🥖",
-        price: 11000,
+        price: 12000,
         weight: 16,
         ingredients: [
             "Pâté",
@@ -1006,7 +1006,7 @@ const recipes = [
     {
         name: "Bánh mì bơ trứng",
         emoji: "🧈",
-        price: 13000,
+        price: 14000,
         weight: 13,
         ingredients: [
             "Bơ",
@@ -1020,7 +1020,7 @@ const recipes = [
     {
         name: "Bánh mì chay",
         emoji: "🥬",
-        price: 10000,
+        price: 11000,
         weight: 11,
         ingredients: [
             "Dưa leo",
@@ -1033,7 +1033,7 @@ const recipes = [
     {
         name: "Bánh mì thịt nướng",
         emoji: "🥩",
-        price: 20000,
+        price: 22000,
         weight: 16,
         ingredients: [
             "Pâté",
@@ -1048,7 +1048,7 @@ const recipes = [
     {
         name: "Bánh mì chả",
         emoji: "🍥",
-        price: 17000,
+        price: 19000,
         weight: 14,
         ingredients: [
             "Pâté",
@@ -1063,7 +1063,7 @@ const recipes = [
     {
         name: "Bánh mì thịt viên",
         emoji: "🧆",
-        price: 22000,
+        price: 24000,
         weight: 13,
         ingredients: [
             "Pâté",
@@ -1078,7 +1078,7 @@ const recipes = [
     {
         name: "Bánh mì jambon phô mai",
         emoji: "🧀",
-        price: 22000,
+        price: 24000,
         weight: 10,
         ingredients: [
             "Bơ",
@@ -1093,7 +1093,7 @@ const recipes = [
     {
         name: "Bánh mì thịt nướng cay",
         emoji: "🌶️",
-        price: 21000,
+        price: 23000,
         weight: 8,
         ingredients: [
             "Pâté",
@@ -1108,7 +1108,7 @@ const recipes = [
     {
         name: "Bánh mì đặc biệt",
         emoji: "👑",
-        price: 28000,
+        price: 30000,
         weight: 6,
         ingredients: [
             "Pâté",
@@ -1124,7 +1124,7 @@ const recipes = [
     {
         name: "Bánh mì không",
         emoji: "🥖",
-        price: 5000,
+        price: 6000,
         weight: 3,
         ingredients: []
     }
@@ -15164,7 +15164,7 @@ const drinkIngredients = {
         salePrice: 0,
         stock: 12,
         restock: 6,
-        restockPrice: 4000,
+        restockPrice: 3000,
         type: "cup"
     },
 
@@ -15177,7 +15177,7 @@ const drinkIngredients = {
         salePrice: 0,
         stock: 18,
         restock: 10,
-        restockPrice: 3000,
+        restockPrice: 2000,
         type: "ice"
     },
 
@@ -15187,7 +15187,7 @@ const drinkIngredients = {
         image: "images/drinks/tra-chanh.png",
         unlocked: true,
         unlockPrice: 0,
-        salePrice: 5000,
+        salePrice: 6000,
         stock: 10,
         restock: 5,
         restockPrice: 5000,
@@ -15200,7 +15200,7 @@ const drinkIngredients = {
         image: "images/drinks/tra-tac.png",
         unlocked: false,
         unlockPrice: 30000,
-        salePrice: 6000,
+        salePrice: 7000,
         stock: 0,
         restock: 5,
         restockPrice: 5000,
@@ -15213,7 +15213,7 @@ const drinkIngredients = {
         image: "images/drinks/thach-ca.png",
         unlocked: true,
         unlockPrice: 0,
-        salePrice: 2000,
+        salePrice: 3000,
         stock: 8,
         restock: 5,
         restockPrice: 5000,
@@ -15226,7 +15226,7 @@ const drinkIngredients = {
         image: "images/drinks/thach-dua.png",
         unlocked: false,
         unlockPrice: 20000,
-        salePrice: 2000,
+        salePrice: 2500,
         stock: 0,
         restock: 5,
         restockPrice: 4500,
@@ -15239,7 +15239,7 @@ const drinkIngredients = {
         image: "images/drinks/tc-trang.png",
         unlocked: false,
         unlockPrice: 35000,
-        salePrice: 2500,
+        salePrice: 3000,
         stock: 0,
         restock: 5,
         restockPrice: 5000,
@@ -15252,7 +15252,7 @@ const drinkIngredients = {
         image: "images/drinks/tc-den.png",
         unlocked: false,
         unlockPrice: 45000,
-        salePrice: 3000,
+        salePrice: 3500,
         stock: 0,
         restock: 5,
         restockPrice: 5000,
