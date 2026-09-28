@@ -6745,6 +6745,8 @@ function recipeBookButton() {
 const LATEST_VERSION = "0.4.1";
 
 const LATEST_HIGHLIGHTS = [
+    "Tăng giá cho các loại bánh và nước để cân bằng tài chính của tiệm, các món bánh sẽ bán được giá cao hơn một chút.",
+    "Update thêm ảnh các món bánh vào sổ công thức.",
     "Nguyên liệu đồ uống giờ được mở khóa dần khi phát triển tiệm.",
     "Thêm skin cho Quầy đồ uống và Khay đặt cốc.",
     "Mở rộng bộ Hoa Anh Đào và Trung Thu với trang trí dành cho khu pha nước."
