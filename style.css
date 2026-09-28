@@ -6950,12 +6950,14 @@ img,
 
 .station-side-toggle-next {
     right: 7px;
-    top: 43%;
+    top: auto;
+    bottom: 7px;
 }
 
 .station-side-toggle-prev {
     left: 7px;
-    top: 43%;
+    top: auto;
+    bottom: 7px;
 }
 
 .station-side-toggle:active {
@@ -7287,10 +7289,6 @@ img,
         width: 165px;
         height: 205px;
     }
-
-    .drink-cup-back {
-        transform: translate(-50%, -56.5%);
-    }
 }
 
 @media (
@@ -7300,7 +7298,8 @@ img,
 ) {
 
     .station-side-toggle {
-        top: 40%;
+        top: auto;
+        bottom: 6px;
 
         min-width: 58px;
         height: 31px;
