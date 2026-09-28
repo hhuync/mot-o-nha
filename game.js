@@ -2298,7 +2298,7 @@ const DAILY_MISSION_POOL = [
         name: "Phục vụ đúng 18 khách",
         type: "orders",
         target: 18,
-        reward: 16000
+        reward: 25000
     },
 
     {
@@ -2306,7 +2306,7 @@ const DAILY_MISSION_POOL = [
         name: "Phục vụ đúng 24 khách",
         type: "orders",
         target: 24,
-        reward: 22000
+        reward: 40000
     },
 
     {
@@ -2315,7 +2315,7 @@ const DAILY_MISSION_POOL = [
         type: "ingredient",
         ingredient: "Pâté",
         target: 10,
-        reward: 17000
+        reward: 25000
     },
 
     {
@@ -2324,7 +2324,7 @@ const DAILY_MISSION_POOL = [
         type: "ingredient",
         ingredient: "Trứng",
         target: 8,
-        reward: 16000
+        reward: 25000
     },
 
     {
@@ -2333,7 +2333,7 @@ const DAILY_MISSION_POOL = [
         type: "ingredient",
         ingredient: "Rau",
         target: 16,
-        reward: 18000
+        reward: 25000
     },
 
     {
@@ -2342,15 +2342,15 @@ const DAILY_MISSION_POOL = [
         type: "ingredient",
         ingredient: "Dưa leo",
         target: 12,
-        reward: 17000
+        reward: 25000
     },
 
     {
         id: "drinks-8",
         name: "Bán đúng 8 ly nước",
         type: "drinks",
-        target: 8,
-        reward: 17000
+        target: 10,
+        reward: 25000
     },
 
     {
@@ -2359,7 +2359,7 @@ const DAILY_MISSION_POOL = [
         type: "drinkIngredient",
         ingredient: "Trà chanh",
         target: 5,
-        reward: 16000
+        reward: 25000
     },
 
     {
@@ -2367,8 +2367,8 @@ const DAILY_MISSION_POOL = [
         name: "Bán 4 ly có Thạch cá",
         type: "drinkIngredient",
         ingredient: "Thạch cá",
-        target: 4,
-        reward: 16000
+        target: 5,
+        reward: 25000
     },
 
     {
@@ -2376,7 +2376,7 @@ const DAILY_MISSION_POOL = [
         name: "Kiếm 180k doanh thu",
         type: "revenue",
         target: 180000,
-        reward: 18000
+        reward: 50000
     },
 
     {
@@ -2384,7 +2384,7 @@ const DAILY_MISSION_POOL = [
         name: "Kiếm 250k doanh thu",
         type: "revenue",
         target: 250000,
-        reward: 24000
+        reward: 70000
     }
 
 ];
