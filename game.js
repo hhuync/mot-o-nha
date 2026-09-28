@@ -10285,48 +10285,38 @@ function renderNewDayIntro() {
 // NEW DAY
 // ======================================================
 
-function newDay({ goHome = false } = {}) {
+function newDay() {
 
     game.day++;
 
     syncEventProgress();
 
-
     game.customersToday =
-    customersForNewDay();
-
+        customersForNewDay();
 
     game.customerNumber = 0;
-
     game.completedOrders = 0;
-
     game.dailyRevenue = 0;
-
     game.dailyIngredientSpend = 0;
     game.dailyRentPaid = 0;
+
     game.waitingCustomers = [];
     game.activeTicketId = null;
     game.nextTicketId = 1;
+
     game.dailyStarTotal = 0;
     game.dailyReviewCount = 0;
 
-
     game.selectedIngredients = [];
-
     game.breadSelected = false;
 
-
     game.currentRecipe = null;
-
     game.currentCustomer = null;
-
     game.currentOrder = [];
 
     game.orderNote = "";
 
-
     game.shopOpen = false;
-
 
     // Lưu trạng thái ĐẦU NGÀY mới.
     // Restart ngày sẽ quay chính xác về đây.
@@ -10337,13 +10327,8 @@ function newDay({ goHome = false } = {}) {
 
     saveGame();
 
-    // Sau hóa đơn: chuẩn bị state của ngày mới rồi quay về màn hình chính.
-    // Khi người chơi bấm Tiếp tục/Bắt đầu, briefing ngày mới mới xuất hiện.
-    if (goHome) {
-        showHome();
-    } else {
-        renderNewDayIntro();
-    }
+    // Sau hóa đơn, sang thẳng màn chào ngày mới.
+    renderNewDayIntro();
 }
 
 
@@ -12145,7 +12130,7 @@ mainButton.addEventListener(
             game.phase === "dayEnd"
         ) {
 
-            newDay({ goHome: true });
+            newDay();
         }
 
         else if (
