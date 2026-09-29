@@ -1,4 +1,4 @@
-const CACHE_NAME = "mot-o-nha-v7";
+const CACHE_NAME = "mot-o-nha-v8";
 const ROOT = self.registration.scope;
 
 const url = (path) => new URL(path, ROOT).href;
