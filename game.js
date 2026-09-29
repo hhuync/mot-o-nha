@@ -137,6 +137,12 @@ function playLowLatencySfx(
 
     unlockLowLatencyAudio();
 
+    // iOS may still be resuming after the first tap back into the app.
+    // Let the HTMLAudio pool handle this tap instead of claiming it played.
+    if (lowLatencyAudioContext.state !== "running") {
+        return false;
+    }
+
     try {
         const source =
             lowLatencyAudioContext
@@ -6089,6 +6095,8 @@ function saveDayStartCheckpoint() {
         };
     });
 
+    const drinkIngredientSnapshot = snapshotDrinkIngredients();
+
     const snapshot = {
         day: game.day,
         money: game.money,
@@ -6120,6 +6128,7 @@ function saveDayStartCheckpoint() {
             game.reviewCount,
 
         ingredients: ingredientSnapshot,
+        drinkIngredients: drinkIngredientSnapshot,
         upgrades: {
     ...game.upgrades
 },
@@ -6176,6 +6185,16 @@ midAutumnSnapshot: JSON.parse(
 }
 
 
+function snapshotDrinkIngredients() {
+    return Object.fromEntries(
+        Object.entries(drinkIngredients).map(([name, data]) => [
+            name,
+            { unlocked: data.unlocked, stock: data.stock }
+        ])
+    );
+}
+
+
 function loadDayStartCheckpoint() {
     try {
         const raw = localStorage.getItem(DAY_START_KEY);
@@ -6216,8 +6235,9 @@ function restartCurrentDay() {
     showCutePopup({
         icon: "↻",
         title: `Chơi lại ngày ${game.day}?`,
-        message:
-            "Tiền, kho hàng và nguyên liệu đã mở sẽ quay về đúng lúc bắt đầu ngày này. Mọi tiến độ trong ngày hiện tại sẽ bị bỏ.",
+        message: snapshot.drinkSnapshotMigrated
+            ? "Tiền và kho bánh mì sẽ về đầu ngày. Save cũ không lưu kho nước đầu ngày, nên kho nước sẽ về lúc bạn cập nhật bản sửa này. Tiến độ sau đó sẽ bị bỏ."
+            : "Tiền, kho hàng và nguyên liệu đã mở sẽ quay về đúng lúc bắt đầu ngày này. Mọi tiến độ trong ngày hiện tại sẽ bị bỏ.",
         cancelText: "Không",
         confirmText: "Chơi lại",
 
@@ -6326,6 +6346,21 @@ if (
                             savedIngredient.stock;
                     }
                 );
+            }
+
+            if (snapshot.drinkIngredients) {
+                Object.entries(snapshot.drinkIngredients).forEach(
+                    ([name, savedIngredient]) => {
+                        if (!drinkIngredients[name]) return;
+
+                        drinkIngredients[name].unlocked =
+                            savedIngredient.unlocked;
+                        drinkIngredients[name].stock =
+                            savedIngredient.stock;
+                    }
+                );
+                resetDrinkBuild();
+                saveDrinkFeatureState();
             }
 
             [
@@ -10249,6 +10284,8 @@ function renderNewDayIntro() {
     game.phase = "newDayIntro";
     game.pausedPhase = "newDayIntro";
     game.shopOpen = false;
+    // Restart can happen while waiting for a customer, when this button is disabled.
+    mainButton.disabled = false;
 
     const forecast = getCustomerForecastRange(game.day);
     const weather = getTodayWeatherForecast();
@@ -12166,12 +12203,6 @@ if (
 
     game.pausedPhase =
         game.phase;
-}
-
-// Tạo checkpoint cho Day 1 hoặc bổ sung checkpoint
-// cho save cũ chưa có hệ thống restart ngày.
-if (!loadDayStartCheckpoint()) {
-    saveDayStartCheckpoint();
 }
 
 bindTutorialEvents();
@@ -15765,6 +15796,25 @@ function saveDrinkFeatureState() {
 
 loadDrinkFeatureState();
 
+// Drink inventory must be loaded before the first day checkpoint is saved.
+const existingDayCheckpoint = loadDayStartCheckpoint();
+if (!existingDayCheckpoint) {
+    saveDayStartCheckpoint();
+} else if (!existingDayCheckpoint.drinkIngredients) {
+    // Older day checkpoints contain bread stock only. Preserve their original
+    // money/bread snapshot and establish a drink baseline at upgrade time.
+    existingDayCheckpoint.drinkIngredients = snapshotDrinkIngredients();
+    existingDayCheckpoint.drinkSnapshotMigrated = true;
+    try {
+        localStorage.setItem(
+            DAY_START_KEY,
+            JSON.stringify(existingDayCheckpoint)
+        );
+    } catch (error) {
+        console.warn("Không bổ sung được kho nước vào checkpoint cũ:", error);
+    }
+}
+
 const drinkFeatureOriginalSaveGame =
     saveGame;
 
@@ -18178,4 +18228,3 @@ openRecipeBook =
             enhanceRecipeBookWithDrinkTab();
         }
     };
-
