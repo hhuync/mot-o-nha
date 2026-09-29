@@ -165,6 +165,13 @@ function playLowLatencySfx(
                 .destination
         );
 
+        source.onended = () => {
+            try {
+                source.disconnect();
+                gain.disconnect();
+            } catch {}
+        };
+
         source.start(0);
 
         return true;
@@ -5746,24 +5753,6 @@ function saveGame() {
             dailyRentPaid:
                 game.dailyRentPaid,
 
-        shopXp:
-            game.shopXp,
-
-        ratingStreak:
-            game.ratingStreak,
-
-        ratingHistory:
-            JSON.parse(
-                JSON.stringify(
-                    game.ratingHistory || []
-                )
-            ),
-
-        reviewStarsTotal:
-            game.reviewStarsTotal,
-
-        reviewCount:
-            game.reviewCount,
             waitingCustomers: game.waitingCustomers,
             activeTicketId: game.activeTicketId,
             nextTicketId: game.nextTicketId,
@@ -7439,6 +7428,9 @@ function openShop() {
         return;
     }
 
+
+    // Phòng trường hợp còn runtime state từ một ca trước bị gián đoạn.
+    clearShopRuntimeState();
 
     game.shopOpen = true;
 
@@ -9937,7 +9929,10 @@ function renderResultScreen() {
 function endDay() {
     if (document.getElementById("shop-closing-overlay")) return;
 
-    // Dừng đồng hồ kiên nhẫn trong lúc chuyển cảnh.
+    // Ca bán hàng đã kết thúc, dọn mọi timer/hold còn sót lại
+    // để ngày sau bắt đầu với runtime state hoàn toàn mới.
+    clearShopRuntimeState();
+
     game.phase = "closing";
     mainButton.disabled = true;
 
@@ -12878,6 +12873,31 @@ const CUSTOMER_ANNOYED_FRACTION = 0.40;
 let patienceClock = Date.now();
 let patienceInterval = null;
 let nextArrivalTimer = null;
+
+// Dọn toàn bộ state tạm thời của một ca bán hàng.
+// Hàm này không đụng tới save dài hạn, tiền, XP hay kho nguyên liệu.
+function clearShopRuntimeState() {
+    clearTimeout(customerWaitTimer);
+    clearTimeout(nextArrivalTimer);
+    clearInterval(patienceInterval);
+
+    customerWaitTimer = null;
+    nextArrivalTimer = null;
+    patienceInterval = null;
+
+    clearCustomerReactionTimers();
+    customerReactionTimer = null;
+    customerReactionFadeTimer = null;
+
+    cancelActiveSauceHold();
+
+    if (typeof cancelActiveDrinkTeaHold === "function") {
+        cancelActiveDrinkTeaHold();
+    }
+
+    stopSquirtSound();
+    localStorage.removeItem(CUSTOMER_WAIT_KEY);
+}
 
 function activeTicket() {
     return game.waitingCustomers.find(ticket => ticket.id === game.activeTicketId);
