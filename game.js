@@ -6242,6 +6242,19 @@ function restartCurrentDay() {
         confirmText: "Chơi lại",
 
         onConfirm: () => {
+            // Stop callbacks from the abandoned run before restoring its state.
+            clearTimeout(customerWaitTimer);
+            clearTimeout(nextArrivalTimer);
+            clearInterval(patienceInterval);
+            customerWaitTimer = null;
+            nextArrivalTimer = null;
+            patienceInterval = null;
+            clearCustomerReactionTimers();
+            localStorage.removeItem(CUSTOMER_WAIT_KEY);
+            document.getElementById("shop-opening-overlay")?.remove();
+            document.getElementById("shop-closing-overlay")?.remove();
+            clearDay1TutorialUI();
+
             game.day = snapshot.day;
             game.money = snapshot.money;
             game.upgrades = {
@@ -6505,6 +6518,7 @@ if (
 
             saveGame();
             renderNewDayIntro();
+            mainButton.disabled = false;
         }
     });
 }
