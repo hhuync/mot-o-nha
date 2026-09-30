@@ -1352,7 +1352,8 @@ const game = {
     // Bánh mì phải được người chơi click riêng
     breadSelected: false,
 
-    orderNote: "Cho mình một ổ như bình thường nha!"
+    orderNote: "Cho mình một ổ như bình thường nha!",
+    orderHighlights: []
 };
 
 
@@ -1399,44 +1400,55 @@ function slugify(text) {
 
 
 // Highlight yêu cầu đặc biệt của khách để người chơi bắt nhanh thông tin.
+// Dùng chính metadata modifier của order, không đoán lại bằng word dictionary.
 // Chỉ đổi màu, tuyệt đối không bold.
-function formatOrderNoteForDisplay(text) {
-    const escaped = String(text ?? "")
+function escapeHtml(text) {
+    return String(text ?? "")
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+}
 
-    const specialRequestPattern = new RegExp(
-        [
-            "không ăn được ớt",
-            "thêm chút sốt cà chua",
-            "cay hơn một chút",
-            "không thêm sốt",
-            "không ăn rau",
-            "không có rau",
-            "đừng cho rau",
-            "không cho rau",
-            "không ăn sốt",
-            "không cho sốt",
-            "không sốt",
-            "đừng cho ớt",
-            "không cho ớt",
-            "thêm mayonnaise",
-            "thêm ketchup",
-            "thêm Sriracha",
-            "thêm ớt",
-            "có ớt"
-        ].join("|"),
+function escapeRegExp(text) {
+    return String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function formatOrderNoteForDisplay(
+    text,
+    highlights = game.orderHighlights || []
+) {
+    const escaped = escapeHtml(text);
+
+    const parts = [...new Set(
+        (Array.isArray(highlights) ? highlights : [])
+            .map(item => escapeHtml(item))
+            .filter(Boolean)
+    )].sort((a, b) => b.length - a.length);
+
+    if (!parts.length) {
+        return escaped;
+    }
+
+    const pattern = new RegExp(
+        parts.map(escapeRegExp).join("|"),
         "gi"
     );
 
     return escaped.replace(
-        specialRequestPattern,
+        pattern,
         match => `<span class="important-highlight">${match}</span>`
     );
 }
+
+function capitalizeFirst(text) {
+    const value = String(text ?? "");
+    return value
+        ? value.charAt(0).toUpperCase() + value.slice(1)
+        : value;
+}
+
 
 const UI_ICONS = {
     settings: `
@@ -5934,7 +5946,8 @@ skinOwned: {
             selectedIngredients: game.selectedIngredients,
             breadSelected: game.breadSelected,
 
-            orderNote: game.orderNote
+            orderNote: game.orderNote,
+            orderHighlights: [...(game.orderHighlights || [])]
         },
 
         ingredients: ingredientSave
@@ -6139,6 +6152,11 @@ game.skinOwned = {
     game.orderNote =
         saved.orderNote ||
         "Cho mình một ổ như bình thường nha!";
+
+    game.orderHighlights =
+        Array.isArray(saved.orderHighlights)
+            ? [...saved.orderHighlights]
+            : [];
 
 
     game.currentRecipe =
@@ -6631,6 +6649,7 @@ if (
 
             game.orderNote =
                 "Cho mình một ổ như bình thường nha!";
+            game.orderHighlights = [];
 
             // Chơi lại ngày luôn quay về briefing đầu ngày trước khi prep.
             game.phase = "newDayIntro";
@@ -6778,6 +6797,7 @@ saveSelectedSkins();
 
             game.orderNote =
                 "Cho mình một ổ như bình thường nha!";
+            game.orderHighlights = [];
 
 
             // =========================
@@ -7732,6 +7752,7 @@ function createOrder() {
     game.currentOrder =
         [...game.currentRecipe.ingredients];
 
+    game.orderHighlights = [];
 
     game.orderNote =
     randomItem([
@@ -7836,73 +7857,99 @@ if (
 
     const singleRequestLines = {
 
-    "no-herbs": [
-        `À, ${self} không ăn rau nha!`,
-        `Cho ${self} không có rau nhé!`,
-        you
-            ? `Một ổ nhưng đừng cho rau nha ${you}!`
-            : `Một ổ nhưng đừng cho rau nha!`
-    ],
+        "no-herbs": [
+            { text: `À, ${self} không ăn rau nha!`, highlight: "không ăn rau" },
+            { text: `Cho ${self} không có rau nhé!`, highlight: "không có rau" },
+            {
+                text: you
+                    ? `Một ổ nhưng đừng cho rau nha ${you}!`
+                    : `Một ổ nhưng đừng cho rau nha!`,
+                highlight: "đừng cho rau"
+            }
+        ],
 
-    "no-sauce": [
-        `Ôi, ${self} không ăn sốt nha!`,
-        `Cho ${self} không sốt nhé!`,
-        you
-            ? `Một ổ nhưng không thêm sốt giúp ${self} nha ${you}!`
-            : `Một ổ nhưng không thêm sốt giúp ${self} nha!`
-    ],
+        "no-sauce": [
+            { text: `Ôi, ${self} không ăn sốt nha!`, highlight: "không ăn sốt" },
+            { text: `Cho ${self} không sốt nhé!`, highlight: "không sốt" },
+            {
+                text: you
+                    ? `Một ổ nhưng không thêm sốt giúp ${self} nha ${you}!`
+                    : `Một ổ nhưng không thêm sốt giúp ${self} nha!`,
+                highlight: "không thêm sốt"
+            }
+        ],
 
-    "no-chili": [
-        `${self} không ăn được ớt nha!`,
-        you
-            ? `Đừng cho ớt giúp ${self} nhé ${you}!`
-            : `Đừng cho ớt giúp ${self} nhé!`
-    ],
+        "no-chili": [
+            {
+                text: `${capitalizeFirst(self)} không ăn được ớt nha!`,
+                highlight: "không ăn được ớt"
+            },
+            {
+                text: you
+                    ? `Đừng cho ớt giúp ${self} nhé ${you}!`
+                    : `Đừng cho ớt giúp ${self} nhé!`,
+                highlight: "Đừng cho ớt"
+            }
+        ],
 
-    "extra-chili": [
-        `Cho ${self} thêm ớt nha! 🌶️`,
-        `${self} ăn cay, thêm ớt giúp ${self} nhé!`,
-        `Ổ này cho ${self} có ớt nha!`
-    ],
+        "extra-chili": [
+            { text: `Cho ${self} thêm ớt nha! 🌶️`, highlight: "thêm ớt" },
+            {
+                text: `${capitalizeFirst(self)} ăn cay, thêm ớt giúp ${self} nhé!`,
+                highlight: "thêm ớt"
+            },
+            { text: `Ổ này cho ${self} có ớt nha!`, highlight: "có ớt" }
+        ],
 
-    "extra-ketchup": [
-        `Cho ${self} thêm ketchup nha!`,
-        you
-            ? `Thêm chút sốt cà chua giúp ${self} nhé ${you}!`
-            : `Thêm chút sốt cà chua giúp ${self} nhé!`
-    ],
+        "extra-ketchup": [
+            { text: `Cho ${self} thêm ketchup nha!`, highlight: "thêm ketchup" },
+            {
+                text: you
+                    ? `Thêm chút sốt cà chua giúp ${self} nhé ${you}!`
+                    : `Thêm chút sốt cà chua giúp ${self} nhé!`,
+                highlight: "Thêm chút sốt cà chua"
+            }
+        ],
 
-    "extra-mayo": [
-        `Cho ${self} thêm mayonnaise nha!`,
-        you
-            ? `Thêm chút mayonnaise giúp ${self} nhé ${you}!`
-            : `Thêm chút mayonnaise giúp ${self} nhé!`
-    ],
+        "extra-mayo": [
+            { text: `Cho ${self} thêm mayonnaise nha!`, highlight: "thêm mayonnaise" },
+            {
+                text: you
+                    ? `Thêm chút mayonnaise giúp ${self} nhé ${you}!`
+                    : `Thêm chút mayonnaise giúp ${self} nhé!`,
+                highlight: "Thêm chút mayonnaise"
+            }
+        ],
 
-    "extra-sriracha": [
-        `Cho ${self} thêm Sriracha nha! 🌶️`,
-        `Cho ${self} cay hơn một chút, thêm Sriracha nhé!`
-    ]
-};
+        "extra-sriracha": [
+            { text: `Cho ${self} thêm Sriracha nha! 🌶️`, highlight: "thêm Sriracha" },
+            {
+                text: `Cho ${self} cay hơn một chút, thêm Sriracha nhé!`,
+                highlight: "cay hơn một chút, thêm Sriracha"
+            }
+        ]
+    };
 
-game.orderNote =
-    chosen.length === 1
+    if (chosen.length === 1) {
+        const line = randomItem(
+            singleRequestLines[chosen[0].id]
+        );
 
-        ? randomItem(
-            singleRequestLines[
-                chosen[0].id
-            ]
-        )
-
-        : `Cho ${self} món này, ${
+        game.orderNote = line.text;
+        game.orderHighlights = [line.highlight];
+    } else {
+        game.orderNote = `Cho ${self} món này, ${
             chosen
-                .map(
-                    modifier =>
-                        modifier.text
-                )
+                .map(modifier => modifier.text)
                 .join(" và ")
         } nha!`;
+
+        game.orderHighlights = chosen.map(
+            modifier => modifier.text
+        );
     }
+}
+
     // BÁNH MÌ KHÔNG
     // Không có topping.
 
@@ -7911,6 +7958,7 @@ game.orderNote =
         "Bánh mì không"
     ) {
 
+        game.orderHighlights = [];
         game.orderNote =
     randomItem([
 
@@ -10492,6 +10540,7 @@ function newDay() {
     game.currentOrder = [];
 
     game.orderNote = "";
+    game.orderHighlights = [];
 
     game.shopOpen = false;
 
@@ -13054,6 +13103,7 @@ function renderWaitingScreen() {
     game.currentCustomer = null;
     game.currentRecipe = null;
     game.currentOrder = [];
+    game.orderHighlights = [];
 
     // Về sảnh rồi quay lại thì giữ chiếc bánh đang làm.
     if (!resumingWait) {
@@ -13333,6 +13383,10 @@ function setActiveTicket(ticket) {
     game.currentRecipe = recipes.find(recipe => recipe.name === ticket.recipeName);
     game.currentOrder = [...ticket.order];
     game.orderNote = ticket.note;
+    game.orderHighlights =
+        Array.isArray(ticket.highlights)
+            ? [...ticket.highlights]
+            : [];
 }
 
 function getShopRatingAverage() {
@@ -13804,7 +13858,8 @@ function createWaitingTicket() {
 
     const previous = {
         customer: game.currentCustomer, recipe: game.currentRecipe,
-        order: game.currentOrder, note: game.orderNote
+        order: game.currentOrder, note: game.orderNote,
+        highlights: [...(game.orderHighlights || [])]
     };
     const atCounter =
         game.waitingCustomers
@@ -13848,6 +13903,7 @@ function createWaitingTicket() {
         game.currentRecipe = previous.recipe;
         game.currentOrder = previous.order;
         game.orderNote = previous.note;
+        game.orderHighlights = [...previous.highlights];
         return null;
     }
 
@@ -13858,6 +13914,7 @@ function createWaitingTicket() {
         recipeName: game.currentRecipe.name,
         order: [...game.currentOrder],
         note: game.orderNote,
+        highlights: [...(game.orderHighlights || [])],
         remainingMs: getCustomerPatienceMs(),
         totalPatienceMs: getCustomerPatienceMs()
     };
@@ -13878,6 +13935,7 @@ function createWaitingTicket() {
         game.currentRecipe = previous.recipe;
         game.currentOrder = previous.order;
         game.orderNote = previous.note;
+        game.orderHighlights = [...previous.highlights];
     } else {
         setActiveTicket(ticket);
     }
@@ -14367,6 +14425,7 @@ resumeGame = function () {
             recipeName: game.currentRecipe.name,
             order: [...game.currentOrder],
             note: game.orderNote,
+            highlights: [...(game.orderHighlights || [])],
             remainingMs: getCustomerPatienceMs(),
             totalPatienceMs: getCustomerPatienceMs()
         };
@@ -15254,6 +15313,7 @@ nextCustomer =
 
         game.orderNote =
             setup.note;
+        game.orderHighlights = [];
 
         const patience =
             getCustomerPatienceMs() +
@@ -15276,6 +15336,7 @@ nextCustomer =
                 [...recipe.ingredients],
             note:
                 setup.note,
+            highlights: [],
             remainingMs:
                 patience,
             totalPatienceMs:
@@ -16067,7 +16128,7 @@ let drinkStationView =
 
 const DRINK_TEA_HOLD_MS = 2000;
 
-const POUR_SOUND_VOLUME = 0.68;
+const POUR_SOUND_VOLUME = 1.0;
 
 const pourSound =
     new Audio(
