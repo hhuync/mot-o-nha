@@ -7310,7 +7310,7 @@ function showPrep() {
         <div class="making-screen prep-shopping-screen">
 <section class="customer-panel prep-grab-panel">
     <div class="customer-portrait">
-        <img src="images/grab.png?v=2"
+        <img src="images/grab.png"
              alt="Anh giao hàng"
              draggable="false"
              onerror="this.style.display='none'; this.nextElementSibling.hidden=false;">
@@ -12228,77 +12228,238 @@ const loadingProgressWrap =
 const loadingProgressBar =
     document.getElementById("loading-progress-bar");
 
-const VISUAL_LOADING_MS = 1800;
+// ======================================================
+// REAL STARTUP PRELOADER
+// Tải + decode asset gameplay trước khi cho người chơi vào.
+// Mỗi asset có timeout riêng để 1 file lỗi không khóa app mãi.
+// ======================================================
+
+const STARTUP_ASSET_TIMEOUT_MS = 12000;
+
+const STARTUP_IMAGE_ASSETS = [
+    // UI / prep
+    "images/icon.png",
+    "images/recipe.png",
+    "images/banh-mi.png",
+    "images/bread.png",
+    "images/grab.png",
+
+    // Ingredient table sprites
+    ...[
+        "pate", "grilled-pork", "egg", "cha", "cucumber",
+        "pickles", "herbs", "chili", "meatballs", "jambon",
+        "cheese", "butter", "ketchup", "sriracha", "mayonnaise"
+    ].map(name => `images/${name}.png`),
+
+    // Sandwich layers
+    "images/ingredients/bread-bottom.png",
+    "images/ingredients/bread-top.png",
+    ...[
+        "pate", "grilled-pork", "egg", "cha", "cucumber",
+        "pickles", "herbs", "chili", "meatballs", "jambon",
+        "cheese", "butter", "ketchup", "sriracha", "mayonnaise"
+    ].map(name => `images/ingredients/${name}.png`),
+
+    // Drinks
+    "images/drinks/coc-back.png",
+    "images/drinks/coc-front.png",
+    "images/drinks/coc.png",
+    "images/drinks/da.png",
+    "images/drinks/tra-chanh.png",
+    "images/drinks/tra-tac.png",
+    "images/drinks/thach-ca.png",
+    "images/drinks/thach-dua.png",
+    "images/drinks/tc-trang.png",
+    "images/drinks/tc-den.png",
+
+    // Recipe book food images
+    "images/BANH-MI/banh-mi-bo-trung.png",
+    "images/BANH-MI/banh-mi-cha.png",
+    "images/BANH-MI/banh-mi-chay.png",
+    "images/BANH-MI/banh-mi-dac-biet.png",
+    "images/BANH-MI/banh-mi-jambon-pho-mai.png",
+    "images/BANH-MI/banh-mi-khong.png",
+    "images/BANH-MI/banh-mi-pate.png",
+    "images/BANH-MI/banh-mi-thit-nuong.png",
+    "images/BANH-MI/banh-mi-thit-nuong-cay.png",
+    "images/BANH-MI/banh-mi-thit-vien.png",
+    "images/BANH-MI/banh-mi-trung.png",
+
+    // Tutorial
+    ...[1, 2, 3, 4, 5, 6, 7].map(id => `images/guide/g${id}.png`),
+
+    // Regular customers
+    ...["A", "B", "C", "D", "E", "F"].flatMap(id =>
+        [1, 2, 3].map(mood => `images/customer/${id}/${id}${mood}.png`)
+    ),
+
+    // Mid-Autumn customers
+    ...["A", "B", "C"].flatMap(id =>
+        [1, 2, 3].map(mood =>
+            `images/customer/special/trung-thu/${id}/${id}${mood}.png`
+        )
+    ),
+
+    // All currently shipped skins
+    ...[
+        "troi-xanh", "thanh-thi", "sakura", "trung-thu", "halloween"
+    ].map(id => `images/skins/background/${id}.jpg`),
+
+    ...["mac-dinh", "sakura", "trung-thu", "halloween"].flatMap(id => [
+        `images/skins/board/${id}.png`,
+        `images/skins/ingredient-table/${id}.png`,
+        `images/skins/drink-table/${id}.png`,
+        `images/skins/cup-holder/${id}.png`,
+        `images/skins/recipe-skin/${id}.png`
+    ])
+];
+
+const STARTUP_AUDIO_ASSETS = [
+    "audio/ingredient.mp3",
+    "audio/click.mp3",
+    "audio/lobby.mp3",
+    "audio/kitchen1.mp3",
+    "audio/kitchen2.mp3",
+    "audio/openstore.mp3",
+    "audio/correct.mp3",
+    "audio/wrong.mp3",
+    "audio/pour.mp3",
+    "audio/squirt.mp3"
+];
 
 let startScreenReady = false;
 let startScreenEntered = false;
 
+function setStartupProgress(done, total) {
+    const safeTotal = Math.max(1, total);
+    const percent = Math.min(100, Math.round(done / safeTotal * 100));
 
-function runVisualLoadingScreen() {
-
-    const startedAt =
-        performance.now();
-
-    function frame(now) {
-
-        const elapsed =
-            now - startedAt;
-
-        const progress =
-            Math.min(
-                1,
-                elapsed / VISUAL_LOADING_MS
-            );
-
-        const percent =
-            Math.round(
-                progress * 100
-            );
-
-        if (loadingProgressBar) {
-            loadingProgressBar.style.width =
-                `${percent}%`;
-        }
-
-        if (loadingProgressWrap) {
-            loadingProgressWrap.setAttribute(
-                "aria-valuenow",
-                String(percent)
-            );
-        }
-
-        if (startScreenStatus) {
-            startScreenStatus.textContent =
-                `Đang chuẩn bị tiệm... ${percent}%`;
-        }
-
-        if (progress < 1) {
-            requestAnimationFrame(frame);
-            return;
-        }
-
-        startScreenReady = true;
-
-        startScreen?.classList.remove(
-            "is-loading"
-        );
-
-        startScreen?.classList.add(
-            "is-ready"
-        );
-
-        startScreen?.setAttribute(
-            "aria-busy",
-            "false"
-        );
-
-        if (startScreenStatus) {
-            startScreenStatus.textContent =
-                "Nhấn để vào tiệm 🥖";
-        }
+    if (loadingProgressBar) {
+        loadingProgressBar.style.width = `${percent}%`;
     }
 
-    requestAnimationFrame(frame);
+    if (loadingProgressWrap) {
+        loadingProgressWrap.setAttribute(
+            "aria-valuenow",
+            String(percent)
+        );
+    }
+
+    if (startScreenStatus) {
+        startScreenStatus.textContent =
+            `Đang chuẩn bị tiệm... ${percent}%`;
+    }
+}
+
+function startupWithTimeout(promise, ms = STARTUP_ASSET_TIMEOUT_MS) {
+    return Promise.race([
+        Promise.resolve(promise),
+        new Promise(resolve => {
+            setTimeout(() => resolve({ timeout: true }), ms);
+        })
+    ]);
+}
+
+function preloadStartupImage(src) {
+    return startupWithTimeout(
+        new Promise(resolve => {
+            const image = new Image();
+            image.decoding = "async";
+
+            const finish = async (ok) => {
+                if (ok) {
+                    try {
+                        await image.decode();
+                    } catch {}
+                }
+                resolve({ src, ok });
+            };
+
+            image.addEventListener(
+                "load",
+                () => finish(true),
+                { once: true }
+            );
+
+            image.addEventListener(
+                "error",
+                () => finish(false),
+                { once: true }
+            );
+
+            image.src = src;
+        })
+    );
+}
+
+function preloadStartupAudio(src) {
+    return startupWithTimeout(
+        fetch(src, { cache: "force-cache" })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                // Đọc hết body để asset thực sự hoàn tất download/cache.
+                return response.blob();
+            })
+            .then(() => ({ src, ok: true }))
+            .catch(() => ({ src, ok: false }))
+    );
+}
+
+async function preloadStartupAssets() {
+    const imageAssets = [...new Set(STARTUP_IMAGE_ASSETS)];
+    const audioAssets = [...new Set(STARTUP_AUDIO_ASSETS)];
+
+    const tasks = [
+        ...imageAssets.map(src => () => preloadStartupImage(src)),
+        ...audioAssets.map(src => () => preloadStartupAudio(src)),
+        () => startupWithTimeout(
+            document.fonts?.ready || Promise.resolve()
+        )
+    ];
+
+    let completed = 0;
+    const total = tasks.length;
+
+    setStartupProgress(0, total);
+
+    // Chạy song song, nhưng progress phản ánh asset THỰC đã settle.
+    await Promise.allSettled(
+        tasks.map(task =>
+            Promise.resolve()
+                .then(task)
+                .finally(() => {
+                    completed++;
+                    setStartupProgress(completed, total);
+                })
+        )
+    );
+}
+
+function markStartScreenReady() {
+    startScreenReady = true;
+
+    startScreen?.classList.remove("is-loading");
+    startScreen?.classList.add("is-ready");
+    startScreen?.setAttribute("aria-busy", "false");
+
+    if (startScreenStatus) {
+        startScreenStatus.textContent =
+            "Nhấn để vào tiệm 🥖";
+    }
+}
+
+async function runRealLoadingScreen() {
+    try {
+        await preloadStartupAssets();
+    } catch (error) {
+        console.warn("Startup preload gặp lỗi:", error);
+    } finally {
+        setStartupProgress(1, 1);
+        markStartScreenReady();
+    }
 }
 
 
@@ -12328,10 +12489,10 @@ startScreen?.addEventListener(
 );
 
 
-// Browser vẫn tự tải ảnh / audio bình thường.
-// Loading này chỉ là hiệu ứng splash, không preload asset.
+// Home được render phía sau splash để layout sẵn sàng.
+// Splash chỉ cho vào sau khi asset gameplay đã tải + decode xong.
 showHome();
-runVisualLoadingScreen();
+runRealLoadingScreen();
 
 // Dán cuối game.js, ngay sau showHome();
 customers.splice(0, customers.length, "A", "B", "C", "D", "E", "F");

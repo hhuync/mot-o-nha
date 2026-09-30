@@ -6331,8 +6331,8 @@ body.tutorial-open {
 }
 
 /* ======================================================
-   START SCREEN - VISUAL LOADING ONLY
-   Không preload / không cache asset.
+   START SCREEN - REAL ASSET LOADING
+   Progress phản ánh preload/decode asset thật.
    ====================================================== */
 
 #start-screen.is-loading {

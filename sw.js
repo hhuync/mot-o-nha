@@ -1,4 +1,4 @@
-const CACHE_NAME = "mot-o-nha-v8";
+const CACHE_NAME = "mot-o-nha-v9-preload";
 const ROOT = self.registration.scope;
 
 const url = (path) => new URL(path, ROOT).href;
@@ -302,16 +302,28 @@ self.addEventListener("fetch", (event) => {
         }
 
         /*
-         * Asset (ảnh/font/audio):
-         * Online -> network fresh, đồng thời cập nhật cache.
-         * Offline -> cache.
+         * Asset (ảnh/font/audio): CACHE-FIRST.
+         *
+         * Lý do: asset đã được precache khi SW install. Nếu cứ network-first,
+         * mỗi lần dựng lại Prep/Gameplay Safari vẫn phải chờ network trước,
+         * khiến UI xuất hiện rồi ảnh mới mọc sau.
+         *
+         * ignoreSearch giúp URL kiểu grab.png?v=2 vẫn dùng được bản precache
+         * grab.png. Asset mới sẽ được làm mới khi CACHE_NAME/SW đổi version.
          */
+        const cachedAsset = await cache.match(
+            request,
+            { ignoreSearch: true }
+        );
+
+        if (cachedAsset) {
+            return cachedAsset;
+        }
+
         try {
             const response = await fetch(
                 request,
-                {
-                    cache: "no-store"
-                }
+                { cache: "no-store" }
             );
 
             if (response.ok) {
@@ -323,10 +335,7 @@ self.addEventListener("fetch", (event) => {
 
             return response;
         } catch {
-            return (
-                await cache.match(request) ||
-                Response.error()
-            );
+            return Response.error();
         }
     })());
 });
