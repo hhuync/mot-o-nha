@@ -1397,6 +1397,47 @@ function slugify(text) {
         .replace(/\s+/g, "-");
 }
 
+
+// Highlight yêu cầu đặc biệt của khách để người chơi bắt nhanh thông tin.
+// Chỉ đổi màu, tuyệt đối không bold.
+function formatOrderNoteForDisplay(text) {
+    const escaped = String(text ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    const specialRequestPattern = new RegExp(
+        [
+            "không ăn được ớt",
+            "thêm chút sốt cà chua",
+            "cay hơn một chút",
+            "không thêm sốt",
+            "không ăn rau",
+            "không có rau",
+            "đừng cho rau",
+            "không cho rau",
+            "không ăn sốt",
+            "không cho sốt",
+            "không sốt",
+            "đừng cho ớt",
+            "không cho ớt",
+            "thêm mayonnaise",
+            "thêm ketchup",
+            "thêm Sriracha",
+            "thêm ớt",
+            "có ớt"
+        ].join("|"),
+        "gi"
+    );
+
+    return escaped.replace(
+        specialRequestPattern,
+        match => `<span class="important-highlight">${match}</span>`
+    );
+}
+
 const UI_ICONS = {
     settings: `
         <svg class="ui-icon" viewBox="0 0 24 24"
@@ -8037,7 +8078,7 @@ function renderCurrentOrder() {
 
 
                 <div class="customer-speech">
-                    "${game.orderNote}"
+                    "${formatOrderNoteForDisplay(game.orderNote)}"
                 </div>
 
             </div>
@@ -8110,7 +8151,7 @@ function renderMakingScreen() {
 
 
                         <div class="order-request">
-                            "${game.orderNote}"
+                            "${formatOrderNoteForDisplay(game.orderNote)}"
                         </div>
 
                     </div>
@@ -9396,7 +9437,7 @@ function buyStock(name) {
             `Nhập thêm ${name}?`,
 
         message:
-            `Hiện còn ${data.stock}. Nhập thêm ${data.restock} với giá ${formatMoney(data.restockPrice)}?`,
+            `Hiện còn <span class="important-highlight">${data.stock}</span>. Nhập thêm <span class="important-highlight">${data.restock}</span> với giá <span class="important-highlight">${formatMoney(data.restockPrice)}</span>?`,
 
         confirmText:
             `Nhập +${data.restock}`,
@@ -12851,7 +12892,7 @@ renderMakingScreen = function () {
                     ${recipeBookButton()}
                 </div>
                 <strong>${game.currentRecipe.name}</strong>
-                <p id="customer-order-note">“${game.orderNote}”</p>
+                <p id="customer-order-note">“${formatOrderNoteForDisplay(game.orderNote)}”</p>
                 <p id="customer-reaction" role="status"></p>
             </div>
         </section>`;
@@ -17579,7 +17620,7 @@ function buyDrinkStock(name) {
         title:
             `Nhập thêm ${name}?`,
         message:
-            `Hiện còn ${data.stock}. Nhập thêm ${data.restock} với giá ${formatMoney(data.restockPrice)}?`,
+            `Hiện còn <span class="important-highlight">${data.stock}</span>. Nhập thêm <span class="important-highlight">${data.restock}</span> với giá <span class="important-highlight">${formatMoney(data.restockPrice)}</span>?`,
         confirmText:
             `Nhập +${data.restock}`,
         cancelText:

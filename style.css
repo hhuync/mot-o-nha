@@ -7971,3 +7971,14 @@ img,
         padding: 5px;
     }
 }
+
+
+/* =========================================================
+   IMPORTANT GAME INFO HIGHLIGHT
+   Dùng cho yêu cầu đặc biệt của khách và số liệu nhập hàng.
+   Chỉ đổi màu, không in đậm để giữ chữ dễ đọc.
+   ========================================================= */
+.important-highlight {
+    color: #c82f63 !important;
+    font-weight: 400 !important;
+}
