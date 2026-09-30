@@ -12235,6 +12235,7 @@ const loadingProgressBar =
 // ======================================================
 
 const STARTUP_ASSET_TIMEOUT_MS = 12000;
+const STARTUP_GLOBAL_TIMEOUT_MS = 10000;
 
 const STARTUP_IMAGE_ASSETS = [
     // UI / prep
@@ -12331,6 +12332,10 @@ let startScreenReady = false;
 let startScreenEntered = false;
 
 function setStartupProgress(done, total) {
+    // Sau khi đã cho người chơi vào, preload còn thiếu vẫn tiếp tục chạy ngầm.
+    // Không để progress nền ghi đè lại trạng thái “Nhấn để vào tiệm”.
+    if (startScreenReady) return;
+
     const safeTotal = Math.max(1, total);
     const percent = Math.min(100, Math.round(done / safeTotal * 100));
 
@@ -12452,14 +12457,33 @@ function markStartScreenReady() {
 }
 
 async function runRealLoadingScreen() {
-    try {
-        await preloadStartupAssets();
-    } catch (error) {
+    // Bắt đầu preload thật và để nó tiếp tục chạy kể cả khi đã vượt cap 10 giây.
+    const preloadPromise = preloadStartupAssets().catch(error => {
         console.warn("Startup preload gặp lỗi:", error);
-    } finally {
-        setStartupProgress(1, 1);
-        markStartScreenReady();
+    });
+
+    const result = await Promise.race([
+        preloadPromise.then(() => "loaded"),
+        new Promise(resolve => {
+            setTimeout(
+                () => resolve("timeout"),
+                STARTUP_GLOBAL_TIMEOUT_MS
+            );
+        })
+    ]);
+
+    if (result === "timeout") {
+        console.warn(
+            `Startup preload vượt ${STARTUP_GLOBAL_TIMEOUT_MS / 1000}s; ` +
+            "cho phép vào game và tiếp tục tải ngầm."
+        );
     }
+
+    setStartupProgress(1, 1);
+    markStartScreenReady();
+
+    // Không await: asset còn thiếu tiếp tục được tải/cache ở background.
+    preloadPromise.catch(() => {});
 }
 
 
