@@ -18218,8 +18218,13 @@ function refreshOrderBubbleForDrink() {
         note &&
         ticket?.note
     ) {
-        note.textContent =
-            `“${ticket.note}”`;
+        note.innerHTML =
+            `“${formatOrderNoteForDisplay(
+                ticket.note,
+                Array.isArray(ticket.highlights)
+                    ? ticket.highlights
+                    : game.orderHighlights
+            )}”`;
     }
 }
 
