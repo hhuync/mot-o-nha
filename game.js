@@ -109,22 +109,36 @@ async function preloadLowLatencySfx(
 
 function unlockLowLatencyAudio() {
     if (
-        lowLatencyAudioContext &&
-        lowLatencyAudioContext.state ===
-            "suspended"
+        !lowLatencyAudioContext ||
+        lowLatencyAudioContext.state === "closed"
     ) {
-        lowLatencyAudioContext
-            .resume()
-            .catch(() => {});
+        return Promise.resolve(false);
     }
+
+    if (lowLatencyAudioContext.state === "running") {
+        return Promise.resolve(true);
+    }
+
+    // iOS/PWA thường suspend AudioContext khi app ra background.
+    // resume() là async, nên trả Promise để lần bấm đầu tiên sau khi quay lại
+    // có thể chờ audio engine thức dậy thay vì bị mất tiếng.
+    return lowLatencyAudioContext
+        .resume()
+        .then(() =>
+            lowLatencyAudioContext.state === "running"
+        )
+        .catch(() => false);
 }
 
 
-function playLowLatencySfx(
+function playLowLatencyBufferNow(
     key,
     volume
 ) {
-    if (!lowLatencyAudioContext) {
+    if (
+        !lowLatencyAudioContext ||
+        lowLatencyAudioContext.state !== "running"
+    ) {
         return false;
     }
 
@@ -132,14 +146,6 @@ function playLowLatencySfx(
         lowLatencySfxBuffers.get(key);
 
     if (!buffer) {
-        return false;
-    }
-
-    unlockLowLatencyAudio();
-
-    // iOS may still be resuming after the first tap back into the app.
-    // Let the HTMLAudio pool handle this tap instead of claiming it played.
-    if (lowLatencyAudioContext.state !== "running") {
         return false;
     }
 
@@ -152,17 +158,12 @@ function playLowLatencySfx(
             lowLatencyAudioContext
                 .createGain();
 
-        source.buffer =
-            buffer;
-
-        gain.gain.value =
-            volume;
+        source.buffer = buffer;
+        gain.gain.value = volume;
 
         source.connect(gain);
-
         gain.connect(
-            lowLatencyAudioContext
-                .destination
+            lowLatencyAudioContext.destination
         );
 
         source.onended = () => {
@@ -173,12 +174,51 @@ function playLowLatencySfx(
         };
 
         source.start(0);
-
         return true;
 
     } catch {
         return false;
     }
+}
+
+
+function playLowLatencySfx(
+    key,
+    volume
+) {
+    if (!lowLatencyAudioContext) {
+        return false;
+    }
+
+    if (!lowLatencySfxBuffers.has(key)) {
+        return false;
+    }
+
+    if (lowLatencyAudioContext.state === "running") {
+        return playLowLatencyBufferNow(
+            key,
+            volume
+        );
+    }
+
+    if (lowLatencyAudioContext.state === "closed") {
+        return false;
+    }
+
+    // QUAN TRỌNG CHO iOS/PWA:
+    // nếu app vừa quay lại foreground, resume() chưa xong ngay trong cùng tap.
+    // Ta nhận tap này, đợi resume xong rồi phát chính SFX đó.
+    // Trả true để caller không phát thêm fallback và gây double sound.
+    unlockLowLatencyAudio().then(running => {
+        if (running) {
+            playLowLatencyBufferNow(
+                key,
+                volume
+            );
+        }
+    });
+
+    return true;
 }
 
 
@@ -192,6 +232,21 @@ preloadLowLatencySfx(
 preloadLowLatencySfx(
     "ingredient",
     "audio/ingredient.mp3"
+);
+
+preloadLowLatencySfx(
+    "correct",
+    "audio/correct.mp3"
+);
+
+preloadLowLatencySfx(
+    "wrong",
+    "audio/wrong.mp3"
+);
+
+preloadLowLatencySfx(
+    "pour",
+    "audio/pour.mp3"
 );
 
 
@@ -323,21 +378,56 @@ function stopSquirtSound() {
     squirtSound.currentTime = 0;
 }
 
-const correctSound = new Audio("audio/correct.mp3");
-const wrongSound = new Audio("audio/wrong.mp3");
+const correctSoundPool =
+    createSfxPool(
+        "audio/correct.mp3",
+        0.6,
+        3
+    );
 
-correctSound.volume = 0.6;
-wrongSound.volume = 0.20;
+const wrongSoundPool =
+    createSfxPool(
+        "audio/wrong.mp3",
+        0.20,
+        3
+    );
+
+let correctSoundCursor = 0;
+let wrongSoundCursor = 0;
 
 function playOrderResultSound(correct) {
-    const sound = correct ? correctSound : wrongSound;
-    const otherSound = correct ? wrongSound : correctSound;
+    const key = correct ? "correct" : "wrong";
+    const volume = correct ? 0.6 : 0.20;
 
-    otherSound.pause();
-    otherSound.currentTime = 0;
+    // Ưu tiên Web Audio để tránh iOS/Safari thỉnh thoảng nuốt mất SFX.
+    if (
+        playLowLatencySfx(
+            key,
+            volume
+        )
+    ) {
+        return;
+    }
 
-    sound.pause();
-    sound.currentTime = 0;
+    // Fallback bằng pool thay vì chỉ 1 Audio element duy nhất.
+    const pool =
+        correct
+            ? correctSoundPool
+            : wrongSoundPool;
+
+    const cursor =
+        correct
+            ? correctSoundCursor++
+            : wrongSoundCursor++;
+
+    const sound =
+        pool[cursor % pool.length];
+
+    try {
+        sound.pause();
+        sound.currentTime = 0;
+    } catch {}
+
     sound.play().catch(() => {});
 }
 
@@ -11959,6 +12049,114 @@ const uiClickSoundPool =
 let uiClickSoundCursor = 0;
 
 
+function rePrimeSfxPool(pool) {
+    pool.forEach(sound => {
+        try {
+            sound.pause();
+            sound.currentTime = 0;
+            sound.load();
+        } catch {}
+    });
+}
+
+
+let restoringForegroundSfx = null;
+
+async function restoreSfxAfterForeground() {
+    if (restoringForegroundSfx) {
+        return restoringForegroundSfx;
+    }
+
+    restoringForegroundSfx = (async () => {
+        // Đánh thức Web Audio sau khi iOS/PWA suspend app.
+        await unlockLowLatencyAudio();
+
+        // Re-prime HTMLAudio fallback vì Safari có thể giải phóng media
+        // resource khi app nằm background một lúc.
+        rePrimeSfxPool(ingredientSoundPool);
+        rePrimeSfxPool(uiClickSoundPool);
+        rePrimeSfxPool(correctSoundPool);
+        rePrimeSfxPool(wrongSoundPool);
+
+        try {
+            pourSound.pause();
+            pourSound.currentTime = 0;
+            pourSound.load();
+        } catch {}
+
+        // Nếu buffer Web Audio chưa có (hoặc preload trước đó fail), thử lại
+        // từ cache. Không decode lại nếu buffer vẫn còn tốt.
+        const missing = [];
+
+        if (!lowLatencySfxBuffers.has("ui-click")) {
+            missing.push(
+                preloadLowLatencySfx(
+                    "ui-click",
+                    "audio/click.mp3"
+                )
+            );
+        }
+
+        if (!lowLatencySfxBuffers.has("ingredient")) {
+            missing.push(
+                preloadLowLatencySfx(
+                    "ingredient",
+                    "audio/ingredient.mp3"
+                )
+            );
+        }
+
+        if (!lowLatencySfxBuffers.has("correct")) {
+            missing.push(
+                preloadLowLatencySfx(
+                    "correct",
+                    "audio/correct.mp3"
+                )
+            );
+        }
+
+        if (!lowLatencySfxBuffers.has("wrong")) {
+            missing.push(
+                preloadLowLatencySfx(
+                    "wrong",
+                    "audio/wrong.mp3"
+                )
+            );
+        }
+
+        if (!lowLatencySfxBuffers.has("pour")) {
+            missing.push(
+                preloadLowLatencySfx(
+                    "pour",
+                    "audio/pour.mp3"
+                )
+            );
+        }
+
+        if (missing.length) {
+            await Promise.allSettled(missing);
+        }
+    })().finally(() => {
+        restoringForegroundSfx = null;
+    });
+
+    return restoringForegroundSfx;
+}
+
+
+// Khi quay lại PWA, chủ động khôi phục cả click và tiếng đặt nguyên liệu.
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+        restoreSfxAfterForeground();
+    }
+});
+
+window.addEventListener(
+    "pageshow",
+    restoreSfxAfterForeground
+);
+
+
 function playUiClickSound() {
     // Ưu tiên Web Audio để click phản hồi ngay trên iPhone/PWA.
     if (
@@ -15828,12 +16026,14 @@ let drinkStationView =
 
 const DRINK_TEA_HOLD_MS = 2000;
 
+const POUR_SOUND_VOLUME = 0.68;
+
 const pourSound =
     new Audio(
         "audio/pour.mp3"
     );
 
-pourSound.volume = 0.48;
+pourSound.volume = POUR_SOUND_VOLUME;
 pourSound.loop = true;
 pourSound.preload = "auto";
 
@@ -15841,23 +16041,142 @@ try {
     pourSound.load();
 } catch {}
 
+let activePourWebAudioSource = null;
+let activePourWebAudioGain = null;
+let pourSoundRequestId = 0;
+
+function stopPourWebAudio() {
+    if (activePourWebAudioSource) {
+        try {
+            activePourWebAudioSource.stop(0);
+        } catch {}
+
+        try {
+            activePourWebAudioSource.disconnect();
+        } catch {}
+    }
+
+    if (activePourWebAudioGain) {
+        try {
+            activePourWebAudioGain.disconnect();
+        } catch {}
+    }
+
+    activePourWebAudioSource = null;
+    activePourWebAudioGain = null;
+}
+
+function startPourWebAudioNow(requestId) {
+    if (
+        requestId !== pourSoundRequestId ||
+        !lowLatencyAudioContext ||
+        lowLatencyAudioContext.state !== "running"
+    ) {
+        return false;
+    }
+
+    const buffer =
+        lowLatencySfxBuffers.get("pour");
+
+    if (!buffer) {
+        return false;
+    }
+
+    stopPourWebAudio();
+
+    try {
+        const source =
+            lowLatencyAudioContext
+                .createBufferSource();
+
+        const gain =
+            lowLatencyAudioContext
+                .createGain();
+
+        source.buffer = buffer;
+        source.loop = true;
+        gain.gain.value = POUR_SOUND_VOLUME;
+
+        source.connect(gain);
+        gain.connect(
+            lowLatencyAudioContext.destination
+        );
+
+        source.onended = () => {
+            if (activePourWebAudioSource === source) {
+                activePourWebAudioSource = null;
+                activePourWebAudioGain = null;
+            }
+
+            try {
+                source.disconnect();
+                gain.disconnect();
+            } catch {}
+        };
+
+        activePourWebAudioSource = source;
+        activePourWebAudioGain = gain;
+        source.start(0);
+
+        return true;
+
+    } catch {
+        stopPourWebAudio();
+        return false;
+    }
+}
+
 
 let activeDrinkTeaHold = null;
 
 
 function startPourSound() {
+    const requestId = ++pourSoundRequestId;
+
+    stopPourWebAudio();
+
     try {
         pourSound.pause();
         pourSound.currentTime = 0;
     } catch {}
 
+    // Ưu tiên Web Audio để tiếng rót không bị Safari nuốt giữa chừng.
+    if (startPourWebAudioNow(requestId)) {
+        return;
+    }
+
+    if (
+        lowLatencyAudioContext &&
+        lowLatencySfxBuffers.has("pour") &&
+        lowLatencyAudioContext.state !== "closed"
+    ) {
+        unlockLowLatencyAudio().then(running => {
+            if (
+                running &&
+                requestId === pourSoundRequestId
+            ) {
+                startPourWebAudioNow(requestId);
+            }
+        });
+
+        return;
+    }
+
+    // Fallback HTMLAudio nếu Web Audio chưa preload xong / không hỗ trợ.
     pourSound
         .play()
-        .catch(() => {});
+        .catch(() => {
+            try {
+                pourSound.load();
+            } catch {}
+        });
 }
 
 
 function stopPourSound() {
+    pourSoundRequestId++;
+    stopPourWebAudio();
+
     try {
         pourSound.pause();
         pourSound.currentTime = 0;
